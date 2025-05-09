@@ -1,0 +1,151 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user is the owner of the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Check if user is a trainer - simplified for better performance in rules
+    function isTrainer() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer';
+    }
+    
+    // Check if user is an admin
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // User Collection Rules
+    match /users/{userId} {
+      // Users can read and write only their own document
+      // Trainers can read all user documents
+      // Admins can read and write all user documents
+      allow read: if isAuthenticated() && 
+                   (isOwner(userId) || isTrainer() || isAdmin());
+      // Allow a user to create their own document during signup
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+      
+      // Allow trainers to list all clients (for client list screens)
+      match /{allSubcollections=**} {
+        allow read: if isAuthenticated() && (isOwner(userId) || isTrainer() || isAdmin());
+      }
+    }
+    
+    // Allow trainers to list all users with role=client
+    match /users/{userId} {
+      allow list, get: if isAuthenticated() && isTrainer();
+    }
+    
+    // Workout Collection Rules
+    match /workouts/{workoutId} {
+      // Users can read and write their own workouts
+      // Trainers can read and write workouts for their clients
+      // Admins can read and write all workouts
+      allow read: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isTrainer() || isAdmin());
+      allow create: if isAuthenticated() && 
+        (request.resource.data.userId == request.auth.uid || isTrainer() || isAdmin());
+      allow update: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isTrainer() || isAdmin());
+      allow delete: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isTrainer() || isAdmin());
+    }
+    
+    // Workout Templates Collection Rules
+    match /workoutTemplates/{templateId} {
+      // Trainers can create, read, update, and delete their own templates
+      // Admins can read and write all templates
+      allow read: if isAuthenticated() && 
+        (resource.data.trainerId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && 
+        isTrainer() && 
+        request.resource.data.trainerId == request.auth.uid;
+      allow update: if isAuthenticated() && 
+        isTrainer() && 
+        resource.data.trainerId == request.auth.uid;
+      allow delete: if isAuthenticated() && 
+        isTrainer() && 
+        resource.data.trainerId == request.auth.uid;
+    }
+    
+    // Assigned Workouts Collection Rules
+    match /assignedWorkouts/{workoutId} {
+      // Simplified rule: trainers can read ALL assigned workouts
+      allow read, list: if isAuthenticated() && isTrainer();
+      
+      // Clients can read and update their own assigned workouts
+      allow read, update: if isAuthenticated() && resource.data.clientId == request.auth.uid;
+      
+      // Trainers can create, update, and delete workouts they assigned
+      allow create: if isAuthenticated() && isTrainer();
+      allow update, delete: if isAuthenticated() && isTrainer() && resource.data.trainerId == request.auth.uid;
+      
+      // Admins can do everything
+      allow read, write: if isAdmin();
+    }
+    
+    // Program Collection Rules
+    match /programs/{programId} {
+      // Anyone can read programs
+      // Only trainers and admins can create, update, delete programs
+      allow read: if true;
+      allow create: if isTrainer() || isAdmin();
+      allow update: if isTrainer() && resource.data.trainerId == request.auth.uid || isAdmin();
+      allow delete: if isTrainer() && resource.data.trainerId == request.auth.uid || isAdmin();
+    }
+    
+    // Body Composition Collection Rules
+    match /bodyComp/{userId}/{entryId} {
+      // Users can read and write their own body composition data
+      // Trainers can read body composition data for their clients
+      // Admins can read and write all body composition data
+      allow read: if isOwner(userId) || isTrainer() || isAdmin();
+      allow create: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+    
+    // Food Log Collection Rules
+    match /foodLogs/{logId} {
+      // Users can read and write their own food logs
+      // Trainers can read food logs for their clients
+      // Admins can read and write all food logs
+      allow read: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isTrainer() || isAdmin());
+      allow create: if isAuthenticated() && 
+        (request.resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+    }
+    
+    // Session Collection Rules
+    match /sessions/{sessionId} {
+      // Users can read sessions they're part of
+      // Trainers can read and write sessions they're part of
+      // Admins can read and write all sessions
+      allow read: if isAuthenticated() && 
+        (resource.data.clientId == request.auth.uid || 
+         resource.data.trainerId == request.auth.uid || 
+         isAdmin());
+      allow create: if isTrainer() || isAdmin();
+      allow update: if isAuthenticated() && 
+        (resource.data.trainerId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && 
+        (resource.data.trainerId == request.auth.uid || isAdmin());
+    }
+  }
+} 

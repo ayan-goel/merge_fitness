@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "394880012668",
+    "project_id": "merge-finess",
+    "storage_bucket": "merge-finess.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:394880012668:android:5c8b0ff1a29c3209cb54f9",
+        "android_client_info": {
+          "package_name": "com.example.merge_fitness"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "394880012668-2ff1mqo8ea3jmc08pi44i2tb7knoojpr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBqimqdg4ITlGpBmrnBkuPdBC6CxxjcXjQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "394880012668-2ff1mqo8ea3jmc08pi44i2tb7knoojpr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "394880012668-jm02jdbkqgsssprp2vk8ffn5gok31nie.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.mergeFitness"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:394880012668:android:65a7bccd22e7c48fcb54f9",
+        "android_client_info": {
+          "package_name": "com.mergefitness.merge_fitness"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "394880012668-2ff1mqo8ea3jmc08pi44i2tb7knoojpr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBqimqdg4ITlGpBmrnBkuPdBC6CxxjcXjQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "394880012668-2ff1mqo8ea3jmc08pi44i2tb7knoojpr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "394880012668-jm02jdbkqgsssprp2vk8ffn5gok31nie.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.mergeFitness"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

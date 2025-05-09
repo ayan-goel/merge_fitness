@@ -1,0 +1,192 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/user_model.dart';
+
+class AuthService {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // Auth state changes stream
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  // Get current user
+  User? get currentUser => _auth.currentUser;
+
+  // Sign in with email and password
+  Future<UserCredential> signInWithEmailAndPassword(String email, String password) async {
+    try {
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      print('Auth error in signIn: ${e.code} - ${e.message}');
+      // Don't convert the exception, just re-throw it
+      throw e;
+    }
+  }
+
+  // Create user with email and password
+  Future<UserCredential> createUserWithEmailAndPassword(
+    String email, 
+    String password, 
+    {UserRole role = UserRole.client}
+  ) async {
+    try {
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      
+      // Create user document in Firestore
+      try {
+        await _createUserDocument(userCredential.user!, role: role);
+        print("Firestore document created successfully");
+      } catch (e) {
+        print("Error creating Firestore document: $e");
+        // Don't throw the error - we still want to return the userCredential
+        // The user is created in Firebase Auth, even if Firestore fails
+      }
+      
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      print('Auth error in createUser: ${e.code} - ${e.message}');
+      // Don't convert the exception, just re-throw it
+      throw e;
+    }
+  }
+
+  // Sign out
+  Future<void> signOut() async {
+    await _auth.signOut();
+  }
+
+  // Send password reset email
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException catch (e) {
+      print('Auth error in resetPassword: ${e.code} - ${e.message}');
+      // Don't convert the exception, just re-throw it
+      throw e;
+    }
+  }
+
+  // Create user document in Firestore
+  Future<void> _createUserDocument(User user, {UserRole role = UserRole.client}) async {
+    try {
+      await _firestore.collection('users').doc(user.uid).set({
+        'email': user.email,
+        'role': _userRoleToString(role), // Use provided role
+        'createdAt': Timestamp.now(),
+      });
+    } catch (e) {
+      print("Error in _createUserDocument: $e");
+      throw e;
+    }
+  }
+
+  // Get user model
+  Future<UserModel> getUserModel() async {
+    User? user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    
+    return UserModel.fromFirebase(
+      uid: user.uid,
+      email: user.email!,
+    );
+  }
+
+  // Helper to convert UserRole enum to string
+  String _userRoleToString(UserRole role) {
+    switch (role) {
+      case UserRole.trainer:
+        return 'trainer';
+      case UserRole.admin:
+        return 'admin';
+      case UserRole.client:
+        return 'client';
+    }
+  }
+
+  // Update user profile
+  Future<void> updateUserProfile({
+    String? displayName,
+    String? photoUrl,
+    double? height,
+    double? weight,
+    DateTime? dateOfBirth,
+    List<String>? goals,
+    String? phoneNumber,
+    UserRole? role,
+  }) async {
+    User? user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    
+    // Update auth profile if needed
+    if (displayName != null) {
+      await user.updateDisplayName(displayName);
+    }
+    
+    if (photoUrl != null) {
+      await user.updatePhotoURL(photoUrl);
+    }
+    
+    // Update Firestore document
+    Map<String, dynamic> data = {};
+    
+    if (displayName != null) data['displayName'] = displayName;
+    if (photoUrl != null) data['photoUrl'] = photoUrl;
+    if (height != null) data['height'] = height;
+    if (weight != null) data['weight'] = weight;
+    if (dateOfBirth != null) data['dateOfBirth'] = Timestamp.fromDate(dateOfBirth);
+    if (goals != null) data['goals'] = goals;
+    if (phoneNumber != null) data['phoneNumber'] = phoneNumber;
+    if (role != null) data['role'] = _userRoleToString(role);
+    
+    if (data.isNotEmpty) {
+      try {
+        // Check if document exists first
+        DocumentSnapshot doc = await _firestore.collection('users').doc(user.uid).get();
+        
+        if (doc.exists) {
+          // Use update if the document exists
+          await _firestore.collection('users').doc(user.uid).update(data);
+        } else {
+          // Use set if the document doesn't exist
+          await _firestore.collection('users').doc(user.uid).set(data, SetOptions(merge: true));
+        }
+      } catch (e) {
+        print("Error updating profile: $e");
+        throw Exception('Failed to update profile: $e');
+      }
+    }
+  }
+
+  // Helper for creating user-friendly error messages (not used directly in the auth methods)
+  String getErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+        return 'No user found with this email.';
+      case 'wrong-password':
+        return 'Wrong password provided.';
+      case 'email-already-in-use':
+        return 'Email is already in use. Please use a different email or try logging in.';
+      case 'weak-password':
+        return 'The password is too weak.';
+      case 'invalid-email':
+        return 'Invalid email address.';
+      case 'operation-not-allowed':
+        return 'Operation not allowed.';
+      case 'user-disabled':
+        return 'User has been disabled.';
+      default:
+        return 'An error occurred: ${e.message}';
+    }
+  }
+} 
