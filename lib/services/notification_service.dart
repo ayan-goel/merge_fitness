@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:flutter/foundation.dart';
 
 // This needs to be added to pubspec.yaml:
 // flutter_local_notifications: ^16.3.2
@@ -31,64 +33,105 @@ class NotificationService {
     // Initialize timezone
     tz_data.initializeTimeZones();
     
-    // Request permission for iOS and web
-    NotificationSettings settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
-    
-    print('User granted permission: ${settings.authorizationStatus}');
-    
-    // Initialize local notifications only for mobile platforms
-    if (!kIsWeb) {
-      const AndroidInitializationSettings initializationSettingsAndroid =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
-          
-      const DarwinInitializationSettings initializationSettingsIOS =
-          DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
+    try {
+      // Request permission for iOS and web
+      NotificationSettings settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
       );
       
-      const InitializationSettings initializationSettings = InitializationSettings(
-        android: initializationSettingsAndroid,
-        iOS: initializationSettingsIOS,
-      );
+      print('User granted permission: ${settings.authorizationStatus}');
       
-      await _localNotifications.initialize(
-        initializationSettings,
-        onDidReceiveNotificationResponse: _onNotificationTap,
-      );
+      // Initialize local notifications only for mobile platforms
+      if (!kIsWeb) {
+        const AndroidInitializationSettings initializationSettingsAndroid =
+            AndroidInitializationSettings('@mipmap/ic_launcher');
+            
+        const DarwinInitializationSettings initializationSettingsIOS =
+            DarwinInitializationSettings(
+          requestAlertPermission: true,
+          requestBadgePermission: true,
+          requestSoundPermission: true,
+        );
+        
+        const InitializationSettings initializationSettings = InitializationSettings(
+          android: initializationSettingsAndroid,
+          iOS: initializationSettingsIOS,
+        );
+        
+        await _localNotifications.initialize(
+          initializationSettings,
+          onDidReceiveNotificationResponse: _onNotificationTap,
+        );
+        
+        // Set up background message handler for mobile platforms
+        FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      }
+      
+      // Set up foreground notification handler
+      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+      
+      // Handle notification when app is opened from terminated state
+      RemoteMessage? initialMessage = await _messaging.getInitialMessage();
+      if (initialMessage != null) {
+        _handleMessageOpenedApp(initialMessage);
+      }
+      
+      // Handle when app is opened from background state
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
+      
+      // Get and store FCM token
+      try {
+        if (kIsWeb) {
+          // On web, check if running in secure context (required for service workers)
+          if (Uri.base.scheme == 'https' || Uri.base.host == 'localhost') {
+            try {
+              String? token = await _messaging.getToken();
+              if (token != null) {
+                await _saveFcmToken(token);
+              }
+            } catch (e) {
+              // Specifically catch and handle service worker errors
+              if (e.toString().contains('no active Service Worker')) {
+                print('Web push notifications require a production HTTPS environment.');
+              } else {
+                print('Error getting FCM token: $e');
+              }
+            }
+          } else {
+            print('Web push notifications are only available in HTTPS or localhost environments');
+          }
+        } else {
+          // Mobile platforms
+          String? token = await _messaging.getToken();
+          if (token != null) {
+            await _saveFcmToken(token);
+          }
+        }
+      } catch (e) {
+        print('Error getting FCM token: $e');
+        // Continue even if token retrieval fails
+      }
+      
+      // Listen for token refresh
+      _messaging.onTokenRefresh.listen(_saveFcmToken);
+      
+      // Check for any initial notification if app was launched from a notification
+      if (!kIsWeb) {
+        final NotificationAppLaunchDetails? launchDetails = 
+            await _localNotifications.getNotificationAppLaunchDetails();
+        
+        if (launchDetails != null && launchDetails.didNotificationLaunchApp) {
+          // App was launched from a notification
+          handleNotificationResponse(launchDetails.notificationResponse?.payload);
+        }
+      }
+    } catch (e) {
+      // Handle errors gracefully to prevent app crash
+      print('Error initializing notification service: $e');
     }
-    
-    // Set up foreground notification handler
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-    
-    // Set up background message handler for mobile platforms
-    if (!kIsWeb) {
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-    }
-    
-    // Handle notification when app is opened from terminated state
-    RemoteMessage? initialMessage = await _messaging.getInitialMessage();
-    if (initialMessage != null) {
-      _handleMessageOpenedApp(initialMessage);
-    }
-    
-    // Handle when app is opened from background state
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
-    
-    // Get and store FCM token
-    String? token = await _messaging.getToken();
-    if (token != null) {
-      await _saveFcmToken(token);
-    }
-    
-    // Listen for token refresh
-    _messaging.onTokenRefresh.listen(_saveFcmToken);
   }
   
   // Save FCM token to Firestore for the current user
@@ -165,9 +208,9 @@ class NotificationService {
   
   // Handle notification tap
   void _onNotificationTap(NotificationResponse response) {
-    // Handle notification tap
-    // You can navigate to specific screens based on payload
+    // Handle notification tap using the payload
     print('Notification tapped with payload: ${response.payload}');
+    handleNotificationResponse(response.payload);
   }
   
   // Handle when a notification opens the app from terminated state
@@ -316,6 +359,146 @@ class NotificationService {
     if (kIsWeb) return;
     
     await _localNotifications.cancelAll();
+  }
+  
+  // Check for incomplete workouts and send reminders
+  Future<void> checkIncompleteWorkoutsAndNotify() async {
+    // Skip for web platform
+    if (kIsWeb) return;
+    
+    // Get current user
+    User? user = _auth.currentUser;
+    if (user == null) return;
+
+    // Get today's date
+    DateTime now = DateTime.now();
+    DateTime today = DateTime(now.year, now.month, now.day);
+    
+    // Check if it's after 7 PM
+    bool isAfter7PM = now.hour >= 19;
+    
+    // If it's already past 7 PM, we'll check and send notifications immediately
+    // Otherwise, we'll schedule them for 7 PM
+    
+    // Query workouts assigned for today that aren't completed
+    QuerySnapshot workoutSnapshot = await _firestore
+        .collection('workouts')
+        .where('userId', isEqualTo: user.uid)
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(DateTime(today.year, today.month, today.day, 23, 59, 59)))
+        .get();
+    
+    for (var doc in workoutSnapshot.docs) {
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      
+      // Check if workout is not completed
+      if (data['completedAt'] == null) {
+        String workoutId = doc.id;
+        
+        // Get workout program info for better notification
+        String programId = data['programId'] ?? '';
+        String workoutName = 'your workout';
+        
+        if (programId.isNotEmpty) {
+          try {
+            DocumentSnapshot programDoc = await _firestore.collection('programs').doc(programId).get();
+            if (programDoc.exists) {
+              Map<String, dynamic> programData = programDoc.data() as Map<String, dynamic>;
+              workoutName = programData['title'] ?? 'your workout';
+            }
+          } catch (e) {
+            print('Error fetching workout program: $e');
+          }
+        }
+        
+        if (isAfter7PM) {
+          // It's already past 7 PM, send notification now
+          await _showLocalNotification(
+            id: workoutId.hashCode,
+            title: 'Workout Reminder',
+            body: 'Don\'t forget to complete $workoutName today!',
+            payload: 'workout_reminder:$workoutId',
+          );
+        } else {
+          // Schedule for 7 PM today
+          DateTime reminderTime = DateTime(
+            today.year,
+            today.month,
+            today.day,
+            19, // 7pm
+            0,
+          );
+          
+          await scheduleNotification(
+            id: workoutId.hashCode,
+            title: 'Workout Reminder',
+            body: 'Don\'t forget to complete $workoutName today!',
+            scheduledTime: reminderTime,
+            payload: 'workout_reminder:$workoutId',
+          );
+        }
+      }
+    }
+  }
+  
+  // Set up daily workout reminder check
+  Future<void> setupDailyWorkoutReminderCheck() async {
+    // Skip for web platform
+    if (kIsWeb) return;
+    
+    // First check for any workouts that need reminders today
+    await checkIncompleteWorkoutsAndNotify();
+    
+    // Then schedule the next check for tomorrow at an earlier time (e.g., 10 AM)
+    // This ensures we set up the 7 PM reminder for the next day
+    DateTime now = DateTime.now();
+    DateTime tomorrow = now.add(const Duration(days: 1));
+    DateTime scheduledCheckTime = DateTime(
+      tomorrow.year,
+      tomorrow.month,
+      tomorrow.day,
+      10, // 10 AM
+      0,
+    );
+    
+    await scheduleNotification(
+      id: 'daily_workout_check'.hashCode,
+      title: 'System Update',
+      body: 'Updating workout schedule',
+      scheduledTime: scheduledCheckTime,
+      payload: 'setup_workout_reminders',
+    );
+  }
+  
+  // Handle notification payload when app is opened from a notification
+  void handleNotificationResponse(String? payload) {
+    if (payload == null) return;
+    
+    print('Handling notification payload: $payload');
+    
+    // Parse the payload to determine action
+    if (payload.startsWith('workout_reminder:') || payload.startsWith('workout_checkin:')) {
+      // Extract workout ID from payload
+      String workoutId = payload.split(':')[1];
+      
+      // Navigate to workout details screen
+      // Note: Since we can't directly navigate from a service,
+      // we'll need to use a stream or global key approach
+      // to communicate with the UI
+      _notifyWorkoutSelected(workoutId);
+    }
+  }
+  
+  // Notification stream for UI to listen to
+  final StreamController<String> _workoutStreamController = StreamController<String>.broadcast();
+  Stream<String> get workoutSelectedStream => _workoutStreamController.stream;
+  
+  void _notifyWorkoutSelected(String workoutId) {
+    _workoutStreamController.add(workoutId);
+  }
+  
+  void dispose() {
+    _workoutStreamController.close();
   }
 }
 

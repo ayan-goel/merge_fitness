@@ -2,12 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
+import '../services/workout_service.dart';
+import '../models/workout_model.dart';
 import 'login_screen.dart';
 import 'trainer/templates_screen.dart';
 import 'trainer/clients_screen.dart';
 import 'trainer/trainer_dashboard.dart';
+import 'trainer/trainer_scheduling_screen.dart';
 import 'client/client_dashboard.dart';
 import 'client/client_workouts_screen.dart';
+import 'client/client_progress_screen.dart';
+import 'client/workout_detail_screen.dart';
+import '../models/assigned_workout_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,12 +34,46 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late Future<UserModel> _userFuture;
   final AuthService _authService = AuthService();
+  final NotificationService _notificationService = NotificationService();
+  final WorkoutService _workoutService = WorkoutService();
   int _selectedIndex = 0;
+  UserModel? _user;
 
   @override
   void initState() {
     super.initState();
-    _userFuture = _authService.getUserModel();
+    _userFuture = _loadUser();
+    
+    // Listen for workout notification responses
+    _notificationService.workoutSelectedStream.listen(_handleWorkoutSelected);
+  }
+  
+  Future<UserModel> _loadUser() async {
+    final user = await _authService.getUserModel();
+    _user = user;
+    return user;
+  }
+  
+  // Handle workout selected from notification
+  void _handleWorkoutSelected(String workoutId) async {
+    // Only proceed if we have a user and they're a client
+    if (_user == null || _user!.role != UserRole.client) return;
+    
+    try {
+      // First navigate to workouts tab
+      navigateToTab(1); // Navigate to workouts tab
+      
+      // After navigation, use the static method to navigate to the workout
+      // Allow some time for the tab change to complete
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (!mounted) return;
+        
+        // Use the static method in ClientWorkoutsScreen to navigate to the workout
+        ClientWorkoutsScreen.navigateToWorkoutById(context, workoutId);
+      });
+    } catch (e) {
+      print('Error handling workout notification: $e');
+    }
   }
 
   // Handle bottom nav bar taps
@@ -123,6 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const TrainerDashboard(),
           const ClientsScreen(),
           const TemplatesScreen(),
+          const TrainerSchedulingScreen(),
           _buildProfileScreen(),
         ];
       case UserRole.admin:
@@ -137,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return [
           const ClientDashboard(),
           const ClientWorkoutsScreen(),
-          _buildProgressScreen(),
+          const ClientProgressScreen(),
           _buildFoodLogScreen(),
           _buildProfileScreen(),
         ];
@@ -160,6 +202,10 @@ class _HomeScreenState extends State<HomeScreen> {
           const BottomNavigationBarItem(
             icon: Icon(Icons.fitness_center),
             label: 'Templates',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month),
+            label: 'Sessions',
           ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.person),

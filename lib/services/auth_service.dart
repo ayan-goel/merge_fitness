@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../main.dart'; // For global notification service
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -19,6 +21,12 @@ class AuthService {
         email: email,
         password: password,
       );
+      
+      // After successful login, check for workout reminders
+      if (!kIsWeb) {
+        _checkWorkoutReminders();
+      }
+      
       return userCredential;
     } on FirebaseAuthException catch (e) {
       print('Auth error in signIn: ${e.code} - ${e.message}');
@@ -187,6 +195,32 @@ class AuthService {
         return 'User has been disabled.';
       default:
         return 'An error occurred: ${e.message}';
+    }
+  }
+
+  // Check workout reminders after login
+  void _checkWorkoutReminders() async {
+    try {
+      // Get user document to check role
+      User? user = _auth.currentUser;
+      if (user == null) return;
+      
+      DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (!userDoc.exists) return;
+      
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+      String role = userData['role'] ?? 'client';
+      
+      // Only setup reminders for clients
+      if (role == 'client') {
+        // Check for incomplete workouts immediately
+        await notificationService.checkIncompleteWorkoutsAndNotify();
+        
+        // Also setup the daily reminder check routine
+        await notificationService.setupDailyWorkoutReminderCheck();
+      }
+    } catch (e) {
+      print('Error setting up workout reminders: $e');
     }
   }
 } 

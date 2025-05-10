@@ -10,6 +10,53 @@ class ClientWorkoutsScreen extends StatefulWidget {
 
   @override
   State<ClientWorkoutsScreen> createState() => _ClientWorkoutsScreenState();
+  
+  // Static method to navigate to a specific workout
+  static void navigateToWorkoutById(BuildContext context, String workoutId) {
+    // Find the closest ClientWorkoutsScreen state
+    final state = context.findAncestorStateOfType<_ClientWorkoutsScreenState>();
+    if (state != null) {
+      state.navigateToWorkout(workoutId);
+    } else {
+      // If we can't find it directly, we're not in the widgets tree
+      // Create a new instance of WorkoutTemplateService to fetch the workout
+      final workoutService = WorkoutTemplateService();
+      
+      _navigateToWorkoutWithNewService(context, workoutId, workoutService);
+    }
+  }
+  
+  // Helper method to navigate when no state is found
+  static void _navigateToWorkoutWithNewService(
+    BuildContext context, 
+    String workoutId, 
+    WorkoutTemplateService workoutService
+  ) async {
+    try {
+      // Get current user
+      final authService = AuthService();
+      final user = await authService.getUserModel();
+      
+      // Fetch workouts
+      final workouts = await workoutService.getClientWorkouts(user.uid).first;
+      final workout = workouts.firstWhere(
+        (w) => w.id == workoutId,
+        orElse: () => throw Exception('Workout not found'),
+      );
+      
+      // Navigate
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WorkoutDetailScreen(
+            workout: workout,
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Error navigating to workout: $e');
+    }
+  }
 }
 
 class _ClientWorkoutsScreenState extends State<ClientWorkoutsScreen> {
@@ -34,6 +81,38 @@ class _ClientWorkoutsScreenState extends State<ClientWorkoutsScreen> {
       });
     } catch (e) {
       print("Error loading client ID: $e");
+    }
+  }
+  
+  // Navigate to a specific workout by ID
+  void navigateToWorkout(String workoutId) async {
+    if (_clientId == null) return;
+    
+    try {
+      // Find the workout in the stream
+      final workouts = await _workoutService.getClientWorkouts(_clientId!).first;
+      final workout = workouts.firstWhere(
+        (w) => w.id == workoutId,
+        orElse: () => throw Exception('Workout not found'),
+      );
+      
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WorkoutDetailScreen(
+              workout: workout,
+            ),
+          ),
+        ).then((_) {
+          // Refresh the state when returning from workout detail
+          setState(() {
+            // This triggers UI refresh with latest data from stream
+          });
+        });
+      }
+    } catch (e) {
+      print('Error navigating to workout: $e');
     }
   }
   
@@ -138,19 +217,7 @@ class _ClientWorkoutsScreenState extends State<ClientWorkoutsScreen> {
                   return WorkoutCard(
                     workout: workout,
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => WorkoutDetailScreen(
-                            workout: workout,
-                          ),
-                        ),
-                      ).then((_) {
-                        // Refresh the state when returning from workout detail
-                        setState(() {
-                          // This triggers UI refresh with latest data from stream
-                        });
-                      });
+                      navigateToWorkout(workout.id);
                     },
                   );
                 },

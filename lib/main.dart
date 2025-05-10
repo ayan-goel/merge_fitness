@@ -5,10 +5,14 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'firebase_options.dart';
+import 'services/notification_service.dart';
 
 // Import screens
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+
+// Global instance of NotificationService for easy access
+final NotificationService notificationService = NotificationService();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +29,19 @@ void main() async {
     
     // Pass all uncaught errors to Crashlytics
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
+  }
+
+  // Initialize notification service
+  try {
+    await notificationService.init();
+    
+    // Set up workout reminders (only for mobile platforms)
+    if (!kIsWeb) {
+      await notificationService.setupDailyWorkoutReminderCheck();
+    }
+  } catch (e) {
+    print('Error initializing notifications: $e');
+    // Continue with app startup even if notifications fail
   }
 
   runApp(const MergeFitnessApp());

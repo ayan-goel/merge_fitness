@@ -1,139 +1,87 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum SessionStatus {
-  scheduled,
-  confirmed,
-  canceled,
-  completed,
-}
-
 class TrainingSession {
   final String id;
-  final String clientId;
   final String trainerId;
-  final DateTime time;
-  final SessionStatus status;
-  final String? calendarUrl;
-  final String? locationName;
-  final double? locationLat;
-  final double? locationLng;
+  final String clientId;
+  final DateTime startTime;
+  final DateTime endTime;
+  final String location;
+  final String status; // scheduled, completed, cancelled
   final String? notes;
-
+  final DateTime createdAt;
+  
   TrainingSession({
     required this.id,
-    required this.clientId,
     required this.trainerId,
-    required this.time,
+    required this.clientId,
+    required this.startTime,
+    required this.endTime,
+    required this.location,
     required this.status,
-    this.calendarUrl,
-    this.locationName,
-    this.locationLat,
-    this.locationLng,
     this.notes,
+    required this.createdAt,
   });
-
+  
   factory TrainingSession.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     
     return TrainingSession(
       id: doc.id,
-      clientId: data['clientId'] ?? '',
       trainerId: data['trainerId'] ?? '',
-      time: (data['time'] as Timestamp).toDate(),
-      status: _stringToSessionStatus(data['status'] ?? 'scheduled'),
-      calendarUrl: data['calendarUrl'],
-      locationName: data['locationName'],
-      locationLat: data['locationLat']?.toDouble(),
-      locationLng: data['locationLng']?.toDouble(),
+      clientId: data['clientId'] ?? '',
+      startTime: (data['startTime'] as Timestamp).toDate(),
+      endTime: (data['endTime'] as Timestamp).toDate(),
+      location: data['location'] ?? '',
+      status: data['status'] ?? 'scheduled',
       notes: data['notes'],
+      createdAt: (data['createdAt'] as Timestamp).toDate(),
     );
   }
-
-  Map<String, dynamic> toFirestore() {
+  
+  Map<String, dynamic> toMap() {
     return {
-      'clientId': clientId,
       'trainerId': trainerId,
-      'time': Timestamp.fromDate(time),
-      'status': _sessionStatusToString(status),
-      'calendarUrl': calendarUrl,
-      'locationName': locationName,
-      'locationLat': locationLat,
-      'locationLng': locationLng,
+      'clientId': clientId,
+      'startTime': Timestamp.fromDate(startTime),
+      'endTime': Timestamp.fromDate(endTime),
+      'location': location,
+      'status': status,
       'notes': notes,
+      'createdAt': Timestamp.fromDate(createdAt),
     };
   }
-
-  // Helper to convert string to SessionStatus enum
-  static SessionStatus _stringToSessionStatus(String statusStr) {
-    switch (statusStr.toLowerCase()) {
-      case 'confirmed':
-        return SessionStatus.confirmed;
-      case 'canceled':
-        return SessionStatus.canceled;
-      case 'completed':
-        return SessionStatus.completed;
-      case 'scheduled':
-      default:
-        return SessionStatus.scheduled;
-    }
+  
+  // Get duration in minutes
+  int get durationMinutes {
+    return endTime.difference(startTime).inMinutes;
   }
-
-  // Helper to convert SessionStatus enum to string
-  static String _sessionStatusToString(SessionStatus status) {
-    switch (status) {
-      case SessionStatus.confirmed:
-        return 'confirmed';
-      case SessionStatus.canceled:
-        return 'canceled';
-      case SessionStatus.completed:
-        return 'completed';
-      case SessionStatus.scheduled:
-        return 'scheduled';
-    }
+  
+  // Format time range for display (e.g., "9:00 AM - 10:00 AM")
+  String get formattedTimeRange {
+    final startFormat = _formatTime(startTime);
+    final endFormat = _formatTime(endTime);
+    return '$startFormat - $endFormat';
   }
-
-  // Create a copy with updated values
-  TrainingSession copyWith({
-    String? id,
-    String? clientId,
-    String? trainerId,
-    DateTime? time,
-    SessionStatus? status,
-    String? calendarUrl,
-    String? locationName,
-    double? locationLat,
-    double? locationLng,
-    String? notes,
-  }) {
-    return TrainingSession(
-      id: id ?? this.id,
-      clientId: clientId ?? this.clientId,
-      trainerId: trainerId ?? this.trainerId,
-      time: time ?? this.time,
-      status: status ?? this.status,
-      calendarUrl: calendarUrl ?? this.calendarUrl,
-      locationName: locationName ?? this.locationName,
-      locationLat: locationLat ?? this.locationLat,
-      locationLng: locationLng ?? this.locationLng,
-      notes: notes ?? this.notes,
-    );
+  
+  // Format date for display (e.g., "Monday, May 9")
+  String get formattedDate {
+    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
+                    'August', 'September', 'October', 'November', 'December'];
+    
+    final dayName = days[startTime.weekday - 1];
+    final monthName = months[startTime.month - 1];
+    
+    return '$dayName, $monthName ${startTime.day}';
   }
-
-  // Change session status
-  TrainingSession updateStatus(SessionStatus newStatus) {
-    return copyWith(status: newStatus);
-  }
-
-  // Update location
-  TrainingSession updateLocation({
-    required String locationName,
-    required double locationLat,
-    required double locationLng,
-  }) {
-    return copyWith(
-      locationName: locationName,
-      locationLat: locationLat,
-      locationLng: locationLng,
-    );
+  
+  // Format time (e.g., "9:00 AM")
+  String _formatTime(DateTime dateTime) {
+    final hour = dateTime.hour > 12 ? dateTime.hour - 12 : (dateTime.hour == 0 ? 12 : dateTime.hour);
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    final period = dateTime.hour >= 12 ? 'PM' : 'AM';
+    
+    return '$hour:$minute $period';
   }
 } 

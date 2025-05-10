@@ -203,17 +203,31 @@ class WorkoutService {
   Future<List<WorkoutInstance>> getCompletedWorkouts({int limit = 10}) async {
     _checkAuthentication();
     
+    // Use a simpler query to avoid requiring a composite index
+    // Get all workouts for the user, then filter client-side for completed ones
     QuerySnapshot snapshot = await _firestore
         .collection('workouts')
         .where('userId', isEqualTo: currentUserId)
-        .where('completedAt', isNotEqualTo: null)
-        .orderBy('completedAt', descending: true)
-        .limit(limit)
         .get();
     
-    return snapshot.docs
+    // Filter completed workouts client-side
+    final workouts = snapshot.docs
         .map((doc) => WorkoutInstance.fromFirestore(doc))
+        .where((workout) => workout.completedAt != null)
         .toList();
+    
+    // Sort by completedAt date (descending) client-side
+    workouts.sort((a, b) {
+      // Both workouts should have completedAt since we filtered above
+      return b.completedAt!.compareTo(a.completedAt!);
+    });
+    
+    // Apply limit if specified and if there are enough workouts
+    if (limit > 0 && workouts.length > limit) {
+      return workouts.sublist(0, limit);
+    }
+    
+    return workouts;
   }
 
   // Stream user's workouts for today

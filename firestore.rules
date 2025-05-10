@@ -147,5 +147,34 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && 
         (resource.data.trainerId == request.auth.uid || isAdmin());
     }
+    
+    // Weight Entries Collection Rules
+    match /weightEntries/{entryId} {
+      // Users can read and write their own weight entries
+      // Trainers can read weight entries for their clients
+      // Admins can read and write all weight entries
+      allow read: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isTrainer() || isAdmin());
+      allow create: if isAuthenticated() && 
+        (request.resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+    }
+    
+    // Activity Feed Collection Rules
+    match /activityFeed/{activityId} {
+      // Users can read their own activity feed
+      // Trainers can read and write their own activity feed
+      // Admins can read and write all activity feeds
+      allow read: if isAuthenticated() && 
+        (resource.data.trainerId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        (resource.data.trainerId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && 
+        (resource.data.trainerId == request.auth.uid || isAdmin());
+    }
   }
 } 
