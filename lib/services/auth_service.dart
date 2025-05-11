@@ -84,14 +84,63 @@ class AuthService {
   // Create user document in Firestore
   Future<void> _createUserDocument(User user, {UserRole role = UserRole.client}) async {
     try {
-      await _firestore.collection('users').doc(user.uid).set({
+      // Base user data
+      Map<String, dynamic> userData = {
         'email': user.email,
-        'role': _userRoleToString(role), // Use provided role
+        'role': _userRoleToString(role),
         'createdAt': Timestamp.now(),
-      });
+      };
+      
+      // If this is a client, get and assign all trainer IDs
+      if (role == UserRole.client) {
+        List<String> trainerIds = await getAllTrainerIds();
+        if (trainerIds.isNotEmpty) {
+          // For now, just assign the first trainer
+          // In a more advanced version, you could implement logic to distribute clients
+          userData['trainerId'] = trainerIds.first;
+        }
+      }
+      
+      await _firestore.collection('users').doc(user.uid).set(userData);
     } catch (e) {
       print("Error in _createUserDocument: $e");
       throw e;
+    }
+  }
+
+  // Get all trainers from Firestore
+  Future<List<String>> getAllTrainerIds() async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'trainer')
+          .get();
+          
+      return querySnapshot.docs.map((doc) => doc.id).toList();
+    } catch (e) {
+      print("Error getting trainers: $e");
+      return [];
+    }
+  }
+  
+  // Get all trainer user documents
+  Future<List<UserModel>> getAllTrainers() async {
+    try {
+      final snapshot = await _firestore.collection('users')
+          .where('role', isEqualTo: 'trainer')
+          .get();
+      
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return UserModel.fromMap(
+          data,
+          uid: doc.id,
+          email: data['email'] ?? '',
+        );
+      }).toList();
+    } catch (e) {
+      print('Error getting trainers: $e');
+      return [];
     }
   }
 
@@ -221,6 +270,42 @@ class AuthService {
       }
     } catch (e) {
       print('Error setting up workout reminders: $e');
+    }
+  }
+
+  // Assign a trainer to a client (if not already assigned)
+  Future<void> assignTrainerToClient(String clientId) async {
+    try {
+      // First check if client already has a trainer
+      DocumentSnapshot clientDoc = await _firestore.collection('users').doc(clientId).get();
+      
+      if (!clientDoc.exists) {
+        throw Exception('Client not found');
+      }
+      
+      Map<String, dynamic> clientData = clientDoc.data() as Map<String, dynamic>;
+      
+      // Only assign if trainerId is missing or null
+      if (clientData['trainerId'] == null) {
+        List<String> trainerIds = await getAllTrainerIds();
+        
+        if (trainerIds.isEmpty) {
+          print('No trainers available to assign');
+          return;
+        }
+        
+        // Assign the first available trainer
+        await _firestore.collection('users').doc(clientId).update({
+          'trainerId': trainerIds.first,
+        });
+        
+        print('Assigned trainer ${trainerIds.first} to client $clientId');
+      } else {
+        print('Client already has a trainer assigned: ${clientData['trainerId']}');
+      }
+    } catch (e) {
+      print('Error assigning trainer to client: $e');
+      throw e;
     }
   }
 } 

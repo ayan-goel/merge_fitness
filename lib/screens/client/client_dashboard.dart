@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
 import '../../models/assigned_workout_model.dart';
 import '../../services/auth_service.dart';
@@ -10,6 +11,7 @@ import '../../models/weight_entry_model.dart';
 import '../../models/session_model.dart';
 import 'workout_detail_screen.dart';
 import 'schedule_session_screen.dart';
+import 'select_trainer_screen.dart';
 
 class ClientDashboard extends StatefulWidget {
   const ClientDashboard({super.key});
@@ -99,15 +101,18 @@ class _ClientDashboardState extends State<ClientDashboard> {
     }
   }
   
-  // Load upcoming sessions
+  // Load upcoming sessions - doesn't require trainer assignment
   Future<void> _loadUpcomingSessions() async {
     try {
       if (_client == null) return;
       
       final sessions = await _calendlyService.getClientUpcomingSessions(_client!.uid);
-      setState(() {
-        _upcomingSessions = sessions;
-      });
+      
+      if (mounted) {
+        setState(() {
+          _upcomingSessions = sessions;
+        });
+      }
     } catch (e) {
       print("Error loading upcoming sessions: $e");
     }
@@ -312,49 +317,46 @@ class _ClientDashboardState extends State<ClientDashboard> {
               const SizedBox(height: 24),
               
               // Upcoming Sessions Section
-              if (_trainer != null) ... [
-                Text(
-                  'Training Sessions',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 16),
-                
-                // Show upcoming session if available
-                if (_upcomingSessions.isNotEmpty) ...[
-                  _buildUpcomingSessionCard(_upcomingSessions.first),
-                ],
-                
-                // Schedule button
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ScheduleSessionScreen(
-                            clientId: _client!.uid,
-                            trainerId: _trainer!.uid,
-                            trainerName: _trainer!.displayName ?? 'Your Trainer',
-                          ),
+              Text(
+                'Training Sessions',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              
+              // Show upcoming session if available
+              if (_upcomingSessions.isNotEmpty) ...[
+                _buildUpcomingSessionCard(_upcomingSessions.first),
+              ],
+              
+              // Schedule button
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    // Navigate to trainer selection screen instead of directly to scheduling
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SelectTrainerScreen(
+                          clientId: _client!.uid,
                         ),
-                      ).then((_) {
-                        // Refresh sessions on return
-                        _loadUpcomingSessions();
-                      });
-                    },
-                    icon: const Icon(Icons.calendar_month),
-                    label: Text(_upcomingSessions.isEmpty 
-                      ? 'Schedule a session with ${_trainer!.displayName}'
-                      : 'Schedule another session'),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
+                      ),
+                    ).then((_) {
+                      // Refresh sessions on return
+                      _loadUpcomingSessions();
+                    });
+                  },
+                  icon: const Icon(Icons.calendar_month),
+                  label: Text(_upcomingSessions.isEmpty 
+                    ? 'Schedule a training session'
+                    : 'Schedule another session'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
                   ),
                 ),
-                
-                const SizedBox(height: 8),
-              ],
+              ),
+              
+              const SizedBox(height: 8),
               
               // Weight Entry Section
               Card(

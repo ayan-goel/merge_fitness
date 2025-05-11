@@ -134,6 +134,24 @@ class NotificationService {
     }
   }
   
+  // Initialize for web without push notifications
+  Future<void> initWebWithoutPush() async {
+    // Initialize timezone
+    tz_data.initializeTimeZones();
+    
+    // Set up message handlers but skip FCM token retrieval
+    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+    
+    // Handle notification when app is opened from terminated state
+    RemoteMessage? initialMessage = await _messaging.getInitialMessage();
+    if (initialMessage != null) {
+      _handleMessageOpenedApp(initialMessage);
+    }
+    
+    // Handle when app is opened from background state
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
+  }
+  
   // Save FCM token to Firestore for the current user
   Future<void> _saveFcmToken(String token) async {
     User? user = _auth.currentUser;

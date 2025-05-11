@@ -69,19 +69,23 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
   Future<void> _loadClientData() async {
     try {
       final user = await _authService.getUserModel();
-      setState(() {
-        _clientId = user.uid;
-        _client = user;
-      });
+      if (mounted) {
+        setState(() {
+          _clientId = user.uid;
+          _client = user;
+        });
+      }
       
       await _loadCompletedWorkouts();
       await _loadWeightEntries();
       _calculateStats();
     } catch (e) {
       print("Error loading client data: $e");
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
   
@@ -99,18 +103,22 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
         print("No weight entries found");
       }
       
-      setState(() {
-        _weightEntries = entries;
-      });
+      if (mounted) {
+        setState(() {
+          _weightEntries = entries;
+        });
+      }
     } catch (e) {
       print("Error loading weight entries: $e");
     }
   }
   
   Future<void> _loadCompletedWorkouts() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
     
     try {
       // Group workouts by date
@@ -125,15 +133,19 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
         print("${DateFormat('yyyy-MM-dd').format(date)}: ${workouts.length} workouts");
       });
       
-      setState(() {
-        _completedWorkouts = workoutsByDate;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _completedWorkouts = workoutsByDate;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       print("Error loading completed workouts: $e");
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
   
@@ -186,12 +198,14 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
   
   void _calculateStats() {
     if (_completedWorkouts.isEmpty) {
-      setState(() {
-        _totalWorkouts = 0;
-        _completedWorkoutsCount = 0;
-        _currentStreak = 0;
-        _longestStreak = 0;
-      });
+      if (mounted) {
+        setState(() {
+          _totalWorkouts = 0;
+          _completedWorkoutsCount = 0;
+          _currentStreak = 0;
+          _longestStreak = 0;
+        });
+      }
       return;
     }
     
@@ -291,12 +305,14 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
       previousDate = date;
     }
     
-    setState(() {
-      _totalWorkouts = completedCount;
-      _completedWorkoutsCount = completedCount; 
-      _currentStreak = currentStreak;
-      _longestStreak = longestStreak;
-    });
+    if (mounted) {
+      setState(() {
+        _totalWorkouts = completedCount;
+        _completedWorkoutsCount = completedCount; 
+        _currentStreak = currentStreak;
+        _longestStreak = longestStreak;
+      });
+    }
   }
   
   List<WorkoutProgressData> _getWorkoutsForDay(DateTime day) {

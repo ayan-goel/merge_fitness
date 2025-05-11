@@ -55,13 +55,15 @@ dependencies:
   table_calendar: ^3.0.9
   
   # Location and maps
-  google_maps_flutter: ^2.6.0
+  # google_maps_flutter: ^2.6.0
   location: ^5.0.3
-  url_launcher: ^6.2.5
+  url_launcher: ^6.3.1
   
   # Notifications
   flutter_local_notifications: ^16.3.2
   timezone: ^0.9.2
+  flutter_web_auth_2: ^4.1.0
+  http: ^1.4.0
 
 dev_dependencies:
   flutter_test:

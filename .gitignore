@@ -11,9 +11,11 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+lib/services/calendly_service.dart
 
 # Firebase Related
 lib/firebase_options.dart
+firebase.indexes.json
 
 # IntelliJ related
 *.iml

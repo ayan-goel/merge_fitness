@@ -10,6 +10,7 @@ class TrainingSession {
   final String status; // scheduled, completed, cancelled
   final String? notes;
   final DateTime createdAt;
+  final String? calendlyEventUri;
   
   TrainingSession({
     required this.id,
@@ -21,6 +22,7 @@ class TrainingSession {
     required this.status,
     this.notes,
     required this.createdAt,
+    this.calendlyEventUri,
   });
   
   factory TrainingSession.fromFirestore(DocumentSnapshot doc) {
@@ -36,6 +38,7 @@ class TrainingSession {
       status: data['status'] ?? 'scheduled',
       notes: data['notes'],
       createdAt: (data['createdAt'] as Timestamp).toDate(),
+      calendlyEventUri: data['calendlyEventUri'],
     );
   }
   
@@ -49,6 +52,7 @@ class TrainingSession {
       'status': status,
       'notes': notes,
       'createdAt': Timestamp.fromDate(createdAt),
+      'calendlyEventUri': calendlyEventUri,
     };
   }
   

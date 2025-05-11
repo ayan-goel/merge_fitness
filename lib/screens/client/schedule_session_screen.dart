@@ -114,15 +114,11 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
     });
     
     try {
-      // Create a session in our database
-      final startTime = _selectedTimeSlot!['start_time'] as DateTime;
-      final endTime = _selectedTimeSlot!['end_time'] as DateTime;
-      
-      await _calendlyService.createSession(
-        trainerId: widget.trainerId,
+      // Use the scheduleSession method which handles Calendly API integration
+      await _calendlyService.scheduleSession(
+        trainerId: widget.trainerId, 
         clientId: widget.clientId,
-        startTime: startTime,
-        endTime: endTime,
+        timeSlot: _selectedTimeSlot!,
         location: _locationController.text,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
       );
@@ -158,7 +154,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
         : _buildContent(),
       bottomNavigationBar: _selectedTimeSlot != null
         ? _buildBottomBar()
-        : null,
+        : const SizedBox.shrink(),
     );
   }
   
@@ -248,71 +244,75 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
   
   Widget _buildBottomBar() {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // If a time slot is selected, show the session details form
-          if (_selectedTimeSlot != null) ...[
-            // Show selected time
-            Text(
-              'Selected Time:',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _formatTimeSlot(_selectedTimeSlot!),
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            
-            // Location input
-            TextField(
-              controller: _locationController,
-              decoration: const InputDecoration(
-                labelText: 'Location*',
-                hintText: 'e.g., Central Park, Zoom call, etc.',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.location_on),
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Notes input
-            TextField(
-              controller: _notesController,
-              decoration: const InputDecoration(
-                labelText: 'Notes (Optional)',
-                hintText: 'Any special instructions or requests',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.note),
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 16),
-            
-            // Schedule button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _scheduleSession,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          // Selected time info
+          RichText(
+            text: TextSpan(
+              style: Theme.of(context).textTheme.bodyMedium,
+              children: [
+                const TextSpan(text: 'Selected time: '),
+                TextSpan(
+                  text: _getFormattedTimeSlot(_selectedTimeSlot!),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                child: _isSubmitting
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Schedule Session'),
-              ),
+              ],
             ),
-          ],
+          ),
+          const SizedBox(height: 8),
+          
+          // Location input
+          TextField(
+            controller: _locationController,
+            decoration: const InputDecoration(
+              labelText: 'Location',
+              border: OutlineInputBorder(),
+              hintText: 'e.g., Gym, Park, Virtual',
+            ),
+          ),
+          const SizedBox(height: 8),
+          
+          // Notes input
+          TextField(
+            controller: _notesController,
+            decoration: const InputDecoration(
+              labelText: 'Notes (optional)',
+              border: OutlineInputBorder(),
+              hintText: 'Any special instructions or requests',
+            ),
+            maxLines: 2,
+          ),
+          const SizedBox(height: 16),
+          
+          // Schedule button
+          ElevatedButton(
+            onPressed: _isSubmitting ? null : _scheduleSession,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 50),
+            ),
+            child: _isSubmitting
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Confirm Booking'),
+          ),
         ],
       ),
     );
@@ -331,14 +331,17 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
     }
   }
   
-  String _formatTimeSlot(Map<String, dynamic> slot) {
+  String _getFormattedTimeSlot(Map<String, dynamic> slot) {
     final startTime = slot['start_time'] as DateTime;
     final endTime = slot['end_time'] as DateTime;
     
-    final date = DateFormat('EEEE, MMMM d').format(startTime);
-    final start = DateFormat('h:mm a').format(startTime);
-    final end = DateFormat('h:mm a').format(endTime);
+    final dateFormatter = DateFormat('E, MMM d');
+    final timeFormatter = DateFormat('h:mm a');
     
-    return '$date from $start to $end';
+    final date = dateFormatter.format(startTime);
+    final start = timeFormatter.format(startTime);
+    final end = timeFormatter.format(endTime);
+    
+    return '$date, $start - $end';
   }
 } 

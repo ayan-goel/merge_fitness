@@ -33,11 +33,13 @@ void main() async {
 
   // Initialize notification service
   try {
-    await notificationService.init();
-    
-    // Set up workout reminders (only for mobile platforms)
+    // Only initialize notifications on mobile platforms
     if (!kIsWeb) {
+      await notificationService.init();
       await notificationService.setupDailyWorkoutReminderCheck();
+    } else {
+      // For web, use a simpler initialization that doesn't require service workers
+      await notificationService.initWebWithoutPush();
     }
   } catch (e) {
     print('Error initializing notifications: $e');

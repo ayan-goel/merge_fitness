@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
 import '../../services/calendly_service.dart';
 import '../../models/session_model.dart';
@@ -16,13 +17,13 @@ class TrainerSchedulingScreen extends StatefulWidget {
 class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
   final AuthService _authService = AuthService();
   final CalendlyService _calendlyService = CalendlyService();
-  final TextEditingController _calendlyUrlController = TextEditingController();
   
   bool _isLoading = true;
   UserModel? _trainer;
   List<TrainingSession> _sessions = [];
   bool _isCalendlyConnected = false;
-  bool _isSaving = false;
+  bool _isConnecting = false;
+  String? _calendlyUrl;
   
   @override
   void initState() {
@@ -32,7 +33,6 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
   
   @override
   void dispose() {
-    _calendlyUrlController.dispose();
     super.dispose();
   }
   
@@ -48,7 +48,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
       // Load Calendly URL
       final calendlyUrl = await _calendlyService.getTrainerCalendlyUrl(trainer.uid);
       if (calendlyUrl != null) {
-        _calendlyUrlController.text = calendlyUrl;
+        _calendlyUrl = calendlyUrl;
         _isCalendlyConnected = true;
       }
       
@@ -68,38 +68,35 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
     }
   }
   
-  Future<void> _saveCalendlyUrl() async {
-    if (_calendlyUrlController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your Calendly URL')),
-      );
-      return;
-    }
-    
+  Future<void> _connectCalendly() async {
     setState(() {
-      _isSaving = true;
+      _isConnecting = true;
     });
     
     try {
-      await _calendlyService.saveTrainerCalendlyUrl(_calendlyUrlController.text);
+      await _calendlyService.connectCalendlyAccount();
       
-      setState(() {
-        _isCalendlyConnected = true;
-        _isSaving = false;
-      });
+      // Reload trainer data to update UI
+      await _loadTrainerData();
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Calendly URL saved successfully')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Calendly connected successfully')),
+        );
+      }
     } catch (e) {
-      print('Error saving Calendly URL: $e');
-      setState(() {
-        _isSaving = false;
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving Calendly URL: $e')),
-      );
+      print('Error connecting Calendly: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error connecting Calendly: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isConnecting = false;
+        });
+      }
     }
   }
   
@@ -158,59 +155,130 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                     ),
                     const SizedBox(height: 16),
                     
-                    TextField(
-                      controller: _calendlyUrlController,
-                      decoration: InputDecoration(
-                        labelText: 'Your Calendly URL',
-                        hintText: 'https://calendly.com/yourname',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.link),
-                        suffixIcon: _isSaving
-                          ? const CircularProgressIndicator(strokeWidth: 2)
-                          : IconButton(
-                              icon: const Icon(Icons.save),
-                              onPressed: _saveCalendlyUrl,
+                    if (_isCalendlyConnected) ...[
+                      // Show connected status and URL
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.shade300),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.check_circle,
+                                  color: Colors.green,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Calendly Connected',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green.shade700,
+                                  ),
+                                ),
+                              ],
                             ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Your scheduling link:',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _calendlyUrl ?? 'Unknown',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.content_copy, size: 18),
+                                  onPressed: () {
+                                    // Copy URL to clipboard
+                                    if (_calendlyUrl != null) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('URL copied to clipboard')),
+                                      );
+                                    }
+                                  },
+                                  tooltip: 'Copy to clipboard',
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    
-                    Text(
-                      'Enter your Calendly URL to allow clients to schedule sessions with you.',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
+                    ] else ...[
+                      // Show connect button
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Connect your Calendly account to enable client scheduling',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: _isConnecting ? null : _connectCalendly,
+                                icon: _isConnecting 
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.link),
+                                label: Text(_isConnecting ? 'Connecting...' : 'Connect Calendly'),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                     
                     const SizedBox(height: 16),
                     
-                    Row(
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: _openCalendlySettings,
-                          icon: const Icon(Icons.settings),
-                          label: const Text('Manage Calendly Settings'),
+                    if (_isCalendlyConnected) ...[
+                      OutlinedButton.icon(
+                        onPressed: _openCalendlySettings,
+                        icon: const Icon(Icons.settings),
+                        label: const Text('Manage Calendly Settings'),
+                      ),
+                    ] else ...[
+                      Text(
+                        'Note: You must have a Calendly account to use this feature.',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 12,
                         ),
-                        
-                        if (_isCalendlyConnected) ...[
-                          const SizedBox(width: 8),
-                          const Icon(
-                            Icons.check_circle,
-                            color: Colors.green,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Connected',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -372,10 +440,12 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                               color: Colors.grey,
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              session.location,
-                              style: TextStyle(
-                                color: Colors.grey[700],
+                            Expanded(
+                              child: Text(
+                                session.location,
+                                style: TextStyle(
+                                  color: Colors.grey[700],
+                                ),
                               ),
                             ),
                           ],

@@ -1,2 +1,5 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
 #include "Generated.xcconfig"
+
+// Remove problematic G flag
+OTHER_CFLAGS=$(inherited:default=) $(OTHER_CFLAGS:default=)

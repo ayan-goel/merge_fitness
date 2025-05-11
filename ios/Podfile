@@ -1,5 +1,5 @@
 # Uncomment this line to define a global platform for your project
-# platform :ios, '12.0'
+platform :ios, '12.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -29,6 +29,7 @@ flutter_ios_podfile_setup
 
 target 'Runner' do
   use_frameworks!
+  use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
@@ -38,6 +39,194 @@ end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
+    # Handle BoringSSL-GRPC issues directly in the source build phase
+    if target.name == 'BoringSSL-GRPC'
+      target.source_build_phase.files.each do |file|
+        if file.settings && file.settings['COMPILER_FLAGS']
+          flags = file.settings['COMPILER_FLAGS'].split
+          flags.reject! { |flag| flag == '-GCC_WARN_INHIBIT_ALL_WARNINGS' }
+          file.settings['COMPILER_FLAGS'] = flags.join(' ')
+        end
+      end
+    end
+    
     flutter_additional_ios_build_settings(target)
+    
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+      
+      # Critical: Allow non-modular includes in all framework modules for Xcode 16 compatibility
+      config.build_settings['ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+      
+      # Explicitly set these settings for all Firebase modules
+      if target.name.include?('Firebase') || 
+         target.name.include?('firebase_') || 
+         target.name.include?('FirebaseCore') || 
+         target.name.include?('FirebaseAuth') || 
+         target.name.include?('FirebaseFirestore') || 
+         target.name.include?('FirebaseCrashlytics') || 
+         target.name.include?('FirebaseMessaging') || 
+         target.name.include?('FirebaseStorage') ||
+         target.name.include?('FirebaseAppCheck') ||
+         target.name.include?('nanopb') ||
+         target.name.include?('gRPC')
+        
+        # Set this to YES for all Firebase modules
+        config.build_settings['ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        # Add preprocessor definitions that might be needed
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)', 'COCOAPODS=1', 'PB_FIELD_32BIT=1', 'PB_NO_PACKED_STRUCTS=1', 'PB_ENABLE_MALLOC=1']
+      end
+      
+      # Fix for problematic compiler flags
+      if config.build_settings['OTHER_CFLAGS'].is_a?(String) && config.build_settings['OTHER_CFLAGS'].include?('-G')
+        config.build_settings['OTHER_CFLAGS'] = config.build_settings['OTHER_CFLAGS'].gsub(/-G(\\s+|$)/, '')
+      end
+      
+      if config.build_settings['OTHER_CXXFLAGS'].is_a?(String) && config.build_settings['OTHER_CXXFLAGS'].include?('-G')
+        config.build_settings['OTHER_CXXFLAGS'] = config.build_settings['OTHER_CXXFLAGS'].gsub(/-G(\\s+|$)/, '')
+      end
+      
+      if config.build_settings['OTHER_LDFLAGS'].is_a?(String) && config.build_settings['OTHER_LDFLAGS'].include?('-G')
+        config.build_settings['OTHER_LDFLAGS'] = config.build_settings['OTHER_LDFLAGS'].gsub(/-G(\\s+|$)/, '')
+      end
+      
+      # Strip bitcode for arm64 builds 
+      if target.name == 'gRPC-Core' || target.name.start_with?('BoringSSL')
+        config.build_settings['COMPILER_INDEX_STORE_ENABLE'] = 'NO'
+        config.build_settings['ENABLE_BITCODE'] = 'NO'
+      end
+      
+      # Fix C++ standard for any remaining C++ targets
+      if target.name.include?('C++') || target.name.include?('gRPC') || target.name.include?('Protobuf')
+        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++14'
+        config.build_settings['CLANG_CXX_LIBRARY'] = 'libc++'
+      end
+      
+      # Workaround for Xcode 15.3+ validation issue with minimum OS version
+      if config.build_settings['MARKETING_VERSION'] && target.name.include?('Firebase')
+        # Setting an impossibly high minimum OS version works around the validation issue
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+      end
+    end
   end
+  
+  # Fix the template issues in gRPC files for Xcode 16.3 compatibility
+  begin
+    # Fix gRPC-Core's basic_seq.h
+    basic_seq_path_core = "#{installer.sandbox.root}/gRPC-Core/src/core/lib/promise/detail/basic_seq.h"
+    if File.exist?(basic_seq_path_core) && File.writable?(basic_seq_path_core)
+      content = File.read(basic_seq_path_core)
+      patched_content = content.gsub(
+        "Traits::template CallSeqFactory(f_, *cur_, std::move(arg))",
+        "Traits::template CallSeqFactory<>(f_, *cur_, std::move(arg))"
+      )
+      File.write(basic_seq_path_core, patched_content)
+      puts "Fixed template syntax in gRPC-Core's basic_seq.h for Xcode 16.3 compatibility"
+    end
+    
+    # Fix gRPC-C++'s basic_seq.h
+    basic_seq_path_cpp = "#{installer.sandbox.root}/gRPC-C++/src/core/lib/promise/detail/basic_seq.h"
+    if File.exist?(basic_seq_path_cpp) && File.writable?(basic_seq_path_cpp)
+      content = File.read(basic_seq_path_cpp)
+      patched_content = content.gsub(
+        "Traits::template CallSeqFactory(f_, *cur_, std::move(arg))",
+        "Traits::template CallSeqFactory<>(f_, *cur_, std::move(arg))"
+      )
+      File.write(basic_seq_path_cpp, patched_content)
+      puts "Fixed template syntax in gRPC-C++'s basic_seq.h for Xcode 16.3 compatibility"
+    end
+  rescue => e
+    # If any error occurs, let's just log it without failing the pod install
+    puts "Warning: Unable to patch gRPC files: #{e.message}"
+    puts "You may need to manually fix the template issues in gRPC files"
+  end
+
+  # Patch problematic Firebase plugin imports for Xcode 16 compatibility
+  puts "Attempting to patch Firebase plugin headers for non-modular imports..."
+  begin
+    plugin_patches = {
+      'firebase_storage' => {
+        'Classes/FLTTaskStateChannelStreamHandler.h' => {
+          original: '#import <Firebase/Firebase.h>',
+          replacement: '@import FirebaseStorage;'
+        }
+      },
+      'firebase_crashlytics' => {
+        'Classes/Crashlytics_Platform.h' => {
+          original: '#import <Firebase/Firebase.h>',
+          replacement: '@import FirebaseCrashlytics;'
+        },
+        'Classes/ExceptionModel_Platform.h' => {
+          original: '#import <Firebase/Firebase.h>',
+          replacement: '@import FirebaseCrashlytics;'
+        }
+      },
+      'firebase_messaging' => {
+        'Classes/FLTFirebaseMessagingPlugin.h' => {
+          original: '#import <Firebase/Firebase.h>',
+          replacement: '@import FirebaseMessaging;'
+        },
+        'Classes/FLTFirebaseMessagingPlugin.m' => {
+          original: '#import "FLTFirebaseMessagingPlugin.h"',
+          replacement: "#import \"FLTFirebaseMessagingPlugin.h\"\n@import FirebaseAuth;"
+        }
+      },
+      'firebase_auth' => {
+        'Classes/Private/FLTAuthStateChannelStreamHandler.h' => {
+          original: '#import <Firebase/Firebase.h>',
+          replacement: '@import FirebaseAuth;'
+        },
+        'Classes/Private/PigeonParser.h' => {
+          original: '#import <Firebase/Firebase.h>',
+          replacement: '@import FirebaseAuth;'
+        },
+        'Classes/Private/FLTIdTokenChannelStreamHandler.h' => {
+          original: '#import <Firebase/Firebase.h>',
+          replacement: '@import FirebaseAuth;'
+        },
+        'Classes/Private/FLTPhoneNumberVerificationStreamHandler.h' => {
+          original: '#import <Firebase/Firebase.h>',
+          replacement: '@import FirebaseAuth;'
+        },
+        'Classes/Public/FLTFirebaseAuthPlugin.h' => {
+          original: '#import <Firebase/Firebase.h>',
+          replacement: '@import FirebaseAuth;'
+        }
+      }
+    }
+
+    installer.pods_project.targets.each do |target|
+      # Check if the target name (pod name) is in our patch list
+      if plugin_patches.key?(target.name)
+        puts "Processing plugin for patching: #{target.name}"
+        # installer.sandbox.pod_dir(target.name) gives the root directory of the pod (e.g. ios/.symlinks/plugins/firebase_auth/ios)
+        pod_root = installer.sandbox.pod_dir(target.name) 
+        
+        plugin_patches[target.name].each do |relative_file_path_key, patch_details|
+          # `relative_file_path_key` is now like 'Classes/FLTFirebaseAuthPlugin.h'
+          # The actual file path is <pod_root>/<relative_file_path_key>
+          actual_file_path = File.join(pod_root, relative_file_path_key)
+
+          if File.exist?(actual_file_path) && File.writable?(actual_file_path)
+            content = File.read(actual_file_path)
+            if content.include?(patch_details[:original])
+              patched_content = content.gsub(patch_details[:original], patch_details[:replacement])
+              File.write(actual_file_path, patched_content)
+              puts "  SUCCESS: Patched #{patch_details[:original]} to #{patch_details[:replacement]} in #{actual_file_path}"
+            else
+              puts "  SKIPPED (original string '#{patch_details[:original]}' not found): #{actual_file_path}"
+            end
+          else
+            puts "  FAILED (file not found or not writable): #{actual_file_path}"
+          end
+        end
+      end
+    end
+  rescue => e
+    puts "ERROR during Firebase plugin patching: #{e.message}"
+    puts e.backtrace.join("\n")
+  end
+
 end

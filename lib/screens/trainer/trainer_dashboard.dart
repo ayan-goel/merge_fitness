@@ -76,6 +76,46 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
       });
     } catch (e) {
       print("Error loading activity feed: $e");
+      
+      // If the error is about indexes building, try an alternative approach
+      if (e.toString().contains('index is currently building') || 
+          e.toString().contains('requires an index')) {
+        try {
+          // Get without ordering (works without index)
+          final snapshot = await FirebaseFirestore.instance
+              .collection('activityFeed')
+              .where('trainerId', isEqualTo: _trainer!.uid)
+              .get();
+          
+          // Process and sort manually
+          final activities = snapshot.docs.map((doc) {
+            final data = doc.data();
+            return {
+              'id': doc.id,
+              'type': data['type'] ?? 'unknown',
+              'message': data['message'] ?? 'Unknown activity',
+              'timestamp': (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+              'relatedId': data['relatedId'],
+            };
+          }).toList();
+          
+          // Sort manually by timestamp
+          activities.sort((a, b) {
+            final aTime = a['timestamp'] as DateTime;
+            final bTime = b['timestamp'] as DateTime;
+            return bTime.compareTo(aTime); // descending
+          });
+          
+          // Limit to 10 items
+          final limitedActivities = activities.take(10).toList();
+          
+          setState(() {
+            _activityItems = limitedActivities;
+          });
+        } catch (fallbackError) {
+          print("Fallback error loading activity feed: $fallbackError");
+        }
+      }
     }
   }
 
