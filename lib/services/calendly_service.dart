@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:math'; // For random string generation and min function
+import 'package:crypto/crypto.dart'; // For SHA256
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -23,8 +25,8 @@ class CalendlyService {
   static const String _tokenUrl = 'https://auth.calendly.com/oauth/token';
   
   // Replace these with your own values from Calendly Developer Portal
-  static const String _clientId = 'g06lkWm61e-4wZlg0Ss2tX7dKdyIVnobH_dDHyw2JjI';
-  static const String _clientSecret = '3nX6RhWnACvnEZOTy-jsaz1jO48P7cFBCIcDt7_FceE';
+  static const String _clientId = 'FIy98L4pyGDAtdpzjlOa16YzXmLZjHBj_CtRg2KJeos';
+  static const String _clientSecret = 't119SRTQW8MtUmP7gV-c1Iys3pgrKaAUVn-jm5GlSAY';
   static const String _redirectUri = 'mergefitness://oauth/callback';
   
   // Get the user's Calendly API token (stored in Firestore)
@@ -39,8 +41,27 @@ class CalendlyService {
     }
   }
   
+  // Disconnect a user's Calendly account
+  Future<void> disconnectCalendlyAccount() async {
+    try {
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) throw Exception('User not authenticated');
+      
+      await _firestore.collection('users').doc(userId).update({
+        'calendlyToken': FieldValue.delete(),
+        'calendlyConnected': false,
+        'calendlyUri': FieldValue.delete(),
+        'calendlySchedulingUrl': FieldValue.delete(),
+        'selectedCalendlyEventType': FieldValue.delete(),
+      });
+    } catch (e) {
+      print('Error disconnecting Calendly account: $e');
+      throw Exception('Failed to disconnect Calendly account: $e');
+    }
+  }
+  
   // Save a user's Calendly token
-  Future<void> saveCalendlyToken(String token, {String? calendlyUri}) async {
+  Future<void> saveCalendlyToken(String token, {String? calendlyUri, String? selectedEventTypeUri}) async {
     try {
       final userId = _auth.currentUser?.uid;
       if (userId == null) throw Exception('User not authenticated');
@@ -53,6 +74,7 @@ class CalendlyService {
         'calendlyConnected': true,
         'calendlyUri': calendlyUri ?? userInfo['resource']['uri'],
         'calendlySchedulingUrl': userInfo['resource']['scheduling_url'],
+        'selectedCalendlyEventType': selectedEventTypeUri,
       });
     } catch (e) {
       print('Error saving Calendly token: $e');
@@ -82,22 +104,48 @@ class CalendlyService {
     }
   }
   
+  // Helper function to generate a random string for code_verifier
+  String _generateRandomString(int len) {
+    final random = Random.secure();
+    final values = List<int>.generate(len, (i) => random.nextInt(256));
+    return base64UrlEncode(values).substring(0, len); // Ensure it's URL safe and of desired length
+  }
+  
   // Start the OAuth flow
   Future<void> connectCalendlyAccount() async {
     try {
+      // PKCE: Generate code verifier and challenge
+      final String codeVerifier = _generateRandomString(128); // Standard length is 43-128
+      final String codeChallenge = base64UrlEncode(sha256.convert(utf8.encode(codeVerifier)).bytes)
+                                      .replaceAll('=', ''); // Remove padding for base64url
+
       final authUrl = Uri.parse(
-        '$_authUrl?client_id=$_clientId&response_type=code&redirect_uri=$_redirectUri'
+        '$_authUrl?client_id=$_clientId&response_type=code&redirect_uri=$_redirectUri&code_challenge=$codeChallenge&code_challenge_method=S256' // Added PKCE params
       );
       
+      print('CalendlyService: Constructed authUrl: ${authUrl.toString()}');
+      print('CalendlyService: PKCE Code Verifier (DO NOT LOG IN PRODUCTION): $codeVerifier');
+
+      
       // Launch OAuth flow using flutter_web_auth_2
-      final result = await FlutterWebAuth2.authenticate(
+      String result;
+      try {
+        print('CalendlyService: Attempting FlutterWebAuth2.authenticate...');
+        result = await FlutterWebAuth2.authenticate(
         url: authUrl.toString(),
         callbackUrlScheme: 'mergefitness',
       );
+        print('CalendlyService: FlutterWebAuth2.authenticate result: $result');
+      } catch (e) {
+        print('CalendlyService: Error during FlutterWebAuth2.authenticate: $e');
+        throw Exception('Failed during FlutterWebAuth2.authenticate: $e');
+      }
       
       // Extract the authorization code from the result
       final Uri resultUri = Uri.parse(result);
+      print('CalendlyService: Parsed resultUri: ${resultUri.toString()}');
       final String? code = resultUri.queryParameters['code'];
+      print('CalendlyService: Extracted code: $code');
       
       if (code != null) {
         // Exchange code for token
@@ -112,6 +160,7 @@ class CalendlyService {
             'code': code,
             'grant_type': 'authorization_code',
             'redirect_uri': _redirectUri,
+            'code_verifier': codeVerifier, // PKCE: Added code_verifier
           },
         );
         
@@ -119,8 +168,11 @@ class CalendlyService {
           final tokenData = jsonDecode(tokenResponse.body);
           final accessToken = tokenData['access_token'];
           
-          // Save token to Firestore
+          // Save token to Firestore (without selecting a specific event type yet)
           await saveCalendlyToken(accessToken);
+          
+          // Return the token for further use
+          return accessToken;
         } else {
           throw Exception('Failed to get token: ${tokenResponse.statusCode} - Body: ${tokenResponse.body}');
         }
@@ -130,6 +182,41 @@ class CalendlyService {
     } catch (e) {
       print('Error connecting Calendly account: $e');
       throw Exception('Failed to connect Calendly account: $e');
+    }
+  }
+  
+  // Connect to a specific calendar/event type for a user who already has a token
+  Future<void> selectCalendlyEventType(String eventTypeUri) async {
+    try {
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) throw Exception('User not authenticated');
+      
+      // Get existing token
+      final token = await _getCalendlyToken(userId);
+      if (token == null) throw Exception('Calendly not connected');
+      
+      // Verify the event type exists and is active
+      final eventTypes = await getTrainerEventTypes(userId);
+      final selectedType = eventTypes.firstWhere(
+        (type) => type['uri'] == eventTypeUri,
+        orElse: () => {},
+      );
+      
+      if (selectedType.isEmpty) {
+        throw Exception('Event type not found');
+      }
+      
+      if (selectedType['active'] != true) {
+        throw Exception('Cannot select inactive event type. Please activate it in Calendly first.');
+      }
+      
+      // Update the user document with the selected event type
+      await _firestore.collection('users').doc(userId).update({
+        'selectedCalendlyEventType': eventTypeUri,
+      });
+    } catch (e) {
+      print('Error selecting Calendly event type: $e');
+      throw Exception('Failed to select Calendly event type: $e');
     }
   }
   
@@ -162,30 +249,41 @@ class CalendlyService {
     try {
       final token = await _getCalendlyToken(trainerId);
       if (token == null) {
+        print('CalendlyService: getTrainerEventTypes - No token for trainerId: $trainerId');
         throw Exception('Trainer has not connected their Calendly account');
       }
       
       final uri = await getTrainerCalendlyUri(trainerId);
       if (uri == null) {
+        print('CalendlyService: getTrainerEventTypes - No calendlyUri for trainerId: $trainerId');
         throw Exception('Trainer has not connected their Calendly account');
       }
       
+      final eventTypesUrl = '$_baseUrl$_eventTypesPath?user=$uri';
+      print('CalendlyService: getTrainerEventTypes - Requesting URL: $eventTypesUrl');
+      
       final response = await http.get(
-        Uri.parse('$_baseUrl$_eventTypesPath?user=$uri'),
+        Uri.parse(eventTypesUrl),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
       );
       
+      print('CalendlyService: getTrainerEventTypes - Response status: ${response.statusCode}');
+      print('CalendlyService: getTrainerEventTypes - Response body: ${response.body}');
+      
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['collection']);
+        final List<Map<String, dynamic>> eventTypesList = List<Map<String, dynamic>>.from(data['collection']);
+        print('CalendlyService: getTrainerEventTypes - Parsed event types list: $eventTypesList');
+        return eventTypesList;
       } else {
+        print('CalendlyService: getTrainerEventTypes - Failed to get event types: ${response.statusCode}, Body: ${response.body}');
         throw Exception('Failed to get event types: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error getting trainer event types: $e');
+      print('CalendlyService: getTrainerEventTypes - Error: $e');
       throw Exception('Failed to get trainer event types: $e');
     }
   }
@@ -195,25 +293,65 @@ class CalendlyService {
     try {
       final token = await _getCalendlyToken(trainerId);
       if (token == null) {
+        print('CalendlyService: getTrainerAvailability - No token for trainerId: $trainerId');
         throw Exception('Trainer has not connected their Calendly account');
       }
       
-      // Get event types for the trainer
-      final eventTypes = await getTrainerEventTypes(trainerId);
-      if (eventTypes.isEmpty) {
-        throw Exception('Trainer has no event types configured');
+      // First try to get the selected event type
+      final doc = await _firestore.collection('users').doc(trainerId).get();
+      final data = doc.data();
+      final selectedEventTypeUri = data?['selectedCalendlyEventType'] as String?;
+      
+      String eventTypeUri;
+      
+      if (selectedEventTypeUri != null) {
+        print('CalendlyService: getTrainerAvailability - Using selected event type: $selectedEventTypeUri');
+        eventTypeUri = selectedEventTypeUri;
+      } else {
+        // Fallback to getting first event type
+        print('CalendlyService: getTrainerAvailability - No selected event type, fetching all event types');
+        final eventTypes = await getTrainerEventTypes(trainerId);
+        
+        if (eventTypes.isEmpty) {
+          print('CalendlyService: getTrainerAvailability - Trainer has no event types configured.');
+          throw Exception('Trainer has no event types configured');
+        }
+        
+        // Find the first active event type
+        final activeEventTypes = eventTypes.where((type) => type['active'] == true).toList();
+        if (activeEventTypes.isEmpty) {
+          print('CalendlyService: getTrainerAvailability - Trainer has no active event types');
+          throw Exception('Trainer has no active event types');
+        }
+        
+        // Use the first active event type
+        eventTypeUri = activeEventTypes[0]['uri'];
+        final eventName = activeEventTypes[0]['name'] ?? 'Unknown Event Type';
+        print('CalendlyService: getTrainerAvailability - Using event type: "$eventName" with URI: $eventTypeUri');
       }
       
-      // Use the first event type (usually 1:1 meeting)
-      final eventTypeUri = eventTypes[0]['uri'];
+      // Set date range (default to current time + 1 hour for start, and 7 days after that for end)
+      // This ensures start_time is always in the future as required by Calendly
+      final now = DateTime.now();
+      final start = startDate ?? now.add(const Duration(hours: 1));
       
-      // Set date range (default to next 7 days)
-      final start = startDate ?? DateTime.now();
-      final end = endDate ?? start.add(const Duration(days: 7));
+      // Enforce max 7-day window as per Calendly's API limits
+      final maxEndDate = start.add(const Duration(days: 7));
+      final end = endDate != null 
+          ? (endDate.difference(start).inDays > 7 ? maxEndDate : endDate)
+          : maxEndDate;
       
-      // Format dates for Calendly API
-      final startTime = start.toUtc().toIso8601String();
+      // Ensure start is actually in the future
+      final adjustedStart = start.isBefore(now.add(const Duration(minutes: 30))) 
+          ? now.add(const Duration(hours: 1)) 
+          : start;
+          
+      // Format dates for Calendly API - ensure proper ISO format with Z timezone indicator
+      final startTime = adjustedStart.toUtc().toIso8601String();
       final endTime = end.toUtc().toIso8601String();
+
+      print('CalendlyService: getTrainerAvailability sending startTime: $startTime');
+      print('CalendlyService: getTrainerAvailability sending endTime: $endTime');
       
       // Call API to get available times
       final response = await http.get(
@@ -224,22 +362,58 @@ class CalendlyService {
         },
       );
       
+      print('CalendlyService: getTrainerAvailability - Response status: ${response.statusCode}');
+      print('CalendlyService: getTrainerAvailability - Response preview: ${response.body.substring(0, min(200, response.body.length))}...');
+      
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        
-        // Transform into our expected format
-        return List<Map<String, dynamic>>.from(data['collection']).map((slot) {
-          final startTime = DateTime.parse(slot['start_time']);
-          final endTime = DateTime.parse(slot['end_time']);
+        try {
+          final data = jsonDecode(response.body);
           
-          return {
-            'start_time': startTime,
-            'end_time': endTime,
-            'status': slot['status'],
-            'spot_number': slot['spot_number'] ?? 1,
-          };
-        }).toList();
+          if (!data.containsKey('collection')) {
+            print('CalendlyService: getTrainerAvailability - Response missing collection key: ${response.body}');
+            throw Exception('Invalid response format: missing collection');
+          }
+          
+          // Transform into our expected format
+          final List<Map<String, dynamic>> availableTimes = [];
+          
+          for (final slot in List<Map<String, dynamic>>.from(data['collection'])) {
+            try {
+              final startTime = DateTime.parse(slot['start_time']);
+              
+              // For event_type_available_times, the end_time may not be included in the response
+              // Calculate it based on the event type duration if not provided
+              DateTime endTime;
+              if (slot.containsKey('end_time') && slot['end_time'] != null) {
+                endTime = DateTime.parse(slot['end_time']);
+              } else {
+                // Default to 30-minute slots if no end_time is provided
+                // This is a common default in Calendly, but ideally we should get the duration from the event type
+                endTime = startTime.add(const Duration(minutes: 30));
+              }
+              
+              availableTimes.add({
+                'start_time': startTime,
+                'end_time': endTime,
+                'status': slot['status'] ?? 'available',
+                'scheduling_url': slot['scheduling_url'],
+                'spot_number': slot['invitees_remaining'] ?? 1,
+              });
+            } catch (slotError) {
+              print('CalendlyService: getTrainerAvailability - Error parsing slot: $slotError, slot data: $slot');
+              // Skip this slot and continue with others
+            }
+          }
+          
+          print('CalendlyService: getTrainerAvailability - Successfully parsed ${availableTimes.length} available time slots');
+          return availableTimes;
+        } catch (parseError) {
+          print('CalendlyService: getTrainerAvailability - Error parsing response: $parseError');
+          print('CalendlyService: getTrainerAvailability - Response body: ${response.body}');
+          throw Exception('Failed to parse availability response: $parseError');
+        }
       } else {
+        print('CalendlyService: getTrainerAvailability - Error response: ${response.body}');
         throw Exception('Failed to get availability: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {

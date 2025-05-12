@@ -52,9 +52,13 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
     });
     
     try {
-      // Get next 7 days of availability
-      final startDate = DateTime.now();
+      // Get availability starting 1 hour from now (to ensure start_time is always in the future)
+      // and ending 7 days later (Calendly limit)
+      final now = DateTime.now();
+      final startDate = now.add(const Duration(hours: 1));
       final endDate = startDate.add(const Duration(days: 7));
+      
+      print('ScheduleSessionScreen: Loading availability from ${startDate.toIso8601String()} to ${endDate.toIso8601String()}');
       
       final slots = await _calendlyService.getTrainerAvailability(
         widget.trainerId,
@@ -81,16 +85,36 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
         _timeSlotsByDate = slotsByDate;
         _isLoading = false;
       });
+      
+      print('ScheduleSessionScreen: Loaded ${slots.length} available time slots across ${slotsByDate.length} days');
     } catch (e) {
       print('Error loading availability: $e');
+      
+      String errorMessage = 'Unable to load trainer availability';
+      
+      // Check for specific error types and provide better user messages
+      if (e.toString().contains('start_time must be in the future')) {
+        errorMessage = 'Error with scheduling timeframe. Please try again.';
+      } else if (e.toString().contains('date range can be no greater than 1 week')) {
+        errorMessage = 'Cannot fetch availability beyond 7 days. Please try again.';
+      } else if (e.toString().contains('Trainer has not connected their Calendly account')) {
+        errorMessage = 'This trainer has not fully set up their scheduling calendar yet.';
+      } else if (e.toString().contains('Trainer has no event types configured')) {
+        errorMessage = 'This trainer has not created any appointment types yet.';
+      } else if (e.toString().contains('Trainer has no active event types')) {
+        errorMessage = 'This trainer does not have any active calendars configured.';
+      }
+      
       setState(() {
         _isLoading = false;
       });
       
       // Show error snackbar
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading trainer availability: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
     }
   }
   
