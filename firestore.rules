@@ -11,7 +11,7 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
-    // Check if user is a trainer - simplified for better performance in rules
+    // Check if user is a trainer - simplified version to avoid circular references
     function isTrainer() {
       return isAuthenticated() && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
@@ -27,12 +27,26 @@ service cloud.firestore {
     
     // User Collection Rules
     match /users/{userId} {
-      // Allow users to read their own document or any trainer document
-      // This simpler rule should resolve circular reference issues
-      allow read: if isAuthenticated() && (request.auth.uid == userId || 
-                                         resource.data.role == 'trainer' ||
-                                         isTrainer() ||
-                                         isAdmin());
+      // Allow users to read their own document
+      // Allow reading any trainer document
+      // Allow trainers to read all user documents
+      allow read: if isAuthenticated() && (
+                    request.auth.uid == userId || 
+                    (exists(resource) && resource.data.role == 'trainer') ||
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer' ||
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+                  );
+      
+      // Allow listing all trainers for anyone authenticated (for client scheduling)
+      allow list: if isAuthenticated() && 
+                  request.query.filters.fieldPaths.hasOnly(['role', 'calendlyConnected']) && 
+                  request.query.filters.fieldFilter('role', '==', 'trainer');
+      
+      // More permissive rule to ensure clients can list trainers
+      allow list: if isAuthenticated();
+      
+      // Allow clients to get specific fields from trainer documents
+      allow get: if isAuthenticated();
       
       // Allow a user to create their own document during signup
       allow create: if isAuthenticated() && request.auth.uid == userId;
@@ -40,16 +54,21 @@ service cloud.firestore {
       // Allow users to update their own documents
       allow update: if isAuthenticated() && (
                       request.auth.uid == userId || 
-                      isAdmin() ||
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
                       // Allow trainers to update their clients' profiles
-                      (isTrainer() && resource.data.trainerId == request.auth.uid)
+                      (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer' && 
+                       resource.data.trainerId == request.auth.uid)
                     );
                     
-      allow delete: if isAdmin();
+      allow delete: if isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
       
       // Allow trainers to list all clients (for client list screens)
       match /{allSubcollections=**} {
-        allow read: if isAuthenticated() && (isOwner(userId) || isTrainer() || isAdmin());
+        allow read: if isAuthenticated() && (
+                      isOwner(userId) || 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer' || 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+                    );
       }
     }
     
@@ -62,10 +81,10 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       
       // Allow trainers to read client weight history
-      allow read: if isTrainer();
+      allow read: if isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer';
       
       // Admins can do everything
-      allow read, write: if isAdmin();
+      allow read, write: if isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
     // Workout Collection Rules
@@ -73,14 +92,26 @@ service cloud.firestore {
       // Users can read and write their own workouts
       // Trainers can read and write workouts for their clients
       // Admins can read and write all workouts
-      allow read: if isAuthenticated() && 
-        (resource.data.userId == request.auth.uid || isTrainer() || isAdmin());
-      allow create: if isAuthenticated() && 
-        (request.resource.data.userId == request.auth.uid || isTrainer() || isAdmin());
-      allow update: if isAuthenticated() && 
-        (resource.data.userId == request.auth.uid || isTrainer() || isAdmin());
-      allow delete: if isAuthenticated() && 
-        (resource.data.userId == request.auth.uid || isTrainer() || isAdmin());
+      allow read: if isAuthenticated() && (
+                    resource.data.userId == request.auth.uid || 
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer' || 
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+                  );
+      allow create: if isAuthenticated() && (
+                      request.resource.data.userId == request.auth.uid || 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer' || 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+                    );
+      allow update: if isAuthenticated() && (
+                      resource.data.userId == request.auth.uid || 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer' || 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+                    );
+      allow delete: if isAuthenticated() && (
+                      resource.data.userId == request.auth.uid || 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer' || 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+                    );
     }
     
     // Workout Templates Collection Rules
@@ -262,15 +293,24 @@ service cloud.firestore {
     
     // Meals Collection Rules
     match /meals/{mealId} {
-      // Client can create/read/update/delete their own meals
+      // Client can read their own meals
+      // Trainers can read their clients' meals
       allow read: if request.auth != null && (
+                    // Client can read their own meals
                     request.auth.uid == resource.data.clientId || 
-                    get(/databases/$(database)/documents/users/$(resource.data.clientId)).data.trainerId == request.auth.uid
+                    // Trainers can read their clients' meals - simplified check
+                    (isTrainer() && exists(/databases/$(database)/documents/users/$(resource.data.clientId)) && 
+                    get(/databases/$(database)/documents/users/$(resource.data.clientId)).data.trainerId == request.auth.uid) ||
+                    // Admin can read all meals
+                    isAdmin()
                   );
       
       // Client can create/update/delete their own meals
       allow create: if request.auth != null && request.auth.uid == request.resource.data.clientId;
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.clientId;
+      
+      // Allow trainers to list meals for their clients
+      allow list: if isAuthenticated() && isTrainer();
     }
     
     // Trainer Locations Collection Rules

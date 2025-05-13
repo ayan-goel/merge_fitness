@@ -244,16 +244,32 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomAppBar(
-        child: SizedBox(
-          height: 64.0,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
+          child: SizedBox(
+            width: double.infinity,
+            height: 56.0,
             child: ElevatedButton(
               onPressed: _isLoading ? null : _saveTemplate,
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+              ),
               child: _isLoading
-                  ? const CircularProgressIndicator()
-                  : Text(_isEditing ? 'Update Template' : 'Save Template'),
+                  ? const SizedBox(
+                      height: 24.0,
+                      width: 24.0,
+                      child: CircularProgressIndicator(strokeWidth: 2.0)
+                    )
+                  : Text(
+                      _isEditing ? 'Update Template' : 'Save Template',
+                      style: const TextStyle(
+                        fontSize: 16.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ),
         ),

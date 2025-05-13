@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'services/notification_service.dart';
 import 'services/auth_service.dart';
@@ -15,6 +17,10 @@ import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/client/client_profile_screen.dart';
 import 'screens/trainer/trainer_profile_screen.dart';
+import 'screens/onboarding_quiz_screen.dart';
+import 'screens/client/client_email_verification_screen.dart';
+import 'screens/trainer/email_verification_screen.dart';
+import 'screens/trainer/trainer_onboarding_screen.dart';
 
 // Global instance of NotificationService for easy access
 final NotificationService notificationService = NotificationService();
@@ -71,7 +77,81 @@ class AuthWrapper extends StatelessWidget {
       builder: (context, snapshot) {
         // If the snapshot has user data, then user is logged in
         if (snapshot.hasData) {
-          return const HomeScreen();
+          // Check if user is email verified
+          User user = snapshot.data as User;
+          if (!user.emailVerified) {
+            // If not verified, redirect to appropriate verification screen
+            final String role = user.displayName?.startsWith('trainer_') == true ? 'trainer' : 'client';
+            if (role == 'trainer') {
+              print("Trainer needs to verify email");
+              return TrainerEmailVerificationScreen(user: user);
+            } else {
+              print("Client needs to verify email");
+              return ClientEmailVerificationScreen(user: user);
+            }
+          }
+          
+          // Check if user has completed onboarding by checking their profile data
+          return FutureBuilder<DocumentSnapshot>(
+            future: FirebaseFirestore.instance.collection('users').doc(snapshot.data!.uid).get(),
+            builder: (context, userSnapshot) {
+              if (userSnapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              
+              // Check if user document exists and has display name (indicating completed onboarding)
+              if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                final String role = userData?['role'] ?? 'client';
+                
+                // Check if user needs to complete onboarding based on role
+                if (role == 'client' && (userData == null || userData['displayName'] == null)) {
+                  print("Client needs to complete onboarding, redirecting to quiz");
+                  return const OnboardingQuizScreen();
+                } else if (role == 'trainer' && (userData == null || userData['displayName'] == null)) {
+                  print("Trainer needs to complete onboarding, redirecting to trainer setup");
+                  return const TrainerOnboardingScreen();
+                }
+                
+                // User has completed onboarding
+                return const HomeScreen();
+              } else {
+                // New user without profile data needs onboarding
+                print("New user detected, checking role for proper onboarding");
+                
+                // Check Firestore for role information to direct to correct onboarding
+                return FutureBuilder<DocumentSnapshot>(
+                  future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+                  builder: (context, roleSnapshot) {
+                    if (roleSnapshot.connectionState == ConnectionState.waiting) {
+                      return const Scaffold(
+                        body: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    
+                    // Check if the user document exists and determine role
+                    if (roleSnapshot.hasData && roleSnapshot.data!.exists) {
+                      final userData = roleSnapshot.data!.data() as Map<String, dynamic>?;
+                      final String role = userData?['role'] ?? 'client';
+                      
+                      if (role == 'trainer') {
+                        print("New trainer detected, redirecting to trainer setup");
+                        return const TrainerOnboardingScreen();
+                      } else {
+                        print("New client detected, redirecting to onboarding quiz");
+                        return const OnboardingQuizScreen();
+                      }
+                    }
+                    
+                    // Default to client onboarding if we can't determine role
+                    return const OnboardingQuizScreen();
+                  },
+                );
+              }
+            },
+          );
         }
         
         // Otherwise, user is not logged in

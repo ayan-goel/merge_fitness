@@ -1,21 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'trainer_onboarding_screen.dart';
+import '../onboarding_quiz_screen.dart';
 
-class TrainerEmailVerificationScreen extends StatefulWidget {
+class ClientEmailVerificationScreen extends StatefulWidget {
   final User user;
   
-  const TrainerEmailVerificationScreen({
+  const ClientEmailVerificationScreen({
     super.key,
     required this.user,
   });
 
   @override
-  State<TrainerEmailVerificationScreen> createState() => _TrainerEmailVerificationScreenState();
+  State<ClientEmailVerificationScreen> createState() => _ClientEmailVerificationScreenState();
 }
 
-class _TrainerEmailVerificationScreenState extends State<TrainerEmailVerificationScreen> {
+class _ClientEmailVerificationScreenState extends State<ClientEmailVerificationScreen> {
   bool _isVerifying = false;
   bool _isResendingEmail = false;
   Timer? _verificationTimer;
@@ -120,10 +120,10 @@ class _TrainerEmailVerificationScreenState extends State<TrainerEmailVerificatio
         if (user != null && user.emailVerified) {
           timer.cancel();
           if (mounted) {
-            // Navigate to the trainer onboarding screen
+            // Navigate to the client onboarding quiz
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(
-                builder: (context) => const TrainerOnboardingScreen(),
+                builder: (context) => const OnboardingQuizScreen(),
               ),
             );
           }
@@ -147,10 +147,10 @@ class _TrainerEmailVerificationScreenState extends State<TrainerEmailVerificatio
       
       if (user != null && user.emailVerified) {
         if (mounted) {
-          // Navigate to the trainer onboarding screen
+          // Navigate to the client onboarding quiz
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (context) => const TrainerOnboardingScreen(),
+              builder: (context) => const OnboardingQuizScreen(),
             ),
           );
         }
@@ -213,7 +213,7 @@ class _TrainerEmailVerificationScreenState extends State<TrainerEmailVerificatio
             ),
             const SizedBox(height: 24),
             const Text(
-              'Please check your inbox and click the verification link in the email to complete your registration.',
+              'Please check your inbox and click the verification link in the email to complete your registration. You\'ll be able to access the onboarding questionnaire after verification.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),

@@ -530,27 +530,37 @@ class _ClientDashboardState extends State<ClientDashboard> {
                   final workouts = snapshot.data ?? [];
                   
                   if (workouts.isEmpty) {
-                    return SizedBox(
-                      height: 180, // Just enough height for empty state
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.fitness_center,
-                              size: 64,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No workouts scheduled for today',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey,
+                    return Card(
+                      margin: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      color: AppStyles.surfaceCharcoal,
+                      elevation: 2,
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.fitness_center,
+                                size: 48,
+                                color: Colors.grey[400],
                               ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                              const SizedBox(height: 16),
+                              Text(
+                                'No workouts scheduled for today',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[300],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -590,7 +600,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
               AppWidgets.sectionHeader(
                 title: 'Training Sessions',
                 onActionPressed: _upcomingSessions.isNotEmpty ? _viewAllSessions : null,
-                actionLabel: 'View All',
+                actionLabel: _upcomingSessions.isNotEmpty ? 'View All' : '',
               ),
               
               // Show upcoming sessions if available
@@ -663,14 +673,100 @@ class _ClientDashboardState extends State<ClientDashboard> {
                         if (hasMoreDates || hiddenSessionsCount > 0)
                           Padding(
                             padding: const EdgeInsets.only(top: 16),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: _viewAllSessions,
+                                  icon: const Icon(Icons.calendar_month),
+                                  label: Text(
+                                    hiddenSessionsCount > 0
+                                        ? 'View All (+$hiddenSessionsCount)'
+                                        : 'View All',
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    backgroundColor: AppStyles.surfaceCharcoal,
+                                    foregroundColor: AppStyles.primaryBlue,
+                                    side: const BorderSide(color: AppStyles.primaryBlue, width: 1.5),
+                                    elevation: 1,
+                                    shadowColor: AppStyles.primaryBlue.withOpacity(0.2),
+                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    textStyle: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => SelectTrainerScreen(
+                                          clientId: _client!.uid,
+                                        ),
+                                      ),
+                                    ).then((_) => _loadUpcomingSessions());
+                                  },
+                                  icon: const Icon(Icons.add_circle_outline, size: 20),
+                                  label: const Text('Schedule New'),
+                                  style: OutlinedButton.styleFrom(
+                                    backgroundColor: AppStyles.surfaceCharcoal,
+                                    foregroundColor: AppStyles.primaryBlue,
+                                    side: const BorderSide(color: AppStyles.primaryBlue, width: 1.5),
+                                    elevation: 1,
+                                    shadowColor: AppStyles.primaryBlue.withOpacity(0.2),
+                                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    textStyle: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          // When we don't have more dates to show but still have sessions
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
                             child: Center(
-                              child: OutlinedButton.icon(
-                                onPressed: _viewAllSessions,
-                                icon: const Icon(Icons.calendar_month),
-                                label: Text(
-                                  hiddenSessionsCount > 0
-                                      ? 'View All Sessions (+$hiddenSessionsCount more)'
-                                      : 'View All Sessions',
+                              child: SizedBox(
+                                width: 300,
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => SelectTrainerScreen(
+                                          clientId: _client!.uid,
+                                        ),
+                                      ),
+                                    ).then((_) => _loadUpcomingSessions());
+                                  },
+                                  icon: const Icon(Icons.add_circle_outline),
+                                  label: const Text('Schedule New Session'),
+                                  style: OutlinedButton.styleFrom(
+                                    backgroundColor: AppStyles.surfaceCharcoal,
+                                    foregroundColor: AppStyles.primaryBlue,
+                                    side: const BorderSide(color: AppStyles.primaryBlue, width: 1.5),
+                                    elevation: 1,
+                                    shadowColor: AppStyles.primaryBlue.withOpacity(0.2),
+                                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    textStyle: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -681,29 +777,71 @@ class _ClientDashboardState extends State<ClientDashboard> {
                 ),
               ] else ...[
                 Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.event_busy,
-                          size: 48,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'No upcoming sessions',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                  margin: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  color: AppStyles.surfaceCharcoal,
+                  elevation: 2,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.event_busy,
+                            size: 48,
+                            color: Colors.grey[400],
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Schedule a session with a trainer below',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ],
+                          const SizedBox(height: 16),
+                          const Text(
+                            'No upcoming sessions',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Schedule a session with a trainer below',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: 220,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => SelectTrainerScreen(
+                                      clientId: _client!.uid,
+                                    ),
+                                  ),
+                                ).then((_) => _loadUpcomingSessions());
+                              },
+                              icon: const Icon(Icons.add_circle_outline),
+                              label: const Text('Schedule Session'),
+                              style: OutlinedButton.styleFrom(
+                                backgroundColor: AppStyles.surfaceCharcoal,
+                                foregroundColor: AppStyles.primaryBlue,
+                                side: const BorderSide(color: AppStyles.primaryBlue, width: 1.5),
+                                elevation: 1,
+                                shadowColor: AppStyles.primaryBlue.withOpacity(0.2),
+                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -713,7 +851,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
               
               // Weight Entry Section
               AppWidgets.sectionHeader(
-                title: 'Track Your Progress',
+                title: 'Track Your Weight',
                 onActionPressed: null,
                 actionLabel: '',
               ),
@@ -1319,33 +1457,6 @@ class _ClientDashboardState extends State<ClientDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    gradient: AppStyles.primaryGradient,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.monitor_weight_outlined,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  'Track Your Weight',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppStyles.textWhite,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            
             if (_todayWeightEntry != null) ...[
               // Show today's entry with improved styling
               Container(
@@ -1451,13 +1562,31 @@ class _ClientDashboardState extends State<ClientDashboard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "What's your weight today?",
-                      style: TextStyle(
-                        color: AppStyles.textWhite,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: AppStyles.primaryBlue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.monitor_weight_outlined,
+                            color: AppStyles.primaryBlue,
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          "What's your weight today?",
+                          style: TextStyle(
+                            color: AppStyles.textWhite,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     const Text(
@@ -1476,11 +1605,15 @@ class _ClientDashboardState extends State<ClientDashboard> {
                             keyboardType: TextInputType.number,
                             style: const TextStyle(color: AppStyles.textWhite),
                             decoration: InputDecoration(
-                              labelText: 'Enter Weight (lbs)',
+                              labelText: 'Enter weight',
                               hintText: _client?.weight != null 
                                 ? '${WeightEntry.kgToPounds(_client!.weight!).toStringAsFixed(1)} lbs' 
                                 : 'Enter weight',
                               suffixText: 'lbs',
+                              suffixStyle: const TextStyle(
+                                color: AppStyles.textGrey,
+                                fontSize: 14,
+                              ),
                               filled: true,
                               fillColor: AppStyles.inputFieldCharcoal,
                               border: OutlineInputBorder(

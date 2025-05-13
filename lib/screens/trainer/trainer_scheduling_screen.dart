@@ -142,37 +142,68 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
   
   Widget _buildCalendlyDisconnectedWarning() {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(24.0),
       margin: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: Colors.amber.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.amber.shade200),
+        color: AppStyles.backgroundCharcoal,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppStyles.primaryBlue.withOpacity(0.5), width: 1.5),
+        boxShadow: AppStyles.cardShadow,
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.warning_amber, color: Colors.amber.shade800),
-              const SizedBox(width: 8),
+              Icon(Icons.warning_amber, color: AppStyles.warningAmber, size: 24),
+              const SizedBox(width: 12),
               const Text(
                 'Calendly Not Connected',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: AppStyles.textWhite,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           const Text(
             'You need to connect your Calendly account to manage training sessions. Go to your profile to set it up.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              color: AppStyles.textWhite,
+              height: 1.4,
+            ),
           ),
-          const SizedBox(height: 8),
-          ElevatedButton(
-            onPressed: () {
-              // Navigate to Profile page
-              Navigator.pushNamed(context, '/trainer/profile');
-            },
-            child: const Text('Go to Profile'),
+          const SizedBox(height: 24),
+          Center(
+            child: SizedBox(
+              width: 200,
+              child: ElevatedButton(
+                onPressed: () {
+                  // Navigate to Profile page
+                  Navigator.pushNamed(context, '/trainer/profile');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppStyles.primaryBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Go to Profile',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),

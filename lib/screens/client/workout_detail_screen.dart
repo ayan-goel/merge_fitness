@@ -20,19 +20,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   final WorkoutTemplateService _workoutService = WorkoutTemplateService();
   bool _isUpdating = false;
   WorkoutStatus _currentStatus = WorkoutStatus.assigned;
-  final TextEditingController _feedbackController = TextEditingController();
   
   @override
   void initState() {
     super.initState();
     _currentStatus = widget.workout.status;
-    _feedbackController.text = widget.workout.feedback ?? '';
-  }
-  
-  @override
-  void dispose() {
-    _feedbackController.dispose();
-    super.dispose();
   }
   
   Future<void> _updateWorkoutStatus(WorkoutStatus status) async {
@@ -46,7 +38,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       await _workoutService.updateWorkoutStatus(
         widget.workout.id, 
         status,
-        feedback: status == WorkoutStatus.completed ? _feedbackController.text : null,
       );
       
       setState(() {
@@ -319,49 +310,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     },
                   ),
                   
-                  const SizedBox(height: 24.0),
-                  
-                  // Feedback section (show if completed or allow to add)
-                  if (_currentStatus == WorkoutStatus.completed) ...[
-                    const SizedBox(height: 24.0),
-                    Text(
-                      'Feedback',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppStyles.textWhite,
-                      ),
-                    ),
-                    const SizedBox(height: 16.0),
-                    TextField(
-                      controller: _feedbackController,
-                      decoration: InputDecoration(
-                        hintText: 'How did this workout feel?',
-                        hintStyle: const TextStyle(color: AppStyles.textGrey),
-                        filled: true,
-                        fillColor: AppStyles.inputFieldCharcoal,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                          borderSide: const BorderSide(color: AppStyles.primaryBlue, width: 2),
-                        ),
-                      ),
-                      style: const TextStyle(color: AppStyles.textWhite),
-                      maxLines: 3,
-                      onChanged: (value) {
-                        // Auto-save feedback
-                        _workoutService.updateWorkoutStatus(
-                          widget.workout.id,
-                          WorkoutStatus.completed,
-                          feedback: value,
-                        );
-                      },
-                    ),
-                  ],
-                  
                   const SizedBox(height: 40.0),
                 ],
               ),
@@ -498,21 +446,17 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     }
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
       decoration: BoxDecoration(
-        color: chipColor.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: chipColor.withOpacity(0.5),
-          width: 1,
-        ),
+        color: chipColor,
+        borderRadius: BorderRadius.circular(12.0),
       ),
       child: Text(
         statusText,
-        style: TextStyle(
-          color: chipColor,
-          fontSize: 12,
+        style: const TextStyle(
+          color: Colors.white,
           fontWeight: FontWeight.bold,
+          fontSize: 12.0,
         ),
       ),
     );

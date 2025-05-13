@@ -6,6 +6,7 @@ import 'home_screen.dart';
 import 'onboarding_quiz_screen.dart';
 import 'trainer/trainer_onboarding_screen.dart';
 import 'trainer/email_verification_screen.dart';
+import 'client/client_email_verification_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -92,9 +93,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               );
             } else {
-              print("Navigating to client onboarding quiz...");
+              print("Navigating to client email verification...");
               Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const OnboardingQuizScreen()),
+                MaterialPageRoute(
+                  builder: (context) => ClientEmailVerificationScreen(
+                    user: userCredential.user!,
+                  ),
+                ),
               );
             }
           }
@@ -153,6 +158,85 @@ class _LoginScreenState extends State<LoginScreen> {
         _isTrainer = false; // Reset trainer toggle when switching to login
       }
     });
+  }
+
+  // Handle forgot password
+  Future<void> _handleForgotPassword() async {
+    // Check if email is valid
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !_isEmailValid(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid email address first'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
+    // Show confirmation dialog
+    final shouldProceed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Password'),
+        content: Text('We will send a password reset link to $email. Do you want to proceed?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Send Reset Link'),
+          ),
+        ],
+      ),
+    );
+    
+    if (shouldProceed != true) {
+      return;
+    }
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      await _authService.sendPasswordResetEmail(email);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Password reset email sent to $email'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message ?? 'Failed to send password reset email'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('An error occurred: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -321,9 +405,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Align(
                           alignment: Alignment.center,
                           child: TextButton(
-                            onPressed: () {
-                              // Handle forgot password
-                            },
+                            onPressed: _handleForgotPassword,
                             child: const Text('Forgot Password?'),
                           ),
                         ),

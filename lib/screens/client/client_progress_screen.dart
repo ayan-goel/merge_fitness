@@ -18,7 +18,6 @@ class WorkoutProgressData {
   final String workoutName;
   final DateTime date;
   final DateTime completedDate;
-  final String? feedback;
 
   WorkoutProgressData({
     required this.id,
@@ -26,7 +25,6 @@ class WorkoutProgressData {
     required this.workoutName,
     required this.date,
     required this.completedDate,
-    this.feedback,
   });
 }
 
@@ -174,7 +172,6 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
             workoutName: assignedWorkout.workoutName,
             date: assignedWorkout.scheduledDate,
             completedDate: assignedWorkout.completedDate!,
-            feedback: assignedWorkout.feedback,
           );
           
           // Add to the workouts map by date
@@ -618,8 +615,6 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                 const SizedBox(height: 4),
                 Text('Program: ${workout.workoutName}'),
                 Text('Completed at: ${DateFormat.jm().format(workout.completedDate)}'),
-                if (workout.feedback != null && workout.feedback!.isNotEmpty) 
-                  Text('Feedback: ${workout.feedback}'),
               ],
             ),
           ),

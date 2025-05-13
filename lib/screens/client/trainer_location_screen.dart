@@ -198,13 +198,6 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
         ],
       ),
       body: _buildBody(),
-      floatingActionButton: _trainerPosition != null ? FloatingActionButton(
-        onPressed: _moveCamera,
-        child: const Icon(Icons.my_location),
-        tooltip: 'Focus on trainer',
-        backgroundColor: AppStyles.primaryBlue,
-        elevation: 4,
-      ) : null,
     );
   }
   
@@ -357,6 +350,33 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+        ),
+        
+        // Focus on trainer button (moved to top right)
+        Positioned(
+          top: 16,
+          right: 16,
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppStyles.backgroundCharcoal.withOpacity(0.8),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: IconButton(
+              onPressed: _moveCamera,
+              icon: const Icon(Icons.my_location),
+              tooltip: 'Focus on trainer',
+              color: AppStyles.primaryBlue,
+              iconSize: 24,
+              splashRadius: 24,
             ),
           ),
         ),

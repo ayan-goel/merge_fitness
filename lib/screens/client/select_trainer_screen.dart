@@ -34,19 +34,23 @@ class _SelectTrainerScreenState extends State<SelectTrainerScreen> {
     });
 
     try {
+      print("SelectTrainerScreen: Attempting to load trainers");
       final trainers = await _calendlyService.getAvailableTrainers();
       
       if (mounted) {
+        // Even if we get an empty list, don't treat it as an error - just show empty state
         setState(() {
           _trainers = trainers;
           _isLoading = false;
+          // Only set error message if we truly got an error from the service
+          _errorMessage = trainers.isEmpty ? "No trainers available" : null;
         });
       }
     } catch (e) {
-      print('Error loading trainers: $e');
+      print('SelectTrainerScreen: Error loading trainers: $e');
       if (mounted) {
         setState(() {
-          _errorMessage = 'Error loading trainers: $e';
+          _errorMessage = 'Error loading trainers, please try again.';
           _isLoading = false;
         });
       }

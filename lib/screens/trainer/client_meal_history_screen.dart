@@ -89,214 +89,259 @@ class _ClientMealHistoryScreenState extends State<ClientMealHistoryScreen> {
       appBar: AppBar(
         title: Text('${widget.clientName}\'s Meals'),
       ),
-      body: Column(
-        children: [
-          // Date selector with arrows
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
-            color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios),
-                  onPressed: _goToPreviousDay,
-                  tooltip: 'Previous day',
-                ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _selectDate,
-                    child: Center(
-                      child: Text(
-                        isToday
-                            ? 'Today'
-                            : DateFormat('EEEE, MMMM d, yyyy').format(_selectedDate),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Date selector with arrows
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
+                color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios),
+                      onPressed: _goToPreviousDay,
+                      tooltip: 'Previous day',
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _selectDate,
+                        child: Center(
+                          child: Text(
+                            isToday
+                                ? 'Today'
+                                : DateFormat('EEEE, MMMM d, yyyy').format(_selectedDate),
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_forward_ios),
+                      onPressed: isToday ? null : _goToNextDay,
+                      tooltip: isToday ? 'Cannot go to future dates' : 'Next day',
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Active nutrition plan display
+              if (_activePlan != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _activePlan!.name,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Daily Target: ${_activePlan!.dailyCalories} calories',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _macronutrientChip('Protein', '${_activePlan!.macronutrients['protein']?.toInt() ?? 0}g'),
+                                const SizedBox(width: 8),
+                                _macronutrientChip('Carbs', '${_activePlan!.macronutrients['carbs']?.toInt() ?? 0}g'),
+                                const SizedBox(width: 8),
+                                _macronutrientChip('Fat', '${_activePlan!.macronutrients['fat']?.toInt() ?? 0}g'),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.arrow_forward_ios),
-                  onPressed: isToday ? null : _goToNextDay,
-                  tooltip: isToday ? 'Cannot go to future dates' : 'Next day',
-                ),
-              ],
-            ),
-          ),
-          
-          // Active nutrition plan display
-          if (_activePlan != null)
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _activePlan!.name,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Daily Target: ${_activePlan!.dailyCalories} calories',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          _macronutrientChip('Protein', '${_activePlan!.macronutrients['protein']?.toInt() ?? 0}g'),
-                          const SizedBox(width: 8),
-                          _macronutrientChip('Carbs', '${_activePlan!.macronutrients['carbs']?.toInt() ?? 0}g'),
-                          const SizedBox(width: 8),
-                          _macronutrientChip('Fat', '${_activePlan!.macronutrients['fat']?.toInt() ?? 0}g'),
-                        ],
-                      ),
-                    ],
+              
+              const SizedBox(height: 16),
+              
+              // Meals list
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Text(
+                  'Meals',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-            ),
-          
-          // Meals list
-          Expanded(
-            child: StreamBuilder<List<MealEntry>>(
-              stream: _mealService.getClientMealsForDate(widget.clientId, _selectedDate),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+              
+              const SizedBox(height: 8),
+              
+              StreamBuilder<List<MealEntry>>(
+                stream: _mealService.getClientMealsForDate(widget.clientId, _selectedDate),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SizedBox(
+                      height: 200,
+                      child: Center(child: CircularProgressIndicator())
+                    );
+                  }
 
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text('Error: ${snapshot.error}'),
-                  );
-                }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text('Error: ${snapshot.error}'),
+                      ),
+                    );
+                  }
 
-                final meals = snapshot.data ?? [];
+                  final meals = snapshot.data ?? [];
 
-                if (meals.isEmpty) {
-                  return Center(
+                  if (meals.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Card(
+                        child: SizedBox(
+                          height: 200,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.no_food,
+                                  size: 64,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No meals recorded for this day',
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 8),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                  child: Text(
+                                    'The client has not logged any meals for ${isToday ? 'today' : DateFormat('MMM d, yyyy').format(_selectedDate)}.',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.no_food,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No meals recorded for this day',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'The client has not logged any meals for ${isToday ? 'today' : DateFormat('MMM d, yyyy').format(_selectedDate)}.',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: meals.map((meal) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: _buildMealCard(meal),
+                      )).toList(),
                     ),
                   );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: meals.length,
-                  itemBuilder: (context, index) {
-                    final meal = meals[index];
-                    return _buildMealCard(meal);
-                  },
-                );
-              },
-            ),
-          ),
-          
-          // Daily nutrition progress
-          if (_activePlan != null)
-            StreamBuilder<Map<String, double>>(
-              stream: _mealService.calculateNutritionProgress(widget.clientId, _selectedDate),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-                  return const SizedBox(
-                    height: 200,
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-
-                final progress = snapshot.data ?? {
-                  'calories': 0.0,
-                  'protein': 0.0,
-                  'carbs': 0.0,
-                  'fat': 0.0,
-                };
-                return Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, -2),
-                      ),
-                    ],
+                },
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Daily nutrition progress
+              if (_activePlan != null) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Text(
+                    'Daily Progress',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Daily Progress',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                ),
+                
+                const SizedBox(height: 8),
+                
+                StreamBuilder<Map<String, double>>(
+                  stream: _mealService.calculateNutritionProgress(widget.clientId, _selectedDate),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                      return const SizedBox(
+                        height: 150,
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+
+                    final progress = snapshot.data ?? {
+                      'calories': 0.0,
+                      'protein': 0.0,
+                      'carbs': 0.0,
+                      'fat': 0.0,
+                    };
+                    
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Calories progress
+                              _buildNutrientProgressBar(
+                                'Calories',
+                                progress['calories'] ?? 0.0,
+                                '${(progress['calories'] ?? 0.0) * _activePlan!.dailyCalories ~/ 1} / ${_activePlan!.dailyCalories} kcal',
+                              ),
+                              const SizedBox(height: 16),
+                              
+                              // Macronutrients
+                              _buildNutrientProgressBar(
+                                'Protein',
+                                progress['protein'] ?? 0.0,
+                                '${((progress['protein'] ?? 0.0) * (_activePlan!.macronutrients['protein'] ?? 0)).toStringAsFixed(1)} / ${_activePlan!.macronutrients['protein']?.toStringAsFixed(1) ?? 0} g',
+                              ),
+                              const SizedBox(height: 12),
+                              _buildNutrientProgressBar(
+                                'Carbs',
+                                progress['carbs'] ?? 0.0,
+                                '${((progress['carbs'] ?? 0.0) * (_activePlan!.macronutrients['carbs'] ?? 0)).toStringAsFixed(1)} / ${_activePlan!.macronutrients['carbs']?.toStringAsFixed(1) ?? 0} g',
+                              ),
+                              const SizedBox(height: 12),
+                              _buildNutrientProgressBar(
+                                'Fat',
+                                progress['fat'] ?? 0.0,
+                                '${((progress['fat'] ?? 0.0) * (_activePlan!.macronutrients['fat'] ?? 0)).toStringAsFixed(1)} / ${_activePlan!.macronutrients['fat']?.toStringAsFixed(1) ?? 0} g',
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      // Calories progress
-                      _buildNutrientProgressBar(
-                        'Calories',
-                        progress['calories'] ?? 0.0,
-                        '${(progress['calories'] ?? 0.0) * _activePlan!.dailyCalories ~/ 1} / ${_activePlan!.dailyCalories} kcal',
-                      ),
-                      const SizedBox(height: 8),
-                      
-                      // Macronutrients
-                      _buildNutrientProgressBar(
-                        'Protein',
-                        progress['protein'] ?? 0.0,
-                        '${((progress['protein'] ?? 0.0) * (_activePlan!.macronutrients['protein'] ?? 0)).toStringAsFixed(1)} / ${_activePlan!.macronutrients['protein']?.toStringAsFixed(1) ?? 0} g',
-                      ),
-                      const SizedBox(height: 4),
-                      _buildNutrientProgressBar(
-                        'Carbs',
-                        progress['carbs'] ?? 0.0,
-                        '${((progress['carbs'] ?? 0.0) * (_activePlan!.macronutrients['carbs'] ?? 0)).toStringAsFixed(1)} / ${_activePlan!.macronutrients['carbs']?.toStringAsFixed(1) ?? 0} g',
-                      ),
-                      const SizedBox(height: 4),
-                      _buildNutrientProgressBar(
-                        'Fat',
-                        progress['fat'] ?? 0.0,
-                        '${((progress['fat'] ?? 0.0) * (_activePlan!.macronutrients['fat'] ?? 0)).toStringAsFixed(1)} / ${_activePlan!.macronutrients['fat']?.toStringAsFixed(1) ?? 0} g',
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-        ],
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
   
   Widget _buildMealCard(MealEntry meal) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -339,7 +384,7 @@ class _ClientMealHistoryScreenState extends State<ClientMealHistoryScreen> {
               ],
             ),
             
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             
             // Macronutrients section
             Text(
@@ -348,39 +393,42 @@ class _ClientMealHistoryScreenState extends State<ClientMealHistoryScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                _macronutrientChip(
-                  'Protein',
-                  '${meal.macronutrients['protein']?.toInt() ?? 0}g',
-                  Colors.red.shade100,
-                ),
-                const SizedBox(width: 8),
-                _macronutrientChip(
-                  'Carbs',
-                  '${meal.macronutrients['carbs']?.toInt() ?? 0}g',
-                  Colors.green.shade100,
-                ),
-                const SizedBox(width: 8),
-                _macronutrientChip(
-                  'Fat',
-                  '${meal.macronutrients['fat']?.toInt() ?? 0}g',
-                  Colors.blue.shade100,
-                ),
-              ],
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _macronutrientChip(
+                    'Protein',
+                    '${meal.macronutrients['protein']?.toInt() ?? 0}g',
+                    Colors.red.shade100,
+                  ),
+                  const SizedBox(width: 8),
+                  _macronutrientChip(
+                    'Carbs',
+                    '${meal.macronutrients['carbs']?.toInt() ?? 0}g',
+                    Colors.green.shade100,
+                  ),
+                  const SizedBox(width: 8),
+                  _macronutrientChip(
+                    'Fat',
+                    '${meal.macronutrients['fat']?.toInt() ?? 0}g',
+                    Colors.blue.shade100,
+                  ),
+                ],
+              ),
             ),
             
             // Micronutrients section
-            const SizedBox(height: 12),
             if (meal.micronutrients.isNotEmpty) ...[
+              const SizedBox(height: 16),
               Text(
                 'Micronutrients:',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -413,7 +461,7 @@ class _ClientMealHistoryScreenState extends State<ClientMealHistoryScreen> {
               ),
             ],
             
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             if (meal.description != null && meal.description!.isNotEmpty)
               Text(
                 meal.description!,
@@ -446,7 +494,7 @@ class _ClientMealHistoryScreenState extends State<ClientMealHistoryScreen> {
     }
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: chipColor,
         borderRadius: BorderRadius.circular(12),
@@ -471,42 +519,50 @@ class _ClientMealHistoryScreenState extends State<ClientMealHistoryScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-            const Spacer(),
+            Text(
+              label, 
+              style: const TextStyle(fontWeight: FontWeight.w500),
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(width: 8),
             Text(
               valueText,
               style: TextStyle(
                 color: isOverLimit ? Colors.red : null,
                 fontWeight: isOverLimit ? FontWeight.bold : null,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        Stack(
-          children: [
-            // Background track
-            Container(
-              height: 10,
-              width: double.infinity,
+        const SizedBox(height: 8),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            return Container(
+              width: constraints.maxWidth,
+              height: 12,
               decoration: BoxDecoration(
                 color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: BorderRadius.circular(6),
               ),
-            ),
-            // Progress indicator
-            Container(
-              height: 10,
-              width: MediaQuery.of(context).size.width * cappedProgress * 0.8, // Account for padding
-              decoration: BoxDecoration(
-                color: isOverLimit 
-                    ? Colors.red 
-                    : (progress > 0.9 ? Colors.green : Theme.of(context).colorScheme.primary),
-                borderRadius: BorderRadius.circular(5),
+              child: Stack(
+                children: [
+                  Container(
+                    height: 12,
+                    width: constraints.maxWidth * cappedProgress,
+                    decoration: BoxDecoration(
+                      color: isOverLimit 
+                          ? Colors.red 
+                          : (progress > 0.9 ? Colors.green : Theme.of(context).colorScheme.primary),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+            );
+          }
         ),
       ],
     );

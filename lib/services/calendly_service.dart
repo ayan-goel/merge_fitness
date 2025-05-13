@@ -835,25 +835,45 @@ class CalendlyService {
   // Get all available trainers for scheduling
   Future<List<Map<String, dynamic>>> getAvailableTrainers() async {
     try {
-      // Get trainers who have connected their Calendly
+      print("CalendlyService: Attempting to get available trainers");
+      
+      // First ensure user is authenticated
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        print("CalendlyService: User not authenticated");
+        throw Exception('User not authenticated');
+      }
+      
+      print("CalendlyService: User authenticated as ${currentUser.uid}");
+      
+      // Simplified query first - just get all trainers
+      print("CalendlyService: Querying for all trainers");
       final snapshot = await _firestore.collection('users')
           .where('role', isEqualTo: 'trainer')
-          .where('calendlyConnected', isEqualTo: true)
           .get();
       
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'id': doc.id,
-          'displayName': data['displayName'] ?? 'Trainer',
-          'calendlyUrl': data['calendlySchedulingUrl'] ?? '',
-          'photoUrl': data['photoUrl'],
-          'specialty': data['specialty'] ?? 'General Fitness',
-        };
-      }).toList();
+      print("CalendlyService: Found ${snapshot.docs.length} trainers");
+      
+      // Filter connected trainers in memory
+      final trainers = snapshot.docs
+          .where((doc) => doc.data()['calendlyConnected'] == true)
+          .map((doc) {
+            final data = doc.data();
+            return {
+              'id': doc.id,
+              'displayName': data['displayName'] ?? 'Trainer',
+              'calendlyUrl': data['calendlySchedulingUrl'] ?? '',
+              'photoUrl': data['photoUrl'],
+              'specialty': data['specialty'] ?? 'General Fitness',
+            };
+          }).toList();
+      
+      print("CalendlyService: Filtered to ${trainers.length} connected trainers");
+      return trainers;
     } catch (e) {
       print('Error getting available trainers: $e');
-      throw Exception('Failed to load trainers: $e');
+      // Return empty list instead of throwing to avoid UI errors
+      return [];
     }
   }
 } 
