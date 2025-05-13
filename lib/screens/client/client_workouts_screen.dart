@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../models/assigned_workout_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_template_service.dart';
+import '../../theme/app_styles.dart';
 import 'workout_detail_screen.dart';
 
 class ClientWorkoutsScreen extends StatefulWidget {
@@ -130,7 +131,7 @@ class _ClientWorkoutsScreenState extends State<ClientWorkoutsScreen> {
         children: [
           // Filters
           Container(
-            color: Colors.white,
+            color: AppStyles.backgroundCharcoal,
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

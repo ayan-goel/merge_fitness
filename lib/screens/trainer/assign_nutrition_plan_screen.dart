@@ -285,32 +285,52 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
-            // Plan Name
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Plan Name*',
-                hintText: 'e.g., Weight Loss Meal Plan',
-                border: OutlineInputBorder(),
+            // Plan Details Card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Plan Details',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Plan Name
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Plan Name*',
+                        hintText: 'e.g., Weight Loss Meal Plan',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a plan name';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Description
+                    TextFormField(
+                      controller: _descriptionController,
+                      decoration: const InputDecoration(
+                        labelText: 'Description (Optional)',
+                        hintText: 'Brief description of the nutrition plan',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 2,
+                    ),
+                  ],
+                ),
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a plan name';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            
-            // Description
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description (Optional)',
-                hintText: 'Brief description of the nutrition plan',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
             ),
             const SizedBox(height: 16),
             
@@ -629,15 +649,35 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
             ),
             const SizedBox(height: 16),
             
-            // Additional Notes
-            TextFormField(
-              controller: _notesController,
-              decoration: const InputDecoration(
-                labelText: 'Additional Notes (Optional)',
-                hintText: 'Any other instructions or notes for the client',
-                border: OutlineInputBorder(),
+            // Additional Notes Card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Additional Notes',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Notes field
+                    TextFormField(
+                      controller: _notesController,
+                      decoration: const InputDecoration(
+                        labelText: 'Additional Notes (Optional)',
+                        hintText: 'Any other instructions or notes for the client',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
               ),
-              maxLines: 3,
             ),
             const SizedBox(height: 24),
             

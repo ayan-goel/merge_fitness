@@ -708,13 +708,37 @@ class NutritionPlanCard extends StatelessWidget {
   }
   
   Widget _macronutrientChip(String label, String value, Color backgroundColor) {
+    // Define darker, more mature colors to replace the pastels
+    Color chipColor;
+    Color textColor = Colors.white;
+    
+    // Determine color based on the passed background color
+    if (backgroundColor == Colors.red.shade100) {
+      chipColor = const Color(0xFF8B2E35); // Darker red for protein
+    } else if (backgroundColor == Colors.green.shade100) {
+      chipColor = const Color(0xFF2E5C3E); // Darker green for carbs
+    } else if (backgroundColor == Colors.blue.shade100) {
+      chipColor = const Color(0xFF204060); // Darker blue for fat
+    } else if (backgroundColor == Colors.purple.shade100) {
+      chipColor = const Color(0xFF4A2E58); // Darker purple for micros
+    } else {
+      chipColor = backgroundColor;
+    }
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: chipColor,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Color.fromARGB(255, chipColor.red + 20, chipColor.green + 20, chipColor.blue + 20),
+          width: 1,
+        ),
       ),
-      child: Text('$label: $value'),
+      child: Text(
+        '$label: $value', 
+        style: TextStyle(color: textColor, fontWeight: FontWeight.w500)
+      ),
     );
   }
   

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'dart:math' show max;
 import '../../services/auth_service.dart';
 import '../../models/assigned_workout_model.dart';
 import '../../services/workout_template_service.dart';
@@ -445,7 +446,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                 children: [
                   _buildStatCard(
                     context,
-                    title: 'Workouts Completed',
+                    title: 'Days Completed',
                     value: '$_completedWorkoutsCount',
                     icon: Icons.fitness_center,
                     color: Colors.green,
@@ -672,14 +673,23 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
 
     print("Building progress chart with ${_weightEntries.length} weight entries");
 
-    // Sort entries by date (oldest to newest)
-    final sortedEntries = List<WeightEntry>.from(_weightEntries)
+    // Group weight entries by day to ensure only one data point per day
+    Map<String, WeightEntry> entriesByDate = {};
+    for (var entry in _weightEntries) {
+      String dateKey = DateFormat('yyyy-MM-dd').format(entry.date);
+      entriesByDate[dateKey] = entry;
+    }
+
+    // Convert to list and sort by date
+    List<WeightEntry> uniqueDailyEntries = entriesByDate.values.toList()
       ..sort((a, b) => a.date.compareTo(b.date));
 
     // Only show last 30 entries if there are more
-    final entriesToShow = sortedEntries.length > 30 
-        ? sortedEntries.sublist(sortedEntries.length - 30) 
-        : sortedEntries;
+    final entriesToShow = uniqueDailyEntries.length > 30 
+        ? uniqueDailyEntries.sublist(uniqueDailyEntries.length - 30) 
+        : uniqueDailyEntries;
+
+    print("Showing ${entriesToShow.length} unique daily entries");
 
     // Find min and max values for scaling
     double minY = double.infinity;
@@ -699,7 +709,6 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
     maxY = maxY * 1.1;
     
     print("Chart range: $minY to $maxY");
-    print("Number of data points: ${entriesToShow.length}");
 
     // Generate line chart data
     LineChartBarData lineData = LineChartBarData(
@@ -748,33 +757,39 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
         ),
         titlesData: FlTitlesData(
           show: true,
-          topTitles: AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          rightTitles: AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)), 
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           bottomTitles: AxisTitles(
+            axisNameWidget: const SizedBox.shrink(),
+            // For bottom titles, only show a few dates evenly spaced
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 30,
+              interval: max(1, (entriesToShow.length / 4).ceil().toDouble()), // Ensure interval is at least 1
               getTitlesWidget: (value, meta) {
-                // Show date for some entries
                 final index = value.toInt();
-                if (index % 5 == 0 && index < entriesToShow.length) {
-                  final date = entriesToShow[index].date;
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      DateFormat('MM/dd').format(date),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey,
+                // Only show 5 dates: first, 1/4, half, 3/4, and last
+                if (entriesToShow.isNotEmpty && index < entriesToShow.length) {
+                  int entryCount = entriesToShow.length;
+                  if (index == 0 || 
+                      index == entryCount - 1 || 
+                      index == (entryCount ~/ 2) ||
+                      index == (entryCount ~/ 4) ||
+                      index == (entryCount * 3 ~/ 4)) {
+                    final date = entriesToShow[index].date;
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        DateFormat('MM/dd').format(date),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey,
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  }
                 }
-                return const SizedBox();
+                return const SizedBox.shrink();
               },
             ),
           ),

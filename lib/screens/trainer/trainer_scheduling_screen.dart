@@ -7,6 +7,9 @@ import '../../services/calendly_service.dart';
 import '../../models/session_model.dart';
 import '../../models/user_model.dart';
 import 'location_sharing_screen.dart';
+import '../../theme/app_styles.dart';
+import '../../theme/app_widgets.dart';
+import '../../theme/app_animations.dart';
 
 class TrainerSchedulingScreen extends StatefulWidget {
   const TrainerSchedulingScreen({super.key});
@@ -263,7 +266,11 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                 ],
               ),
             ),
-            ...sessions.map((session) => _buildSessionRow(session)).toList(),
+            ...sessions.map((session) => AppAnimations.fadeSlide(
+              beginOffset: const Offset(0, 0.05),
+              duration: Duration(milliseconds: 400 + sessions.indexOf(session) * 100),
+              child: _buildSessionRow(session),
+            )).toList(),
             if (dateIndex < sortedDates.length - 1)
               const Divider(height: 32),
           ],
@@ -290,68 +297,71 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
   Widget _buildSessionRow(TrainingSession session) {
     final bool isCancelled = session.status == 'cancelled';
     
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-          color: isCancelled ? Colors.grey.shade100 : null,
-          child: Column(
-            children: [
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                leading: CircleAvatar(
-                  backgroundColor: isCancelled
-                      ? Colors.grey.withOpacity(0.2)
-                      : Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                  child: Icon(
-                    Icons.fitness_center,
-                    color: isCancelled ? Colors.grey : Theme.of(context).colorScheme.primary,
-                    size: 20,
-                  ),
-                ),
-                title: Text(
-                  session.clientName,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    decoration: isCancelled ? TextDecoration.lineThrough : null,
-                    color: isCancelled ? Colors.grey : null,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.access_time, size: 16),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '${DateFormat('h:mm a').format(session.startTime)} - ${DateFormat('h:mm a').format(session.endTime)}',
-                            style: TextStyle(
-                              decoration: isCancelled ? TextDecoration.lineThrough : null,
-                              color: isCancelled ? Colors.grey : null,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppStyles.surfaceCharcoal,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppStyles.cardShadow,
+        border: isCancelled 
+            ? Border.all(color: Colors.grey.withOpacity(0.3), width: 1)
+            : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: isCancelled
+                          ? AppStyles.dividerGrey.withOpacity(0.2)
+                          : AppStyles.backgroundCharcoal,
+                      borderRadius: BorderRadius.circular(12),
+                      border: isCancelled 
+                          ? Border.all(color: Colors.grey.withOpacity(0.5), width: 1)
+                          : null,
                     ),
-                    const SizedBox(height: 4),
-                    if (session.sessionType != null) ...[
+                    child: Icon(
+                      Icons.fitness_center,
+                      color: isCancelled ? Colors.grey : AppStyles.primaryBlue,
+                      size: 24,
+                    ),
+                  ),
+                  title: Text(
+                    session.clientName,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      decoration: isCancelled ? TextDecoration.lineThrough : null,
+                      color: isCancelled ? AppStyles.textGrey : AppStyles.textWhite,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.category, size: 16),
-                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: isCancelled ? Colors.grey : AppStyles.primaryBlue,
+                          ),
+                          const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              session.sessionType!,
+                              '${DateFormat('h:mm a').format(session.startTime)} - ${DateFormat('h:mm a').format(session.endTime)}',
                               style: TextStyle(
                                 decoration: isCancelled ? TextDecoration.lineThrough : null,
-                                color: isCancelled ? Colors.grey : null,
+                                color: isCancelled ? AppStyles.textGrey : AppStyles.textGrey,
+                                fontSize: 13,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -359,84 +369,135 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                    ],
-                    Row(
-                      children: [
-                        const Icon(Icons.email, size: 16),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            session.clientEmail,
-                            style: TextStyle(
-                              fontSize: 12,
-                              decoration: isCancelled ? TextDecoration.lineThrough : null,
-                              color: isCancelled ? Colors.grey : null,
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            size: 14,
+                            color: isCancelled ? Colors.grey : AppStyles.primaryBlue,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              session.location,
+                              style: TextStyle(
+                                decoration: isCancelled ? TextDecoration.lineThrough : null,
+                                color: isCancelled ? AppStyles.textGrey : AppStyles.textGrey,
+                                fontSize: 13,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                      if (isCancelled) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'CANCELLED',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
-                    ),
-                    
-                    if (isCancelled) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade100,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'CANCELLED',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
                     ],
-                  ],
+                  ),
+                  trailing: Wrap(
+                    spacing: 0,
+                    children: [
+                      if (session.calendlyUrl != null)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.open_in_new,
+                            size: 20,
+                            color: AppStyles.primaryBlue,
+                          ),
+                          tooltip: 'View in Calendly',
+                          padding: const EdgeInsets.all(8),
+                          constraints: const BoxConstraints(),
+                          onPressed: () async {
+                            final url = Uri.parse(session.calendlyUrl!);
+                            if (await canLaunchUrl(url)) {
+                              await launchUrl(url, mode: LaunchMode.externalApplication);
+                            }
+                          },
+                        ),
+                      if (!isCancelled)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.location_on,
+                            size: 20,
+                            color: AppStyles.softGold,
+                          ),
+                          tooltip: 'Share Location',
+                          padding: const EdgeInsets.all(8),
+                          constraints: const BoxConstraints(),
+                          onPressed: () => _navigateToLocationSharing(session),
+                        ),
+                      if (!isCancelled)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.cancel_outlined,
+                            size: 20,
+                            color: AppStyles.errorRed,
+                          ),
+                          tooltip: 'Cancel Session',
+                          padding: const EdgeInsets.all(8),
+                          constraints: const BoxConstraints(),
+                          onPressed: () => _showCancelSessionDialog(session),
+                        ),
+                    ],
+                  ),
                 ),
-                trailing: Wrap(
-                  spacing: 0,
-                  children: [
-                    if (session.calendlyUrl != null)
-                      IconButton(
-                        icon: const Icon(Icons.open_in_new, size: 20),
-                        tooltip: 'View in Calendly',
-                        padding: const EdgeInsets.all(8),
-                        constraints: const BoxConstraints(),
-                        onPressed: () async {
-                          final url = Uri.parse(session.calendlyUrl!);
-                          if (await canLaunchUrl(url)) {
-                            await launchUrl(url, mode: LaunchMode.externalApplication);
-                          }
-                        },
-                      ),
-                    if (!isCancelled)
-                      IconButton(
-                        icon: const Icon(Icons.location_on, color: Colors.blue, size: 20),
-                        tooltip: 'Share Location',
-                        padding: const EdgeInsets.all(8),
-                        constraints: const BoxConstraints(),
-                        onPressed: () => _navigateToLocationSharing(session),
-                      ),
-                    if (session.canBeCancelled)
-                      IconButton(
-                        icon: const Icon(Icons.cancel, color: Colors.red, size: 20),
-                        tooltip: 'Cancel Session',
-                        padding: const EdgeInsets.all(8),
-                        constraints: const BoxConstraints(),
-                        onPressed: () => _showCancelSessionDialog(session),
-                      ),
-                  ],
+              ],
+            ),
+          ),
+          if (session.notes != null && session.notes!.isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: const BoxDecoration(
+                color: AppStyles.backgroundCharcoal,
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
                 ),
               ),
-            ],
-          ),
-        ),
-      ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'NOTES',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: AppStyles.textGrey,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    session.notes!,
+                    style: TextStyle(
+                      color: isCancelled ? AppStyles.textGrey.withOpacity(0.7) : AppStyles.textGrey,
+                      fontStyle: FontStyle.italic,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
   
@@ -460,25 +521,103 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
         builder: (BuildContext context) {
           return AlertDialog(
             title: const Text('Cancel Training Session'),
+            backgroundColor: AppStyles.cardCharcoal,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'Are you sure you want to cancel this session?',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppStyles.textWhite,
+                  ),
                 ),
                 const SizedBox(height: 16),
-                Text('Client: ${session.clientName}'),
-                Text('Date: ${session.formattedDate}'),
-                Text('Time: ${session.formattedTimeRange}'),
-                const SizedBox(height: 16),
-                const Text('Reason for cancellation (optional):'),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppStyles.backgroundCharcoal,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_today,
+                            size: 16,
+                            color: AppStyles.primaryBlue,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Date: ${session.formattedDate}',
+                            style: const TextStyle(color: AppStyles.textWhite),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.access_time,
+                            size: 16,
+                            color: AppStyles.primaryBlue,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Time: ${session.formattedTimeRange}',
+                            style: const TextStyle(color: AppStyles.textWhite),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.person,
+                            size: 16,
+                            color: AppStyles.primaryBlue,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Client: ${session.clientName}',
+                              style: const TextStyle(color: AppStyles.textWhite),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Reason for cancellation (optional):',
+                  style: TextStyle(color: AppStyles.textGrey),
+                ),
+                const SizedBox(height: 8),
                 TextField(
                   controller: reasonController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: 'Enter reason here',
+                    hintStyle: TextStyle(color: AppStyles.textGrey.withOpacity(0.5)),
+                    filled: true,
+                    fillColor: AppStyles.inputFieldCharcoal,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppStyles.primaryBlue, width: 2),
+                    ),
                   ),
+                  style: const TextStyle(color: AppStyles.textWhite),
                   maxLines: 2,
                 ),
               ],
@@ -486,11 +625,18 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppStyles.textWhite,
+                ),
                 child: const Text('No, Keep It'),
               ),
-              TextButton(
+              ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Yes, Cancel', style: TextStyle(color: Colors.red)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppStyles.errorRed,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Yes, Cancel'),
               ),
             ],
           );
@@ -498,42 +644,44 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
       );
       
       if (result == true) {
-        try {
-          setState(() {
-            _isLoading = true;
-          });
-          
-          final reason = reasonController.text;
-          
-          await _calendlyService.cancelSession(
-            session.id,
-            cancellationReason: reason.isEmpty ? null : reason,
+        setState(() {
+          _isLoading = true;
+        });
+        
+        final reason = reasonController.text;
+        
+        await _calendlyService.cancelSession(
+          session.id,
+          cancellationReason: reason.isEmpty ? null : reason,
+        );
+        
+        await _loadTrainerData();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Session cancelled successfully'),
+              backgroundColor: AppStyles.backgroundCharcoal,
+              behavior: SnackBarBehavior.floating,
+            ),
           );
-          
-          // Reload sessions
-          await _loadTrainerData();
-          
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Session cancelled successfully')),
-            );
-          }
-        } catch (e) {
-          print('Error cancelling session: $e');
-          
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error cancelling session: $e')),
-            );
-          }
-        } finally {
-          setState(() {
-            _isLoading = false;
-          });
         }
       }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error cancelling session: $e'),
+            backgroundColor: AppStyles.errorRed,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } finally {
-      // Ensure controller is always disposed, even if the dialog is dismissed
       reasonController.dispose();
     }
   }

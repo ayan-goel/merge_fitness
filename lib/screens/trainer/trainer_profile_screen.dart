@@ -233,20 +233,28 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
   }
   
   Future<void> _showEventTypeSelectionDialog() async {
+    // Store a local context reference to avoid using potentially deactivated context
+    final BuildContext localContext = context;
+    
     // Filter to only show active event types
     final activeEventTypes = _eventTypes.where((type) => type['active'] == true).toList();
     
     if (activeEventTypes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No active event types found. Please activate at least one event type in your Calendly account.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(localContext).showSnackBar(
+          const SnackBar(content: Text('No active event types found. Please activate at least one event type in your Calendly account.')),
+        );
+      }
       return;
     }
     
+    // Check if widget is still mounted before showing dialog
+    if (!mounted) return;
+    
     // Show dialog to select event type
     await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+      context: localContext,
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Select Session Type'),
         content: SizedBox(
           width: double.maxFinite,
@@ -259,7 +267,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                 title: Text(eventType['name']),
                 subtitle: Text('${eventType['duration']} minutes'),
                 onTap: () async {
-                  Navigator.of(context).pop();
+                  Navigator.of(dialogContext).pop();
                   
                   // Save selected event type
                   try {
@@ -269,14 +277,14 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                     await _loadTrainerData();
                     
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.of(localContext).showSnackBar(
                         SnackBar(content: Text('Selected ${eventType['name']} as default session type')),
                       );
                     }
                   } catch (e) {
                     print('Error selecting event type: $e');
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.of(localContext).showSnackBar(
                         SnackBar(content: Text('Error selecting event type: $e')),
                       );
                     }
@@ -288,7 +296,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
         ],
@@ -478,28 +486,32 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                           ],
                           
                           const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Flexible(
-                                child: OutlinedButton.icon(
-                                  onPressed: _showEventTypeSelectionDialog,
-                                  icon: const Icon(Icons.event),
-                                  label: const Text('Change Event Type'),
+                              ElevatedButton.icon(
+                                onPressed: _showEventTypeSelectionDialog,
+                                icon: const Icon(Icons.event),
+                                label: const Text('Change Event Type'),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: OutlinedButton.icon(
-                                  onPressed: _isDisconnecting ? null : _disconnectCalendly,
-                                  icon: const Icon(Icons.link_off),
-                                  label: _isDisconnecting
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(strokeWidth: 2),
-                                        )
-                                      : const Text('Disconnect'),
+                              const SizedBox(height: 12),
+                              ElevatedButton.icon(
+                                onPressed: _isDisconnecting ? null : _disconnectCalendly,
+                                icon: const Icon(Icons.link_off),
+                                label: _isDisconnecting
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Text('Disconnect'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
                                 ),
                               ),
                             ],
@@ -527,7 +539,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
                 
                 // Save Button
                 if (_isEditing)
@@ -545,7 +557,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                 
                 // Logout Section
                 if (!_isEditing) ...[
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
                   const Divider(),
                   const SizedBox(height: 16),
                   Center(

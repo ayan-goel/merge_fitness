@@ -1,23 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/painting.dart';
+
+// Models
 import '../../models/user_model.dart';
 import '../../models/assigned_workout_model.dart';
+import '../../models/weight_entry_model.dart';
+import '../../models/session_model.dart';
+import '../../models/nutrition_plan_model.dart';
+
+// Services
 import '../../services/auth_service.dart';
 import '../../services/workout_template_service.dart';
 import '../../services/weight_service.dart';
 import '../../services/calendly_service.dart';
-import '../../models/weight_entry_model.dart';
-import '../../models/session_model.dart';
+import '../../services/nutrition_service.dart';
+import '../../services/location_service.dart';
+
+// Themes
+import '../../theme/app_styles.dart';
+import '../../theme/app_widgets.dart';
+import '../../theme/app_animations.dart';
+
+// Screens
 import 'workout_detail_screen.dart';
 import 'schedule_session_screen.dart';
 import 'select_trainer_screen.dart';
 import 'all_sessions_screen.dart';
-import '../../models/nutrition_plan_model.dart';
-import '../../services/nutrition_service.dart';
-import '../../screens/home_screen.dart';
 import 'trainer_location_screen.dart';
-import '../../services/location_service.dart';
+import '../../screens/home_screen.dart';
 
 class ClientDashboard extends StatefulWidget {
   const ClientDashboard({super.key});
@@ -48,6 +60,56 @@ class _ClientDashboardState extends State<ClientDashboard> {
   
   // Session tracking
   List<TrainingSession> _upcomingSessions = [];
+  
+  // List of motivational messages
+  final List<String> _motivationalMessages = [
+    "Get ready to crush the day!",
+    "Small progress is still progress.",
+    "Your only competition is yourself yesterday.",
+    "Strength doesn't come from what you can do; it comes from overcoming what you thought you couldn't.",
+    "The difference between try and triumph is just a little umph!",
+    "Don't wish for it, work for it.",
+    "Sweat now, shine later.",
+    "Your body can stand almost anything. It's your mind you have to convince.",
+    "No matter how slow you go, you're still lapping everyone on the couch.",
+    "The pain you feel today will be the strength you feel tomorrow.",
+    "The only bad workout is the one that didn't happen.",
+    "Make your body the sexiest outfit you own.",
+    "The hardest lift of all is lifting your butt off the couch.",
+    "Strive for progress, not perfection.",
+    "Wake up with determination, go to bed with satisfaction.",
+    "What seems impossible today will be your warm-up tomorrow.",
+    "You don't have to be extreme, just consistent.",
+    "The only place where success comes before work is in the dictionary.",
+    "Don't stop when you're tired. Stop when you're done.",
+    "Good things come to those who sweat.",
+    "Your health is an investment, not an expense.",
+    "Well done is better than well said.",
+    "It's not about having time, it's about making time.",
+    "When you feel like quitting, remember why you started.",
+    "The body achieves what the mind believes.",
+    "Discipline is choosing between what you want now and what you want most.",
+    "You're only one workout away from a good mood.",
+    "Fitness is not about being better than someone else, it's about being better than you used to be.",
+    "Motivation is what gets you started. Habit is what keeps you going.",
+    "Push yourself because no one else is going to do it for you.",
+    "The greatest wealth is health.",
+    "Take care of your body. It's the only place you have to live.",
+    "The harder you work for something, the greater you'll feel when you achieve it.",
+    "Respect your body. It's the only one you get.",
+    "Fall in love with taking care of yourself.",
+    "Today I will do what others won't, so tomorrow I can do what others can't.",
+    "Results happen over time, not overnight.",
+    "Change happens at the edge of your comfort zone.",
+    "Your body hears everything your mind says. Stay positive.",
+    "Don't count the days, make the days count."
+  ];
+  
+  // Get a random motivational message
+  String get _randomMotivationalMessage {
+    final random = DateTime.now().millisecondsSinceEpoch;
+    return _motivationalMessages[random % _motivationalMessages.length];
+  }
   
   @override
   void initState() {
@@ -299,39 +361,142 @@ class _ClientDashboardState extends State<ClientDashboard> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: AppWidgets.circularProgressIndicator(
+          color: AppStyles.primaryBlue,
+          size: 50,
+        ),
+      );
     }
     
     if (_client == null) {
-      return const Center(child: Text('Error loading user data'));
+      return const Center(
+        child: Text(
+          'Error loading user data',
+          style: TextStyle(
+            color: AppStyles.textWhite,
+            fontSize: 16,
+          ),
+        ),
+      );
     }
     
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
+        elevation: 0,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          padding: AppStyles.screenPadding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Welcome Card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Welcome, ${_client!.displayName ?? 'Client'}',
-                        style: Theme.of(context).textTheme.headlineSmall,
+              // Welcome Card with glass effect
+              AppAnimations.fadeSlide(
+                beginOffset: const Offset(0, 0.1),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppStyles.surfaceCharcoal.withOpacity(0.9),
+                        AppStyles.backgroundCharcoal.withOpacity(0.95),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppStyles.primaryBlue.withOpacity(0.3),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Today is ${DateFormat('EEEE, MMMM d').format(DateTime.now())}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.grey[600],
+                    ],
+                  ),
+                  child: Stack(
+                    children: [
+                      // Content
+                      Padding(
+                        padding: const EdgeInsets.all(28.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppStyles.primaryBlue.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                  child: Text(
+                                    DateFormat('EEEE, MMMM d').format(DateTime.now()),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppStyles.primaryBlue.withOpacity(0.9),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 18),
+                            Text(
+                              'Welcome, ${_client!.displayName ?? 'Client'}',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: AppStyles.textWhite,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppStyles.backgroundCharcoal.withOpacity(0.4),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppStyles.textGrey.withOpacity(0.1),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppStyles.softGold.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.format_quote,
+                                      color: AppStyles.softGold,
+                                      size: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      _randomMotivationalMessage,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        height: 1.4,
+                                        color: AppStyles.textWhite.withOpacity(0.9),
+                                        fontStyle: FontStyle.italic,
+                                        fontWeight: FontWeight.w300,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -341,35 +506,33 @@ class _ClientDashboardState extends State<ClientDashboard> {
               
               const SizedBox(height: 24),
               
-              // Today's Workout Section with section header
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: Text(
-                  "Today's Workout",
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+              // Today's Workout Section
+              AppWidgets.sectionHeader(
+                title: "Today's Workout",
+                onActionPressed: null,
+                actionLabel: '',
               ),
               
               // Workouts list with fixed height
-              SizedBox(
-                height: 300, // Fixed height for workout list
-                child: StreamBuilder<List<AssignedWorkout>>(
-                  stream: _workoutService.getCurrentWorkouts(_client!.uid),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Text('Error: ${snapshot.error}'),
-                      );
-                    }
-                    
-                    final workouts = snapshot.data ?? [];
-                    
-                    if (workouts.isEmpty) {
-                      return Center(
+              StreamBuilder<List<AssignedWorkout>>(
+                stream: _workoutService.getCurrentWorkouts(_client!.uid),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text('Error: ${snapshot.error}'),
+                    );
+                  }
+                  
+                  final workouts = snapshot.data ?? [];
+                  
+                  if (workouts.isEmpty) {
+                    return SizedBox(
+                      height: 180, // Just enough height for empty state
+                      child: Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -389,47 +552,45 @@ class _ClientDashboardState extends State<ClientDashboard> {
                             ),
                           ],
                         ),
-                      );
-                    }
-                    
-                    return ListView.builder(
-                      // Disable scrolling on this ListView since it's inside a SingleChildScrollView
-                      physics: const NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      itemCount: workouts.length,
-                      itemBuilder: (context, index) {
-                        final workout = workouts[index];
-                        return TodayWorkoutCard(
-                          workout: workout,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => WorkoutDetailScreen(
-                                  workout: workout,
-                                ),
-                              ),
-                            ).then((_) {
-                              // Recalculate stats when returning from workout detail
-                              _calculateStats();
-                            });
-                          },
-                        );
-                      },
+                      ),
                     );
-                  },
-                ),
+                  }
+                  
+                  return ListView.builder(
+                    // Disable scrolling on this ListView since it's inside a SingleChildScrollView
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: workouts.length,
+                    itemBuilder: (context, index) {
+                      final workout = workouts[index];
+                      return TodayWorkoutCard(
+                        workout: workout,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => WorkoutDetailScreen(
+                                workout: workout,
+                              ),
+                            ),
+                          ).then((_) {
+                            // Recalculate stats when returning from workout detail
+                            _calculateStats();
+                          });
+                        },
+                      );
+                    },
+                  );
+                },
               ),
               
               const SizedBox(height: 24),
               
-              // Upcoming Sessions Section
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: Text(
-                  'Training Sessions',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+              // Upcoming Sessions Section with glass-morphism header
+              AppWidgets.sectionHeader(
+                title: 'Training Sessions',
+                onActionPressed: _upcomingSessions.isNotEmpty ? _viewAllSessions : null,
+                actionLabel: 'View All',
               ),
               
               // Show upcoming sessions if available
@@ -548,150 +709,24 @@ class _ClientDashboardState extends State<ClientDashboard> {
                 ),
               ],
               
-              // Schedule button
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    // Navigate to trainer selection screen instead of directly to scheduling
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => SelectTrainerScreen(
-                          clientId: _client!.uid,
-                        ),
-                      ),
-                    ).then((_) {
-                      // Refresh sessions on return
-                      _loadUpcomingSessions();
-                    });
-                  },
-                  icon: const Icon(Icons.calendar_month),
-                  label: Text(_upcomingSessions.isEmpty 
-                    ? 'Schedule a training session'
-                    : 'Schedule another session'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
-                  ),
-                ),
-              ),
-              
-              const SizedBox(height: 8),
+              const SizedBox(height: 32),
               
               // Weight Entry Section
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.monitor_weight_outlined,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Track Your Weight',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      if (_todayWeightEntry != null) ...[
-                        // Show today's entry with improved styling
-                        Card(
-                          color: Colors.green.shade50,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            side: BorderSide(color: Colors.green.shade300, width: 1),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.check_circle, color: Colors.green, size: 24),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Weight recorded for today!',
-                                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${_todayWeightEntry!.weightInPounds.toStringAsFixed(1)} lbs',
-                                        style: Theme.of(context).textTheme.bodyLarge,
-                                      ),
-                                      if (_todayWeightEntry!.bmi != null) ...[
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          'BMI: ${_todayWeightEntry!.bmi!.toStringAsFixed(1)} (${WeightEntry.getBMICategory(_todayWeightEntry!.bmi!)})',
-                                          style: Theme.of(context).textTheme.bodyMedium,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ] else ...[
-                        // Allow weight entry
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _weightController,
-                                keyboardType: TextInputType.number,
-                                decoration: InputDecoration(
-                                  labelText: 'Enter Today\'s Weight (lbs)',
-                                  hintText: _client?.weight != null 
-                                    ? '${WeightEntry.kgToPounds(_client!.weight!).toStringAsFixed(1)} lbs' 
-                                    : 'Enter weight',
-                                  suffixText: 'lbs',
-                                  border: const OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            SizedBox(
-                              width: 100,
-                              child: ElevatedButton(
-                                onPressed: _isSubmittingWeight ? null : _submitWeightEntry,
-                                child: _isSubmittingWeight
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2.0),
-                                    )
-                                  : const Text('Save'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+              AppWidgets.sectionHeader(
+                title: 'Track Your Progress',
+                onActionPressed: null,
+                actionLabel: '',
               ),
               
-              const SizedBox(height: 24),
+              _buildWeightEntryCard(),
+              
+              const SizedBox(height: 32),
               
               // Today's Stats
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: Text(
-                  'Your Progress',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+              AppWidgets.sectionHeader(
+                title: 'Your Stats',
+                onActionPressed: null,
+                actionLabel: '',
               ),
               
               Row(
@@ -735,24 +770,48 @@ class _ClientDashboardState extends State<ClientDashboard> {
     required Color color,
   }) {
     return Expanded(
-      child: Card(
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppStyles.surfaceCharcoal,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: AppStyles.cardShadow,
+          border: Border.all(
+            color: color.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(20.0),
           child: Column(
             children: [
-              Icon(
-                icon,
-                size: 32,
-                color: color,
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  size: 24,
+                  color: color,
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Text(
                 value,
-                style: Theme.of(context).textTheme.titleLarge,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppStyles.textWhite,
+                ),
               ),
               Text(
                 title,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppStyles.textGrey,
+                ),
               ),
             ],
           ),
@@ -763,127 +822,182 @@ class _ClientDashboardState extends State<ClientDashboard> {
   
   // Build upcoming session card
   Widget _buildUpcomingSessionCard(TrainingSession session) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(10),
+    return AppAnimations.fadeSlide(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: AppStyles.surfaceCharcoal,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: AppStyles.cardShadow,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: AppStyles.primaryGradient,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.event,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.event,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 20,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          session.formattedTimeRange,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppStyles.textWhite,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          session.location,
+                          style: TextStyle(
+                            color: AppStyles.textGrey,
+                            fontSize: 14,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppStyles.primaryBlue.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.person,
+                                size: 12,
+                                color: AppStyles.primaryBlue,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'With ${session.trainerName}',
+                              style: TextStyle(
+                                color: AppStyles.primaryBlue,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        session.formattedTimeRange,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                  if (session.canBeCancelled)
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        popupMenuTheme: PopupMenuThemeData(
+                          color: AppStyles.cardCharcoal,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        session.location,
-                        style: TextStyle(
-                          color: Colors.grey[700],
-                          fontSize: 14,
+                      child: PopupMenuButton(
+                        icon: Icon(
+                          Icons.more_vert,
+                          color: AppStyles.textGrey,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.person, size: 14, color: Colors.grey[700]),
-                          const SizedBox(width: 4),
-                          Text(
-                            'With ${session.trainerName}',
-                            style: TextStyle(
-                              color: Colors.grey[700],
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                        tooltip: 'Session Options',
+                        elevation: 8,
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'cancel',
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.cancel,
+                                  color: AppStyles.errorRed,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Cancel Session',
+                                  style: TextStyle(color: AppStyles.textWhite),
+                                ),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'track',
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.location_on,
+                                  color: AppStyles.primaryBlue,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Track Trainer',
+                                  style: TextStyle(color: AppStyles.textWhite),
+                                ),
+                              ],
                             ),
                           ),
                         ],
+                        onSelected: (value) {
+                          if (value == 'cancel') {
+                            _showCancelSessionDialog(session);
+                          } else if (value == 'track') {
+                            _showTrainerLocationDialog(session);
+                          }
+                        },
                       ),
-                    ],
-                  ),
-                ),
-                if (session.canBeCancelled)
-                  PopupMenuButton(
-                    icon: const Icon(Icons.more_vert),
-                    tooltip: 'Session Options',
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'cancel',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.cancel, color: Colors.red, size: 18),
-                            const SizedBox(width: 8),
-                            const Text('Cancel Session'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'track',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.location_on, color: Colors.blue, size: 18),
-                            const SizedBox(width: 8),
-                            const Text('Track Trainer'),
-                          ],
-                        ),
-                      ),
-                    ],
-                    onSelected: (value) {
-                      if (value == 'cancel') {
-                        _showCancelSessionDialog(session);
-                      } else if (value == 'track') {
-                        _showTrainerLocationDialog(session);
-                      }
-                    },
-                  ),
-              ],
-            ),
-            
-            if (session.notes != null && session.notes!.isNotEmpty) ...[
-              const Divider(height: 16),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.notes, size: 16, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      session.notes!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[700],
-                        fontStyle: FontStyle.italic,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
                 ],
               ),
+              
+              if (session.notes != null && session.notes!.isNotEmpty) ...[
+                const Divider(
+                  height: 24,
+                  thickness: 1,
+                  color: AppStyles.dividerGrey,
+                ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.notes,
+                      size: 16,
+                      color: AppStyles.textGrey,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        session.notes!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppStyles.textGrey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -1193,145 +1307,461 @@ class _ClientDashboardState extends State<ClientDashboard> {
     }
   }
 
+  Widget _buildWeightEntryCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppStyles.surfaceCharcoal,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppStyles.cardShadow,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: AppStyles.primaryGradient,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.monitor_weight_outlined,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  'Track Your Weight',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppStyles.textWhite,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            
+            if (_todayWeightEntry != null) ...[
+              // Show today's entry with improved styling
+              Container(
+                decoration: BoxDecoration(
+                  color: AppStyles.successGreen.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppStyles.successGreen.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppStyles.successGreen.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check_circle,
+                          color: AppStyles.successGreen,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Weight recorded for today!',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppStyles.textWhite,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${_todayWeightEntry!.weightInPounds.toStringAsFixed(1)} lbs',
+                              style: const TextStyle(
+                                color: AppStyles.textWhite,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (_todayWeightEntry!.bmi != null) ...[
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Text(
+                                    'BMI: ${_todayWeightEntry!.bmi!.toStringAsFixed(1)}',
+                                    style: const TextStyle(
+                                      color: AppStyles.textGrey,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _getBmiColor(_todayWeightEntry!.bmi!).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: _getBmiColor(_todayWeightEntry!.bmi!).withOpacity(0.3),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      WeightEntry.getBMICategory(_todayWeightEntry!.bmi!),
+                                      style: TextStyle(
+                                        color: _getBmiColor(_todayWeightEntry!.bmi!),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ] else ...[
+              // Allow weight entry
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppStyles.backgroundCharcoal,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "What's your weight today?",
+                      style: TextStyle(
+                        color: AppStyles.textWhite,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "Tracking regularly helps monitor your progress.",
+                      style: TextStyle(
+                        color: AppStyles.textGrey,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _weightController,
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(color: AppStyles.textWhite),
+                            decoration: InputDecoration(
+                              labelText: 'Enter Weight (lbs)',
+                              hintText: _client?.weight != null 
+                                ? '${WeightEntry.kgToPounds(_client!.weight!).toStringAsFixed(1)} lbs' 
+                                : 'Enter weight',
+                              suffixText: 'lbs',
+                              filled: true,
+                              fillColor: AppStyles.inputFieldCharcoal,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: AppStyles.primaryBlue,
+                                  width: 2,
+                                ),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        SizedBox(
+                          width: 100,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: _isSubmittingWeight ? null : _submitWeightEntry,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppStyles.primaryBlue,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: AppStyles.primaryBlue.withOpacity(0.4),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: _isSubmittingWeight
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.0,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Text(
+                                  'Save',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // Helper function to get BMI category color
+  Color _getBmiColor(double bmi) {
+    if (bmi < 18.5) {
+      return Colors.blue; // Underweight
+    } else if (bmi < 25) {
+      return AppStyles.successGreen; // Normal
+    } else if (bmi < 30) {
+      return AppStyles.warningAmber; // Overweight
+    } else {
+      return AppStyles.errorRed; // Obese
+    }
+  }
+
   Widget _buildNutritionPlanCard() {
     return FutureBuilder<NutritionPlan?>(
       future: _nutritionService.getCurrentNutritionPlan(_client!.uid),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Center(
-                child: CircularProgressIndicator(),
-              ),
+          return Container(
+            height: 200,
+            decoration: BoxDecoration(
+              color: AppStyles.surfaceCharcoal,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: AppStyles.cardShadow,
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(),
             ),
           );
         }
         
         final currentPlan = snapshot.data;
         
-        return Card(
+        return Container(
+          decoration: BoxDecoration(
+            color: AppStyles.surfaceCharcoal,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: AppStyles.cardShadow,
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(
-                      Icons.restaurant_menu,
-                      color: Theme.of(context).colorScheme.primary,
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        gradient: AppStyles.accentGradient,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.restaurant_menu,
+                        color: Colors.white,
+                        size: 24,
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Nutrition Plan',
-                      style: Theme.of(context).textTheme.titleMedium,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        'Nutrition Plan',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppStyles.textWhite,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                    const Spacer(),
-                    TextButton(
+                    TextButton.icon(
                       onPressed: () {
                         HomeScreen.navigateToTab(context, 3); // Navigate to Food tab
                       },
-                      child: const Text('View All'),
+                      icon: const Icon(
+                        Icons.arrow_forward,
+                        size: 16,
+                      ),
+                      label: const Text('View All'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppStyles.softGold,
+                      ),
                     ),
                   ],
                 ),
-                const Divider(),
+                const SizedBox(height: 16),
+                const Divider(color: AppStyles.dividerGrey, height: 1),
+                const SizedBox(height: 16),
                 if (currentPlan != null) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            'CURRENT',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            currentPlan.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.local_fire_department, size: 16),
-                      const SizedBox(width: 8),
-                      Text('${currentPlan.dailyCalories} calories daily'),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Text(
-                              '${currentPlan.macronutrients['protein']?.toInt() ?? 0}g',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppStyles.softGold.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: AppStyles.softGold.withOpacity(0.3),
+                                width: 1,
                               ),
                             ),
-                            const Text('Protein'),
-                          ],
-                        ),
+                            child: const Text(
+                              'CURRENT PLAN',
+                              style: TextStyle(
+                                color: AppStyles.softGold,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              currentPlan.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: AppStyles.textWhite,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Text(
-                              '${currentPlan.macronutrients['carbs']?.toInt() ?? 0}g',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const Text('Carbs'),
-                          ],
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppStyles.backgroundCharcoal,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ),
-                      Expanded(
                         child: Column(
                           children: [
-                            Text(
-                              '${currentPlan.macronutrients['fat']?.toInt() ?? 0}g',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.local_fire_department,
+                                  size: 18,
+                                  color: AppStyles.softGold,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${currentPlan.dailyCalories} calories daily',
+                                  style: const TextStyle(
+                                    color: AppStyles.textWhite,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const Text('Fat'),
+                            const SizedBox(height: 16),
+                            const Divider(color: AppStyles.dividerGrey, height: 1),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                _buildMacronutrient(
+                                  label: 'Protein',
+                                  value: '${currentPlan.macronutrients['protein']?.toInt() ?? 0}g',
+                                  color: AppStyles.primaryBlue,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildMacronutrient(
+                                  label: 'Carbs',
+                                  value: '${currentPlan.macronutrients['carbs']?.toInt() ?? 0}g',
+                                  color: AppStyles.softGold,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildMacronutrient(
+                                  label: 'Fat',
+                                  value: '${currentPlan.macronutrients['fat']?.toInt() ?? 0}g',
+                                  color: AppStyles.errorRed,
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
                     ],
                   ),
                 ] else ...[
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16.0),
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: AppStyles.backgroundCharcoal,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Center(
-                      child: Text(
-                        'No active nutrition plan',
-                        style: TextStyle(color: Colors.grey),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.no_food,
+                            size: 40,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'No active nutrition plan',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppStyles.textGrey,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Contact your trainer to set up a nutrition plan',
+                            style: TextStyle(
+                              color: AppStyles.textGrey,
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -1341,6 +1771,52 @@ class _ClientDashboardState extends State<ClientDashboard> {
           ),
         );
       },
+    );
+  }
+  
+  Widget _buildMacronutrient({
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    // Create a darker, more saturated version of the color
+    Color darkColor = HSLColor.fromColor(color)
+        .withSaturation(0.7)
+        .withLightness(0.25)
+        .toColor();
+    
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: darkColor,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: color.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: AppStyles.textWhite,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppStyles.textWhite,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1357,12 +1833,18 @@ class TodayWorkoutCard extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 16.0),
+      decoration: BoxDecoration(
+        color: AppStyles.surfaceCharcoal,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppStyles.cardShadow,
+      ),
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1371,8 +1853,10 @@ class TodayWorkoutCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       workout.workoutName,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      style: const TextStyle(
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: AppStyles.textWhite,
                       ),
                     ),
                   ),
@@ -1380,18 +1864,46 @@ class TodayWorkoutCard extends StatelessWidget {
                 ],
               ),
               if (workout.workoutDescription != null && workout.workoutDescription!.isNotEmpty) ...[
-                const SizedBox(height: 8.0),
-                Text(workout.workoutDescription!),
+                const SizedBox(height: 12.0),
+                Text(
+                  workout.workoutDescription!,
+                  style: TextStyle(
+                    color: AppStyles.textGrey,
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                ),
               ],
-              const SizedBox(height: 16.0),
-              Row(
-                children: [
-                  const Icon(Icons.fitness_center, size: 16),
-                  const SizedBox(width: 4.0),
-                  Text('${workout.exercises.length} exercise${workout.exercises.length > 1 ? 's' : ''}'),
-                  const Spacer(),
-                  const Icon(Icons.arrow_forward_ios, size: 16),
-                ],
+              const SizedBox(height: 20.0),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppStyles.backgroundCharcoal,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.fitness_center,
+                      size: 16,
+                      color: AppStyles.primaryBlue,
+                    ),
+                    const SizedBox(width: 8.0),
+                    Text(
+                      '${workout.exercises.length} exercise${workout.exercises.length > 1 ? 's' : ''}',
+                      style: const TextStyle(
+                        color: AppStyles.textWhite,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const Spacer(),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 14,
+                      color: AppStyles.primaryBlue,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -1406,34 +1918,41 @@ class TodayWorkoutCard extends StatelessWidget {
     
     switch (status) {
       case WorkoutStatus.assigned:
-        chipColor = Colors.blue;
+        chipColor = AppStyles.primaryBlue;
         statusText = 'To Do';
         break;
       case WorkoutStatus.inProgress:
-        chipColor = Colors.orange;
+        chipColor = AppStyles.warningAmber;
         statusText = 'In Progress';
         break;
       case WorkoutStatus.completed:
-        chipColor = Colors.green;
+        chipColor = AppStyles.successGreen;
         statusText = 'Completed';
         break;
       case WorkoutStatus.skipped:
-        chipColor = Colors.red;
+        chipColor = AppStyles.errorRed;
         statusText = 'Skipped';
         break;
     }
     
-    return Chip(
-      label: Text(
-        statusText,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: chipColor.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: chipColor.withOpacity(0.5),
+          width: 1,
         ),
       ),
-      backgroundColor: chipColor,
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
+      child: Text(
+        statusText,
+        style: TextStyle(
+          color: chipColor,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 } 

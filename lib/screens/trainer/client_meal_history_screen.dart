@@ -4,6 +4,7 @@ import '../../models/meal_entry_model.dart';
 import '../../models/nutrition_plan_model.dart';
 import '../../services/meal_service.dart';
 import '../../services/nutrition_service.dart';
+import '../../theme/app_styles.dart';
 
 class ClientMealHistoryScreen extends StatefulWidget {
   final String clientId;
@@ -425,13 +426,39 @@ class _ClientMealHistoryScreenState extends State<ClientMealHistoryScreen> {
   }
   
   Widget _macronutrientChip(String label, String value, [Color? color]) {
+    // Define darker, more mature colors to replace the pastels
+    Color chipColor;
+    Color textColor = AppStyles.textWhite;
+    
+    // Determine color based on label if not provided
+    if (color == null) {
+      chipColor = Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5);
+    } else if (color == Colors.red.shade100) {
+      chipColor = const Color(0xFF8B2E35); // Darker red for protein
+    } else if (color == Colors.green.shade100) {
+      chipColor = const Color(0xFF2E5C3E); // Darker green for carbs
+    } else if (color == Colors.blue.shade100) {
+      chipColor = const Color(0xFF204060); // Darker blue for fat
+    } else if (color == Colors.purple.shade100) {
+      chipColor = const Color(0xFF4A2E58); // Darker purple for micros
+    } else {
+      chipColor = color;
+    }
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color ?? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+        color: chipColor,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Color.fromARGB(255, chipColor.red + 20, chipColor.green + 20, chipColor.blue + 20),
+          width: 1,
+        ),
       ),
-      child: Text('$label: $value'),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(color: textColor, fontWeight: FontWeight.w500),
+      ),
     );
   }
   

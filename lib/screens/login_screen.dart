@@ -319,7 +319,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Forgot password
                       if (_isLogin)
                         Align(
-                          alignment: Alignment.centerRight,
+                          alignment: Alignment.center,
                           child: TextButton(
                             onPressed: () {
                               // Handle forgot password

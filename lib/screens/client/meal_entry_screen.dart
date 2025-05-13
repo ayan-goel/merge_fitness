@@ -469,394 +469,427 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
             ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16.0),
-          children: [
-            // AI Food Analysis Card
-            Card(
-              color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(16.0),
+              children: [
+                // AI Food Analysis Card
+                Card(
+                  color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.camera_alt),
-                        const SizedBox(width: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.camera_alt),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'AI Food Analysis',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Spacer(),
+                            if (_isAnalyzingImage)
+                              Container(
+                                height: 20,
+                                width: 20,
+                                margin: const EdgeInsets.only(right: 8),
+                                child: const CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
                         const Text(
-                          'AI Food Analysis',
+                          'Take a picture of your food or upload an image to automatically analyze nutritional content.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: _isAnalyzingImage ? null : _scanFoodWithCamera,
+                                icon: const Icon(Icons.camera_alt),
+                                label: const Text('Take Photo'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Theme.of(context).colorScheme.primary,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _isAnalyzingImage ? null : _uploadFoodImage,
+                                icon: const Icon(Icons.photo_library),
+                                label: const Text('Upload Image'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Meal Name and Description Card
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Meal Details',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const Spacer(),
-                        if (_isAnalyzingImage)
-                          Container(
-                            height: 20,
-                            width: 20,
-                            margin: const EdgeInsets.only(right: 8),
-                            child: const CircularProgressIndicator(strokeWidth: 2),
+                        const SizedBox(height: 16),
+                        
+                        // Meal Name
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Meal Name*',
+                            hintText: 'e.g., Breakfast, Chicken Salad',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                           ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter a meal name';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // Time Consumed
+                        Row(
+                          children: [
+                            const Text('Time Consumed:'),
+                            const Spacer(),
+                            TextButton.icon(
+                              onPressed: _selectTime,
+                              icon: const Icon(Icons.access_time),
+                              label: Text(DateFormat.jm().format(_timeConsumed)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // Description
+                        TextFormField(
+                          controller: _descriptionController,
+                          decoration: const InputDecoration(
+                            labelText: 'Description (Optional)',
+                            hintText: 'e.g., Homemade meal with fresh ingredients',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          ),
+                          maxLines: 2,
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Take a picture of your food or upload an image to automatically analyze nutritional content.',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Nutritional Information card
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _isAnalyzingImage ? null : _scanFoodWithCamera,
-                            icon: const Icon(Icons.camera_alt),
-                            label: const Text('Take Photo'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(context).colorScheme.primary,
-                              foregroundColor: Colors.white,
+                        const Text(
+                          'Nutritional Information',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // Calories - container width set to match text fields above
+                        TextFormField(
+                          controller: _caloriesController,
+                          decoration: const InputDecoration(
+                            labelText: 'Calories*',
+                            hintText: 'e.g., 500',
+                            border: OutlineInputBorder(),
+                            suffixText: 'kcal',
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: false),
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter calories';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // Macronutrients
+                        const Text(
+                          'Macronutrients (g)',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        
+                        // Using a GridView for consistent width fields
+                        GridView.count(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                          childAspectRatio: 2.5,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          children: [
+                            // Protein field
+                            TextFormField(
+                              controller: _proteinController,
+                              decoration: const InputDecoration(
+                                labelText: 'Protein',
+                                hintText: '20',
+                                border: OutlineInputBorder(),
+                                suffixText: 'g',
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                              ],
+                            ),
+                            
+                            // Carbs field
+                            TextFormField(
+                              controller: _carbsController,
+                              decoration: const InputDecoration(
+                                labelText: 'Carbs',
+                                hintText: '50',
+                                border: OutlineInputBorder(),
+                                suffixText: 'g',
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                              ],
+                            ),
+                            
+                            // Fat field
+                            TextFormField(
+                              controller: _fatController,
+                              decoration: const InputDecoration(
+                                labelText: 'Fat',
+                                hintText: '15',
+                                border: OutlineInputBorder(),
+                                suffixText: 'g',
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // Micronutrients
+                        const Text(
+                          'Micronutrients',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        
+                        // Using GridView for consistent micronutrient fields
+                        GridView.count(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                          childAspectRatio: 3.0,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          children: [
+                            // Sodium field
+                            TextFormField(
+                              controller: _sodiumController,
+                              decoration: const InputDecoration(
+                                labelText: 'Sodium',
+                                hintText: '500',
+                                border: OutlineInputBorder(),
+                                suffixText: 'mg',
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                              ],
+                            ),
+                            
+                            // Cholesterol field
+                            TextFormField(
+                              controller: _cholesterolController,
+                              decoration: const InputDecoration(
+                                labelText: 'Cholesterol',
+                                hintText: '60',
+                                border: OutlineInputBorder(),
+                                suffixText: 'mg',
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                              ],
+                            ),
+                            
+                            // Fiber field
+                            TextFormField(
+                              controller: _fiberController,
+                              decoration: const InputDecoration(
+                                labelText: 'Fiber',
+                                hintText: '5',
+                                border: OutlineInputBorder(),
+                                suffixText: 'g',
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                              ],
+                            ),
+                            
+                            // Sugar field
+                            TextFormField(
+                              controller: _sugarController,
+                              decoration: const InputDecoration(
+                                labelText: 'Sugar',
+                                hintText: '10',
+                                border: OutlineInputBorder(),
+                                suffixText: 'g',
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              ),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                // Show nutritional targets if they exist
+                if (widget.nutritionPlan != null) ...[
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Daily Nutrition Progress',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _isAnalyzingImage ? null : _uploadFoodImage,
-                            icon: const Icon(Icons.photo_library),
-                            label: const Text('Upload Image'),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'This meal compared to your daily targets',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 12),
+                          _buildNutrientProgressBar(
+                            'Calories', 
+                            double.tryParse(_caloriesController.text) ?? 0.0, 
+                            widget.nutritionPlan!.dailyCalories.toDouble(), 
+                            '${_caloriesController.text.isEmpty ? "0" : _caloriesController.text} / ${widget.nutritionPlan!.dailyCalories} kcal'
+                          ),
+                          _buildNutrientProgressBar(
+                            'Protein', 
+                            double.tryParse(_proteinController.text) ?? 0.0, 
+                            widget.nutritionPlan!.macronutrients['protein'] ?? 0.0, 
+                            '${_proteinController.text.isEmpty ? "0" : _proteinController.text} / ${widget.nutritionPlan!.macronutrients['protein']?.toStringAsFixed(1) ?? "0"} g'
+                          ),
+                          _buildNutrientProgressBar(
+                            'Carbs', 
+                            double.tryParse(_carbsController.text) ?? 0.0, 
+                            widget.nutritionPlan!.macronutrients['carbs'] ?? 0.0, 
+                            '${_carbsController.text.isEmpty ? "0" : _carbsController.text} / ${widget.nutritionPlan!.macronutrients['carbs']?.toStringAsFixed(1) ?? "0"} g'
+                          ),
+                          _buildNutrientProgressBar(
+                            'Fat', 
+                            double.tryParse(_fatController.text) ?? 0.0, 
+                            widget.nutritionPlan!.macronutrients['fat'] ?? 0.0, 
+                            '${_fatController.text.isEmpty ? "0" : _fatController.text} / ${widget.nutritionPlan!.macronutrients['fat']?.toStringAsFixed(1) ?? "0"} g'
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
+                  ),
+                  const SizedBox(height: 24),
+                ],
+                
+                // Save Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _saveMeal,
+                    child: _isLoading
+                        ? const CircularProgressIndicator()
+                        : Text(isEditing ? 'Update Meal' : 'Add Meal'),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Meal Name
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Meal Name*',
-                hintText: 'e.g., Breakfast, Chicken Salad',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a meal name';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            
-            // Time Consumed
-            Row(
-              children: [
-                const Text('Time Consumed:'),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: _selectTime,
-                  icon: const Icon(Icons.access_time),
-                  label: Text(DateFormat.jm().format(_timeConsumed)),
-                ),
+                
+                // Delete button (only when editing)
+                if (isEditing) ...[
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: TextButton.icon(
+                      onPressed: _isLoading ? null : _deleteMeal,
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      label: const Text('Delete Meal'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
-            const SizedBox(height: 16),
-            
-            // Description
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description (Optional)',
-                hintText: 'e.g., Homemade meal with fresh ingredients',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 16),
-            
-            // Nutritional Information card
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Nutritional Information',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Calories
-                    TextFormField(
-                      controller: _caloriesController,
-                      decoration: const InputDecoration(
-                        labelText: 'Calories*',
-                        hintText: 'e.g., 500',
-                        border: OutlineInputBorder(),
-                        suffixText: 'kcal',
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: false),
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter calories';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Macronutrients
-                    const Text(
-                      'Macronutrients (g)',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    
-                    // Protein, Carbs, Fat inputs
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _proteinController,
-                            decoration: const InputDecoration(
-                              labelText: 'Protein',
-                              hintText: '20',
-                              border: OutlineInputBorder(),
-                              suffixText: 'g',
-                            ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _carbsController,
-                            decoration: const InputDecoration(
-                              labelText: 'Carbs',
-                              hintText: '50',
-                              border: OutlineInputBorder(),
-                              suffixText: 'g',
-                            ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _fatController,
-                            decoration: const InputDecoration(
-                              labelText: 'Fat',
-                              hintText: '15',
-                              border: OutlineInputBorder(),
-                              suffixText: 'g',
-                            ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Micronutrients
-                    const Text(
-                      'Micronutrients',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    
-                    // Sodium, Cholesterol
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _sodiumController,
-                            decoration: const InputDecoration(
-                              labelText: 'Sodium',
-                              hintText: '500',
-                              border: OutlineInputBorder(),
-                              suffixText: 'mg',
-                            ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _cholesterolController,
-                            decoration: const InputDecoration(
-                              labelText: 'Cholesterol',
-                              hintText: '60',
-                              border: OutlineInputBorder(),
-                              suffixText: 'mg',
-                            ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    
-                    // Fiber, Sugar
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _fiberController,
-                            decoration: const InputDecoration(
-                              labelText: 'Fiber',
-                              hintText: '5',
-                              border: OutlineInputBorder(),
-                              suffixText: 'g',
-                            ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _sugarController,
-                            decoration: const InputDecoration(
-                              labelText: 'Sugar',
-                              hintText: '10',
-                              border: OutlineInputBorder(),
-                              suffixText: 'g',
-                            ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            
-            // Show nutritional targets if they exist
-            if (widget.nutritionPlan != null) ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Daily Nutrition Progress',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'This meal compared to your daily targets',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildNutrientProgressBar(
-                        'Calories', 
-                        double.tryParse(_caloriesController.text) ?? 0.0, 
-                        widget.nutritionPlan!.dailyCalories.toDouble(), 
-                        '${_caloriesController.text.isEmpty ? "0" : _caloriesController.text} / ${widget.nutritionPlan!.dailyCalories} kcal'
-                      ),
-                      _buildNutrientProgressBar(
-                        'Protein', 
-                        double.tryParse(_proteinController.text) ?? 0.0, 
-                        widget.nutritionPlan!.macronutrients['protein'] ?? 0.0, 
-                        '${_proteinController.text.isEmpty ? "0" : _proteinController.text} / ${widget.nutritionPlan!.macronutrients['protein']?.toStringAsFixed(1) ?? "0"} g'
-                      ),
-                      _buildNutrientProgressBar(
-                        'Carbs', 
-                        double.tryParse(_carbsController.text) ?? 0.0, 
-                        widget.nutritionPlan!.macronutrients['carbs'] ?? 0.0, 
-                        '${_carbsController.text.isEmpty ? "0" : _carbsController.text} / ${widget.nutritionPlan!.macronutrients['carbs']?.toStringAsFixed(1) ?? "0"} g'
-                      ),
-                      _buildNutrientProgressBar(
-                        'Fat', 
-                        double.tryParse(_fatController.text) ?? 0.0, 
-                        widget.nutritionPlan!.macronutrients['fat'] ?? 0.0, 
-                        '${_fatController.text.isEmpty ? "0" : _fatController.text} / ${widget.nutritionPlan!.macronutrients['fat']?.toStringAsFixed(1) ?? "0"} g'
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-            
-            // Save Button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _saveMeal,
-                child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : Text(isEditing ? 'Update Meal' : 'Add Meal'),
-              ),
-            ),
-            
-            // Delete button (only when editing)
-            if (isEditing) ...[
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: TextButton.icon(
-                  onPressed: _isLoading ? null : _deleteMeal,
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  label: const Text('Delete Meal'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                  ),
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );

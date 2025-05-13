@@ -36,26 +36,34 @@ service cloud.firestore {
       
       // Allow a user to create their own document during signup
       allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isOwner(userId) || isAdmin();
+      
+      // Allow users to update their own documents
+      allow update: if isAuthenticated() && (
+                      request.auth.uid == userId || 
+                      isAdmin() ||
+                      // Allow trainers to update their clients' profiles
+                      (isTrainer() && resource.data.trainerId == request.auth.uid)
+                    );
+                    
       allow delete: if isAdmin();
       
       // Allow trainers to list all clients (for client list screens)
       match /{allSubcollections=**} {
         allow read: if isAuthenticated() && (isOwner(userId) || isTrainer() || isAdmin());
       }
-      
-      // Allow trainers to update their clients' data
-      allow update: if request.auth != null && 
-                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer' && 
-                     resource.data.trainerId == request.auth.uid;
     }
     
     // Weight History Collection Rules
     match /weightHistory/{entryId} {
-      // Allow users to read and write their own weight history
-      allow read, write: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Allow users to read their own weight history
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Allow users to create their own weight history entries
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
       // Allow trainers to read client weight history
       allow read: if isTrainer();
+      
       // Admins can do everything
       allow read, write: if isAdmin();
     }

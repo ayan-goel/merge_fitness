@@ -5,6 +5,7 @@ import '../../services/auth_service.dart';
 import '../../services/calendly_service.dart';
 import '../../models/user_model.dart';
 import '../../screens/home_screen.dart';
+import '../../theme/app_styles.dart';
 import 'create_template_screen.dart';
 import 'trainer_scheduling_screen.dart';
 import 'client_details_screen.dart';
@@ -22,6 +23,56 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
   UserModel? _trainer;
   bool _isLoading = true;
   List<Map<String, dynamic>> _activityItems = [];
+
+  // Add a list of motivational messages at the class level
+  final List<String> _motivationalMessages = [
+    "Get ready to crush the day!",
+    "Today is a chance to be better than yesterday.",
+    "Be the trainer you would want to have.",
+    "Every session is an opportunity to change someone's life.",
+    "Create the energy your clients need today.",
+    "Your dedication inspires others.",
+    "Small steps lead to big transformations.",
+    "Make every rep count.",
+    "Consistency is your superpower.",
+    "Your energy is contagious - make it positive!",
+    "Be the motivation your clients are looking for.",
+    "Celebrate progress, not perfection.",
+    "Transform challenges into opportunities.",
+    "Today's efforts are tomorrow's results.",
+    "Lead by example, inspire through action.",
+    "You're building more than just bodies - you're building confidence.",
+    "Connect with purpose in every session.",
+    "Focus on form before intensity.",
+    "Empower others through your knowledge.",
+    "Make wellness a lifestyle, not just a workout.",
+    "Share your passion and watch it multiply.",
+    "Excellence is not an act, but a habit.",
+    "Push limits, not patience.",
+    "Create experiences, not just exercises.",
+    "Be legendary today.",
+    "Your attitude determines your altitude.",
+    "Today's sweat is tomorrow's strength.",
+    "Plant seeds of health that grow for a lifetime.",
+    "Build strength in body, mind, and spirit.",
+    "Coaching changes lives - make it count.",
+    "Turn 'I can't' into 'I will'.",
+    "Progress happens one client at a time.",
+    "The energy you bring determines the results they get.",
+    "Fitness is the foundation, motivation is the key.",
+    "Create habits, not expectations.",
+    "The best trainers are also the best students.",
+    "Today's plan is tomorrow's achievement.",
+    "Be relentless in pursuit of their goals.",
+    "Health is wealth - help others invest wisely.",
+    "Strength isn't just physical - build mental toughness too."
+  ];
+  
+  // Get a random motivational message
+  String get _randomMotivationalMessage {
+    final random = DateTime.now().millisecondsSinceEpoch;
+    return _motivationalMessages[random % _motivationalMessages.length];
+  }
 
   @override
   void initState() {
@@ -223,30 +274,114 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Welcome section
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Welcome, ${_trainer!.displayName ?? 'Trainer'}',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      DateFormat('EEEE, MMMM d, yyyy').format(DateTime.now()),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Colors.grey[600],
-                          ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppStyles.surfaceCharcoal.withOpacity(0.9),
+                    AppStyles.backgroundCharcoal.withOpacity(0.95),
                   ],
                 ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppStyles.primaryBlue.withOpacity(0.3),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  // Content
+                  Padding(
+                    padding: const EdgeInsets.all(28.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppStyles.primaryBlue.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: Text(
+                                DateFormat('EEEE, MMMM d, yyyy').format(DateTime.now()),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppStyles.primaryBlue.withOpacity(0.9),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          'Welcome, ${_trainer!.displayName ?? 'Trainer'}',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppStyles.textWhite,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppStyles.backgroundCharcoal.withOpacity(0.4),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppStyles.textGrey.withOpacity(0.1),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppStyles.softGold.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.format_quote,
+                                  color: AppStyles.softGold,
+                                  size: 16,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _randomMotivationalMessage,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    height: 1.4,
+                                    color: AppStyles.textWhite.withOpacity(0.9),
+                                    fontStyle: FontStyle.italic,
+                                    fontWeight: FontWeight.w300,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
 
             // Quick actions
             Text(
@@ -286,7 +421,7 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
                 _buildActionCard(
                   context,
                   icon: Icons.fitness_center,
-                  title: 'New Workout',
+                  title: 'Templates',
                   onTap: () {
                     // Navigate to Create Template screen
                     Navigator.push(
@@ -477,7 +612,8 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
       child: Card(
         elevation: 2,
         child: Container(
-          width: MediaQuery.of(context).size.width / 3.5, // Responsive width based on screen size
+          width: (MediaQuery.of(context).size.width - 64) / 3, // Consistent width accounting for padding
+          height: 100, // Fixed height for consistency
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -493,7 +629,6 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium,
                 overflow: TextOverflow.ellipsis,
-                maxLines: 2,
               ),
             ],
           ),

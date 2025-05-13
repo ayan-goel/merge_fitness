@@ -219,6 +219,21 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     });
   }
   
+  Future<void> _selectDate() async {
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _dateOfBirth ?? DateTime.now().subtract(const Duration(days: 365 * 18)),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    
+    if (pickedDate != null) {
+      setState(() {
+        _dateOfBirth = pickedDate;
+      });
+    }
+  }
+  
   Future<void> _signOut() async {
     try {
       await _authService.signOut();
@@ -305,68 +320,26 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                         return null;
                       },
                     )
-                  : Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Full Name',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(Icons.person, color: themeColor),
-                              const SizedBox(width: 10),
-                              Text(
-                                _nameController.text.isEmpty ? 'Not specified' : _nameController.text,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Divider(height: 24),
-                        ],
+                  : TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Full Name',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person),
                       ),
+                      enabled: false,
                     ),
                 const SizedBox(height: 16),
                 
                 // Email
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Email',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.email, color: themeColor),
-                          const SizedBox(width: 10),
-                          Text(
-                            _emailController.text,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 24),
-                    ],
+                TextFormField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.email),
                   ),
+                  enabled: false,
                 ),
                 const SizedBox(height: 16),
                 
@@ -381,55 +354,21 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                       ),
                       keyboardType: TextInputType.phone,
                     )
-                  : Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Phone Number',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(Icons.phone, color: themeColor),
-                              const SizedBox(width: 10),
-                              Text(
-                                _phoneController.text.isEmpty ? 'Not specified' : _phoneController.text,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Divider(height: 24),
-                        ],
+                  : TextFormField(
+                      controller: _phoneController,
+                      decoration: const InputDecoration(
+                        labelText: 'Phone Number',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.phone),
                       ),
+                      enabled: false,
                     ),
                 const SizedBox(height: 16),
                 
                 // Date of Birth
                 _isEditing
-                  ? GestureDetector(
-                      onTap: () async {
-                        final pickedDate = await showDatePicker(
-                          context: context,
-                          initialDate: _dateOfBirth ?? DateTime.now().subtract(const Duration(days: 365 * 18)),
-                          firstDate: DateTime(1900),
-                          lastDate: DateTime.now(),
-                        );
-                        
-                        if (pickedDate != null) {
-                          setState(() {
-                            _dateOfBirth = pickedDate;
-                          });
-                        }
-                      },
+                  ? InkWell(
+                      onTap: _selectDate,
                       child: InputDecorator(
                         decoration: const InputDecoration(
                           labelText: 'Date of Birth',
@@ -438,42 +377,23 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                         ),
                         child: Text(
                           _dateOfBirth != null
-                              ? DateFormat('MM/dd/yyyy').format(_dateOfBirth!)
-                              : 'Not specified',
+                            ? DateFormat('MM/dd/yyyy').format(_dateOfBirth!)
+                            : 'Select Date',
                         ),
                       ),
                     )
-                  : Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Date of Birth',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(Icons.calendar_today, color: themeColor),
-                              const SizedBox(width: 10),
-                              Text(
-                                _dateOfBirth != null
-                                  ? DateFormat('MM/dd/yyyy').format(_dateOfBirth!)
-                                  : 'Not specified',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Divider(height: 24),
-                        ],
+                  : TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: 'Date of Birth',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.calendar_today),
                       ),
+                      controller: TextEditingController(
+                        text: _dateOfBirth != null
+                            ? DateFormat('MM/dd/yyyy').format(_dateOfBirth!)
+                            : 'Not specified'
+                      ),
+                      enabled: false,
                     ),
                 const SizedBox(height: 24),
                 
@@ -536,37 +456,18 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                     ],
                   )
                 else
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Height',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(Icons.height, color: themeColor),
-                            const SizedBox(width: 10),
-                            Text(
-                              _heightFeetController.text.isNotEmpty || _heightInchesController.text.isNotEmpty
-                                ? '${_heightFeetController.text} ft ${_heightInchesController.text} in'
-                                : 'Not specified',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Divider(height: 24),
-                      ],
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: 'Height',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.height),
                     ),
+                    controller: TextEditingController(
+                      text: _heightFeetController.text.isNotEmpty || _heightInchesController.text.isNotEmpty
+                          ? '${_heightFeetController.text} ft ${_heightInchesController.text} in'
+                          : 'Not specified'
+                    ),
+                    enabled: false,
                   ),
                 const SizedBox(height: 16),
                 
@@ -589,35 +490,16 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                         return null;
                       },
                     )
-                  : Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Current Weight (lbs)',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(Icons.monitor_weight, color: themeColor),
-                              const SizedBox(width: 10),
-                              Text(
-                                _weightController.text.isEmpty ? 'Not specified' : '${_weightController.text} lbs',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Divider(height: 24),
-                        ],
+                  : TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: 'Current Weight (lbs)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.monitor_weight),
                       ),
+                      controller: TextEditingController(
+                        text: _weightController.text.isEmpty ? 'Not specified' : '${_weightController.text} lbs'
+                      ),
+                      enabled: false,
                     ),
                 const SizedBox(height: 24),
                 
@@ -631,58 +513,80 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Goals List
-                _goals.isEmpty && !_isEditing
-                  ? Container(
-                      padding: const EdgeInsets.all(12),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'No fitness goals added yet',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    )
-                  : Column(
-                      children: [
-                        ..._goals.asMap().entries.map((entry) {
-                          return ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                            leading: Icon(Icons.fitness_center, color: themeColor),
-                            title: Text(
-                              entry.value,
-                              style: const TextStyle(fontWeight: FontWeight.w500),
+                // Goals List in Card
+                Card(
+                  elevation: 2,
+                  margin: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: _goals.isEmpty && !_isEditing
+                      ? Container(
+                          padding: const EdgeInsets.all(12),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'No fitness goals added yet',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontStyle: FontStyle.italic,
                             ),
-                            trailing: _isEditing ? IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _removeGoal(entry.key),
-                            ) : null,
-                          );
-                        }).toList(),
-                      ],
-                    ),
+                          ),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ..._goals.asMap().entries.map((entry) {
+                              return ListTile(
+                                dense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                                leading: Icon(Icons.fitness_center, color: themeColor, size: 20),
+                                title: Text(
+                                  entry.value,
+                                  style: const TextStyle(fontWeight: FontWeight.w500),
+                                ),
+                                trailing: _isEditing ? IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                                  onPressed: () => _removeGoal(entry.key),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ) : null,
+                              );
+                            }).toList(),
+                          ],
+                        ),
+                  ),
+                ),
                 
                 // Add Goal Input
                 if (_isEditing)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _goalController,
-                          decoration: const InputDecoration(
-                            labelText: 'Add Goal',
-                            border: OutlineInputBorder(),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _goalController,
+                            decoration: const InputDecoration(
+                              labelText: 'Add Goal',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.add, color: themeColor),
-                        onPressed: _addGoal,
-                      ),
-                    ],
+                        IconButton(
+                          icon: Icon(Icons.add, color: themeColor),
+                          onPressed: _addGoal,
+                        ),
+                      ],
+                    ),
                   ),
-                const SizedBox(height: 32),
+                
+                // Reduced spacing before logout section
+                if (_isEditing)
+                  const SizedBox(height: 32)
+                else
+                  const SizedBox(height: 16),
                 
                 // Save Button
                 if (_isEditing)
@@ -704,7 +608,6 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                 
                 // Logout Section
                 if (!_isEditing) ...[
-                  const SizedBox(height: 32),
                   const Divider(),
                   const SizedBox(height: 16),
                   Center(
