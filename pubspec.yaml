@@ -59,7 +59,8 @@ dependencies:
   crypto: ^3.0.3
   
   # Location and maps
-  # google_maps_flutter: ^2.6.0
+  google_maps_flutter: ^2.6.0
+  geolocator: ^11.0.0
   location: ^5.0.3
   url_launcher: ^6.3.1
   

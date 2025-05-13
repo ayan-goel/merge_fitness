@@ -331,13 +331,13 @@ class CalendlyService {
       } else {
         // Fallback to getting first event type
         print('CalendlyService: getTrainerAvailability - No selected event type, fetching all event types');
-        final eventTypes = await getTrainerEventTypes(trainerId);
-        
-        if (eventTypes.isEmpty) {
-          print('CalendlyService: getTrainerAvailability - Trainer has no event types configured.');
-          throw Exception('Trainer has no event types configured');
-        }
-        
+      final eventTypes = await getTrainerEventTypes(trainerId);
+
+      if (eventTypes.isEmpty) {
+        print('CalendlyService: getTrainerAvailability - Trainer has no event types configured.');
+        throw Exception('Trainer has no event types configured');
+      }
+      
         // Find the first active event type
         final activeEventTypes = eventTypes.where((type) => type['active'] == true).toList();
         if (activeEventTypes.isEmpty) {
@@ -348,7 +348,7 @@ class CalendlyService {
         // Use the first active event type
         eventTypeUri = activeEventTypes[0]['uri'];
         final eventName = activeEventTypes[0]['name'] ?? 'Unknown Event Type';
-        print('CalendlyService: getTrainerAvailability - Using event type: "$eventName" with URI: $eventTypeUri');
+      print('CalendlyService: getTrainerAvailability - Using event type: "$eventName" with URI: $eventTypeUri');
       }
       
       // Set date range (default to current time + 1 hour for start, and 7 days after that for end)
@@ -366,7 +366,7 @@ class CalendlyService {
       final adjustedStart = start.isBefore(now.add(const Duration(minutes: 30))) 
           ? now.add(const Duration(hours: 1)) 
           : start;
-          
+      
       // Format dates for Calendly API - ensure proper ISO format with Z timezone indicator
       final startTime = adjustedStart.toUtc().toIso8601String();
       final endTime = end.toUtc().toIso8601String();
@@ -388,14 +388,14 @@ class CalendlyService {
       
       if (response.statusCode == 200) {
         try {
-          final data = jsonDecode(response.body);
+        final data = jsonDecode(response.body);
           
           if (!data.containsKey('collection')) {
             print('CalendlyService: getTrainerAvailability - Response missing collection key: ${response.body}');
             throw Exception('Invalid response format: missing collection');
           }
-          
-          // Transform into our expected format
+        
+        // Transform into our expected format
           final List<Map<String, dynamic>> availableTimes = [];
           
           for (final slot in List<Map<String, dynamic>>.from(data['collection'])) {
@@ -479,6 +479,11 @@ class CalendlyService {
       final clientName = clientData?['displayName'] ?? 'Client';
       final clientEmail = clientData?['email'] ?? '';
       
+      // Get trainer information
+      final trainerDoc = await _firestore.collection('users').doc(trainerId).get();
+      final trainerData = trainerDoc.data() as Map<String, dynamic>?;
+      final trainerName = trainerData?['displayName'] ?? 'Trainer';
+      
       // Create session document
       final sessionRef = _firestore.collection('sessions').doc();
       
@@ -497,6 +502,7 @@ class CalendlyService {
         clientEmail: clientEmail,
         sessionType: sessionType,
         calendlyUrl: calendlyEventUri != null ? 'https://calendly.com/events/${calendlyEventUri.split('/').last}' : null,
+        trainerName: trainerName,
       );
       
       // Save to Firestore

@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import '../../services/calendly_service.dart';
 import '../../models/session_model.dart';
 import '../../models/user_model.dart';
+import 'location_sharing_screen.dart';
 
 class TrainerSchedulingScreen extends StatefulWidget {
   const TrainerSchedulingScreen({super.key});
@@ -223,20 +224,46 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
         final sessions = groupedSessions[dateKey]!;
         final date = DateTime.parse(dateKey);
         
+        // Check if this date is today
+        final now = DateTime.now();
+        final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
+        
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: Text(
-                _formatDateHeading(date),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: Row(
+                children: [
+                  Text(
+                    _formatDateHeading(date),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (isToday) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'TODAY',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            ...sessions.map((session) => _buildSessionCard(session)).toList(),
+            ...sessions.map((session) => _buildSessionRow(session)).toList(),
             if (dateIndex < sortedDates.length - 1)
               const Divider(height: 32),
           ],
@@ -260,126 +287,165 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
     }
   }
   
-  Widget _buildSessionCard(TrainingSession session) {
+  Widget _buildSessionRow(TrainingSession session) {
     final bool isCancelled = session.status == 'cancelled';
     
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16.0),
-      elevation: 2,
-      child: Column(
-        children: [
-          ListTile(
-            contentPadding: const EdgeInsets.all(16.0),
-            leading: CircleAvatar(
-              backgroundColor: isCancelled
-                  ? Colors.grey.withOpacity(0.2)
-                  : Theme.of(context).colorScheme.primary.withOpacity(0.1),
-              child: Icon(
-                Icons.fitness_center,
-                color: isCancelled ? Colors.grey : Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            title: Text(
-              session.clientName,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                decoration: isCancelled ? TextDecoration.lineThrough : null,
-                color: isCancelled ? Colors.grey : null,
-              ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.access_time, size: 16),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${DateFormat('h:mm a').format(session.startTime)} - ${DateFormat('h:mm a').format(session.endTime)}',
-                      style: TextStyle(
-                        decoration: isCancelled ? TextDecoration.lineThrough : null,
-                        color: isCancelled ? Colors.grey : null,
-                      ),
-                    ),
-                  ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+          color: isCancelled ? Colors.grey.shade100 : null,
+          child: Column(
+            children: [
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                leading: CircleAvatar(
+                  backgroundColor: isCancelled
+                      ? Colors.grey.withOpacity(0.2)
+                      : Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  child: Icon(
+                    Icons.fitness_center,
+                    color: isCancelled ? Colors.grey : Theme.of(context).colorScheme.primary,
+                    size: 20,
+                  ),
                 ),
-                const SizedBox(height: 4),
-                if (session.sessionType != null) ...[
-                  Row(
-                    children: [
-                      const Icon(Icons.category, size: 16),
-                      const SizedBox(width: 8),
-                      Text(
-                        session.sessionType!,
-                        style: TextStyle(
-                          decoration: isCancelled ? TextDecoration.lineThrough : null,
-                          color: isCancelled ? Colors.grey : null,
+                title: Text(
+                  session.clientName,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    decoration: isCancelled ? TextDecoration.lineThrough : null,
+                    color: isCancelled ? Colors.grey : null,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${DateFormat('h:mm a').format(session.startTime)} - ${DateFormat('h:mm a').format(session.endTime)}',
+                            style: TextStyle(
+                              decoration: isCancelled ? TextDecoration.lineThrough : null,
+                              color: isCancelled ? Colors.grey : null,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    if (session.sessionType != null) ...[
+                      Row(
+                        children: [
+                          const Icon(Icons.category, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              session.sessionType!,
+                              style: TextStyle(
+                                decoration: isCancelled ? TextDecoration.lineThrough : null,
+                                color: isCancelled ? Colors.grey : null,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                    Row(
+                      children: [
+                        const Icon(Icons.email, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            session.clientEmail,
+                            style: TextStyle(
+                              fontSize: 12,
+                              decoration: isCancelled ? TextDecoration.lineThrough : null,
+                              color: isCancelled ? Colors.grey : null,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    if (isCancelled) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade100,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'CANCELLED',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                ],
-                Row(
-                  children: [
-                    const Icon(Icons.email, size: 16),
-                    const SizedBox(width: 8),
-                    Text(
-                      session.clientEmail,
-                      style: TextStyle(
-                        fontSize: 12,
-                        decoration: isCancelled ? TextDecoration.lineThrough : null,
-                        color: isCancelled ? Colors.grey : null,
-                      ),
-                    ),
                   ],
                 ),
-                
-                if (isCancelled) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      'CANCELLED',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                trailing: Wrap(
+                  spacing: 0,
+                  children: [
+                    if (session.calendlyUrl != null)
+                      IconButton(
+                        icon: const Icon(Icons.open_in_new, size: 20),
+                        tooltip: 'View in Calendly',
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(),
+                        onPressed: () async {
+                          final url = Uri.parse(session.calendlyUrl!);
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url, mode: LaunchMode.externalApplication);
+                          }
+                        },
                       ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (session.calendlyUrl != null)
-                  IconButton(
-                    icon: const Icon(Icons.open_in_new),
-                    tooltip: 'View in Calendly',
-                    onPressed: () async {
-                      final url = Uri.parse(session.calendlyUrl!);
-                      if (await canLaunchUrl(url)) {
-                        await launchUrl(url, mode: LaunchMode.externalApplication);
-                      }
-                    },
-                  ),
-                if (session.canBeCancelled)
-                  IconButton(
-                    icon: const Icon(Icons.cancel, color: Colors.red),
-                    tooltip: 'Cancel Session',
-                    onPressed: () => _showCancelSessionDialog(session),
-                  ),
-              ],
-            ),
+                    if (!isCancelled)
+                      IconButton(
+                        icon: const Icon(Icons.location_on, color: Colors.blue, size: 20),
+                        tooltip: 'Share Location',
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(),
+                        onPressed: () => _navigateToLocationSharing(session),
+                      ),
+                    if (session.canBeCancelled)
+                      IconButton(
+                        icon: const Icon(Icons.cancel, color: Colors.red, size: 20),
+                        tooltip: 'Cancel Session',
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(),
+                        onPressed: () => _showCancelSessionDialog(session),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
+      ],
+    );
+  }
+  
+  // Navigate to location sharing screen
+  void _navigateToLocationSharing(TrainingSession session) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationSharingScreen(session: session),
       ),
     );
   }

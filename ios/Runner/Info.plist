@@ -46,6 +46,16 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	
+	<!-- Google Maps API Key -->
+	<key>io.flutter.embedded_views_preview</key>
+	<true/>
+	<key>GMSAPIKey</key>
+	<string>AIzaSyBQ81cvPzdjIComqJ18LC6ah7_N8c-FEzo</string>
+	<key>MGLMapboxMetricsEnabledSettingShownInApp</key>
+	<true/>
+	<key>MGLMapboxAccessToken</key>
+	<string>AIzaSyBQ81cvPzdjIComqJ18LC6ah7_N8c-FEzo</string>
+	
 	<!-- Add URL scheme for Calendly OAuth -->
 	<key>CFBundleURLTypes</key>
 	<array>
@@ -66,5 +76,13 @@
 	<string>This app needs camera access to take pictures of your food for nutrition analysis</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs photo library access to upload images of your food for nutrition analysis</string>
+	
+	<!-- Location permissions -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs location access to track trainers during sessions</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs location access to track trainers during sessions</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>This app needs location access to track trainers during sessions</string>
 </dict>
 </plist>

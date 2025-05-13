@@ -15,6 +15,7 @@ class TrainingSession {
   final String clientName;
   final String clientEmail;
   final String? calendlyUrl;
+  final String trainerName;
   
   TrainingSession({
     required this.id,
@@ -31,6 +32,7 @@ class TrainingSession {
     required this.clientName,
     required this.clientEmail,
     this.calendlyUrl,
+    this.trainerName = 'Trainer',
   });
   
   factory TrainingSession.fromFirestore(DocumentSnapshot doc) {
@@ -51,6 +53,7 @@ class TrainingSession {
       clientName: data['clientName'] ?? 'Client',
       clientEmail: data['clientEmail'] ?? '',
       calendlyUrl: data['calendlyUrl'],
+      trainerName: data['trainerName'] ?? 'Trainer',
     );
   }
   
@@ -69,6 +72,7 @@ class TrainingSession {
       'clientName': clientName,
       'clientEmail': clientEmail,
       'calendlyUrl': calendlyUrl,
+      'trainerName': trainerName,
     };
   }
   

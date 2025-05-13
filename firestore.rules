@@ -264,5 +264,19 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == request.resource.data.clientId;
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.clientId;
     }
+    
+    // Trainer Locations Collection Rules
+    match /trainer_locations/{trainerId} {
+      // Allow trainers to write and read their own location data
+      allow write, read: if isAuthenticated() && request.auth.uid == trainerId;
+      
+      // Allow clients to read their trainer's location data
+      allow read: if isAuthenticated() && 
+                  exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+                  get(/databases/$(database)/documents/users/$(request.auth.uid)).data.trainerId == trainerId;
+      
+      // Allow admins full access
+      allow read, write: if isAdmin();
+    }
   }
 } 
