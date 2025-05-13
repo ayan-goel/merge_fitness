@@ -12,6 +12,10 @@ import '../../models/session_model.dart';
 import 'workout_detail_screen.dart';
 import 'schedule_session_screen.dart';
 import 'select_trainer_screen.dart';
+import 'all_sessions_screen.dart';
+import '../../models/nutrition_plan_model.dart';
+import '../../services/nutrition_service.dart';
+import '../../screens/home_screen.dart';
 
 class ClientDashboard extends StatefulWidget {
   const ClientDashboard({super.key});
@@ -25,6 +29,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
   final WorkoutTemplateService _workoutService = WorkoutTemplateService();
   final WeightService _weightService = WeightService();
   final CalendlyService _calendlyService = CalendlyService();
+  final NutritionService _nutritionService = NutritionService();
   
   UserModel? _client;
   UserModel? _trainer; // Client's assigned trainer
@@ -116,6 +121,20 @@ class _ClientDashboardState extends State<ClientDashboard> {
     } catch (e) {
       print("Error loading upcoming sessions: $e");
     }
+  }
+  
+  // Navigate to view all sessions
+  void _viewAllSessions() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AllSessionsScreen(
+          sessions: _upcomingSessions,
+          clientId: _client!.uid,
+          onSessionCancelled: () => _loadUpcomingSessions(),
+        ),
+      ),
+    );
   }
   
   // Load weight data for the client
@@ -316,6 +335,86 @@ class _ClientDashboardState extends State<ClientDashboard> {
               
               const SizedBox(height: 24),
               
+              // Today's Workout Section
+              Text(
+                "Today's Workout",
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              
+              // Workouts list with fixed height
+              SizedBox(
+                height: 300, // Fixed height for workout list
+                child: StreamBuilder<List<AssignedWorkout>>(
+                  stream: _workoutService.getCurrentWorkouts(_client!.uid),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text('Error: ${snapshot.error}'),
+                      );
+                    }
+                    
+                    final workouts = snapshot.data ?? [];
+                    
+                    if (workouts.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.fitness_center,
+                              size: 64,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No workouts scheduled for today',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    
+                    return ListView.builder(
+                      // Disable scrolling on this ListView since it's inside a SingleChildScrollView
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      itemCount: workouts.length,
+                      itemBuilder: (context, index) {
+                        final workout = workouts[index];
+                        return TodayWorkoutCard(
+                          workout: workout,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => WorkoutDetailScreen(
+                                  workout: workout,
+                                ),
+                              ),
+                            ).then((_) {
+                              // Recalculate stats when returning from workout detail
+                              _calculateStats();
+                            });
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
               // Upcoming Sessions Section
               Text(
                 'Training Sessions',
@@ -323,9 +422,120 @@ class _ClientDashboardState extends State<ClientDashboard> {
               ),
               const SizedBox(height: 16),
               
-              // Show upcoming session if available
+              // Show upcoming sessions if available
               if (_upcomingSessions.isNotEmpty) ...[
-                _buildUpcomingSessionCard(_upcomingSessions.first),
+                // Group sessions by date
+                Builder(
+                  builder: (context) {
+                    // Group sessions by date (yyyy-MM-dd)
+                    final Map<String, List<TrainingSession>> sessionsByDate = {};
+                    
+                    for (final session in _upcomingSessions) {
+                      final dateKey = '${session.startTime.year}-${session.startTime.month.toString().padLeft(2, '0')}-${session.startTime.day.toString().padLeft(2, '0')}';
+                      if (!sessionsByDate.containsKey(dateKey)) {
+                        sessionsByDate[dateKey] = [];
+                      }
+                      sessionsByDate[dateKey]!.add(session);
+                    }
+                    
+                    // Sort date keys
+                    final sortedDates = sessionsByDate.keys.toList()..sort();
+                    
+                    // On dashboard, limit to first 2 days for cleaner display
+                    final limitedDates = sortedDates.take(2).toList();
+                    final hasMoreDates = sortedDates.length > 2;
+                    
+                    // Calculate total sessions
+                    int totalSessionsOnDisplay = 0;
+                    for (final dateKey in limitedDates) {
+                      totalSessionsOnDisplay += sessionsByDate[dateKey]!.length;
+                    }
+                    
+                    // Calculate hidden sessions
+                    int hiddenSessionsCount = _upcomingSessions.length - totalSessionsOnDisplay;
+                    
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: limitedDates.length,
+                          itemBuilder: (context, dateIndex) {
+                            final dateKey = limitedDates[dateIndex];
+                            final sessions = sessionsByDate[dateKey]!;
+                            final firstSession = sessions.first;
+                            
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Date header
+                                if (dateIndex > 0) const SizedBox(height: 16),
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 8, bottom: 8),
+                                  child: Text(
+                                    _formatDateHeader(firstSession.startTime),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                // Sessions for this date
+                                ...sessions.map((session) => _buildUpcomingSessionCard(session)).toList(),
+                              ],
+                            );
+                          },
+                        ),
+                        
+                        // "View All" button if there are more sessions
+                        if (hasMoreDates || hiddenSessionsCount > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: Center(
+                              child: OutlinedButton.icon(
+                                onPressed: _viewAllSessions,
+                                icon: const Icon(Icons.calendar_month),
+                                label: Text(
+                                  hiddenSessionsCount > 0
+                                      ? 'View All Sessions (+$hiddenSessionsCount more)'
+                                      : 'View All Sessions',
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ] else ...[
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.event_busy,
+                          size: 48,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'No upcoming sessions',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Schedule a session with a trainer below',
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
               
               // Schedule button
@@ -492,85 +702,12 @@ class _ClientDashboardState extends State<ClientDashboard> {
                 ],
               ),
               
-              const SizedBox(height: 24),
-              
-              // Today's Workout Section
-              Text(
-                "Today's Workout",
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
               const SizedBox(height: 16),
               
-              // Workouts list with fixed height
-              SizedBox(
-                height: 300, // Fixed height for workout list
-                child: StreamBuilder<List<AssignedWorkout>>(
-                  stream: _workoutService.getCurrentWorkouts(_client!.uid),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Text('Error: ${snapshot.error}'),
-                      );
-                    }
-                    
-                    final workouts = snapshot.data ?? [];
-                    
-                    if (workouts.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.fitness_center,
-                              size: 64,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No workouts scheduled for today',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                    
-                    return ListView.builder(
-                      // Disable scrolling on this ListView since it's inside a SingleChildScrollView
-                      physics: const NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      itemCount: workouts.length,
-                      itemBuilder: (context, index) {
-                        final workout = workouts[index];
-                        return TodayWorkoutCard(
-                          workout: workout,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => WorkoutDetailScreen(
-                                  workout: workout,
-                                ),
-                              ),
-                            ).then((_) {
-                              // Recalculate stats when returning from workout detail
-                              _calculateStats();
-                            });
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
+              // Nutrition Plan Card
+              _buildNutritionPlanCard(),
+              
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -615,87 +752,34 @@ class _ClientDashboardState extends State<ClientDashboard> {
   // Build upcoming session card
   Widget _buildUpcomingSessionCard(TrainingSession session) {
     return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
-      ),
+      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Your Next Session',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Date and time
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
-                    Icons.calendar_today,
+                    Icons.event,
                     color: Theme.of(context).colorScheme.primary,
+                    size: 20,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        session.formattedDate,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
                       Text(
                         session.formattedTimeRange,
-                        style: TextStyle(
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            
-            const Divider(height: 32),
-            
-            // Location
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.location_on,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Location',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -705,51 +789,44 @@ class _ClientDashboardState extends State<ClientDashboard> {
                         session.location,
                         style: TextStyle(
                           color: Colors.grey[700],
+                          fontSize: 14,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
+                if (session.canBeCancelled)
+                  TextButton.icon(
+                    onPressed: () => _showCancelSessionDialog(session),
+                    icon: const Icon(Icons.cancel, color: Colors.red, size: 16),
+                    label: const Text('Cancel', style: TextStyle(color: Colors.red)),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
               ],
             ),
             
             if (session.notes != null && session.notes!.isNotEmpty) ...[
-              const Divider(height: 32),
-              
-              // Notes
+              const Divider(height: 16),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.notes,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
+                  const Icon(Icons.notes, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Notes',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          session.notes!,
-                          style: TextStyle(
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      session.notes!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[700],
+                        fontStyle: FontStyle.italic,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -758,6 +835,260 @@ class _ClientDashboardState extends State<ClientDashboard> {
           ],
         ),
       ),
+    );
+  }
+  
+  // Show cancel confirmation dialog
+  Future<void> _showCancelSessionDialog(TrainingSession session) async {
+    final TextEditingController reasonController = TextEditingController();
+    
+    try {
+      bool? result = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Cancel Training Session'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Are you sure you want to cancel this session?',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Text('Date: ${session.formattedDate}'),
+                Text('Time: ${session.formattedTimeRange}'),
+                const SizedBox(height: 16),
+                const Text('Reason for cancellation (optional):'),
+                TextField(
+                  controller: reasonController,
+                  decoration: const InputDecoration(
+                    hintText: 'Enter reason here',
+                  ),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('No, Keep It'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Yes, Cancel', style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          );
+        },
+      );
+      
+      if (result == true) {
+        try {
+          setState(() {
+            _isLoading = true;
+          });
+          
+          final reason = reasonController.text;
+          
+          await _calendlyService.cancelSession(
+            session.id,
+            cancellationReason: reason.isEmpty ? null : reason,
+          );
+          
+          // Reload sessions
+          await _loadUpcomingSessions();
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Session cancelled successfully')),
+            );
+          }
+        } catch (e) {
+          print('Error cancelling session: $e');
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error cancelling session: $e')),
+            );
+          }
+        } finally {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } finally {
+      // Ensure controller is always disposed, even if the dialog is dismissed
+      reasonController.dispose();
+    }
+  }
+
+  // Format a date header
+  String _formatDateHeader(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final sessionDate = DateTime(date.year, date.month, date.day);
+    
+    if (sessionDate == today) {
+      return 'Today, ${DateFormat('MMMM d').format(date)}';
+    } else if (sessionDate == tomorrow) {
+      return 'Tomorrow, ${DateFormat('MMMM d').format(date)}';
+    } else {
+      return DateFormat('EEEE, MMMM d').format(date);
+    }
+  }
+
+  Widget _buildNutritionPlanCard() {
+    return FutureBuilder<NutritionPlan?>(
+      future: _nutritionService.getCurrentNutritionPlan(_client!.uid),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          );
+        }
+        
+        final currentPlan = snapshot.data;
+        
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.restaurant_menu,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Nutrition Plan',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () {
+                        HomeScreen.navigateToTab(context, 3); // Navigate to Food tab
+                      },
+                      child: const Text('View All'),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                if (currentPlan != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'CURRENT',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            currentPlan.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.local_fire_department, size: 16),
+                      const SizedBox(width: 8),
+                      Text('${currentPlan.dailyCalories} calories daily'),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              '${currentPlan.macronutrients['protein']?.toInt() ?? 0}g',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Text('Protein'),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              '${currentPlan.macronutrients['carbs']?.toInt() ?? 0}g',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Text('Carbs'),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              '${currentPlan.macronutrients['fat']?.toInt() ?? 0}g',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Text('Fat'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16.0),
+                    child: Center(
+                      child: Text(
+                        'No active nutrition plan',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

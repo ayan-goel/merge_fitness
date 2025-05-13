@@ -10,9 +10,12 @@ import 'trainer/templates_screen.dart';
 import 'trainer/clients_screen.dart';
 import 'trainer/trainer_dashboard.dart';
 import 'trainer/trainer_scheduling_screen.dart';
+import 'trainer/trainer_profile_screen.dart';
 import 'client/client_dashboard.dart';
 import 'client/client_workouts_screen.dart';
 import 'client/client_progress_screen.dart';
+import 'client/client_profile_screen.dart';
+import 'client/client_nutrition_screen.dart';
 import 'client/workout_detail_screen.dart';
 import '../models/assigned_workout_model.dart';
 
@@ -133,15 +136,6 @@ class _HomeScreenState extends State<HomeScreen> {
         final List<BottomNavigationBarItem> _navItems = _getNavItemsForRole(user.role);
 
         return Scaffold(
-          appBar: AppBar(
-            title: Text('Merge Fitness ${user.role == UserRole.trainer ? '(Trainer)' : ''}'),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.exit_to_app),
-                onPressed: _signOut,
-              ),
-            ],
-          ),
           body: _screens[_selectedIndex],
           bottomNavigationBar: BottomNavigationBar(
             items: _navItems,
@@ -291,9 +285,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFoodLogScreen() {
-    return const Center(
-      child: Text('Food Log - Coming Soon'),
-    );
+    return const ClientNutritionScreen();
   }
 
   Widget _buildScheduleScreen() {
@@ -315,8 +307,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildProfileScreen() {
-    return const Center(
-      child: Text('Profile - Coming Soon'),
-    );
+    if (_user?.role == UserRole.trainer) {
+      return const TrainerProfileScreen();
+    } else {
+      return const ClientProfileScreen();
+    }
   }
 } 

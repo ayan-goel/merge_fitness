@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/calendly_service.dart';
+import '../../widgets/profile_avatar.dart';
 import 'schedule_session_screen.dart';
 
 class SelectTrainerScreen extends StatefulWidget {
@@ -180,19 +181,10 @@ class _SelectTrainerScreenState extends State<SelectTrainerScreen> {
               padding: const EdgeInsets.all(16.0),
               child: Row(
                 children: [
-                  CircleAvatar(
+                  ProfileAvatar(
+                    name: trainer['displayName'] ?? 'Trainer',
                     radius: 32,
-                    backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                    backgroundImage: trainer['photoUrl'] != null ? NetworkImage(trainer['photoUrl']) : null,
-                    child: trainer['photoUrl'] == null
-                        ? Text(
-                            _getInitials(trainer['displayName']),
-                            style: TextStyle(
-                              fontSize: 24,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          )
-                        : null,
+                    fontSize: 18,
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -226,24 +218,5 @@ class _SelectTrainerScreenState extends State<SelectTrainerScreen> {
         );
       },
     );
-  }
-
-  String _getInitials(String name) {
-    if (name.isEmpty) return '';
-    
-    final parts = name.split(' ');
-    String initials = '';
-    
-    if (parts.isNotEmpty) {
-      if (parts[0].isNotEmpty) {
-        initials += parts[0][0];
-      }
-      
-      if (parts.length > 1 && parts[1].isNotEmpty) {
-        initials += parts[1][0];
-      }
-    }
-    
-    return initials.toUpperCase();
   }
 } 

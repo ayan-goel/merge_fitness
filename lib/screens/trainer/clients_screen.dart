@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/workout_template_service.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/profile_avatar.dart';
 import 'client_details_screen.dart';
 
 class ClientsScreen extends StatefulWidget {
@@ -144,15 +145,9 @@ class ClientListItem extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Colors.white,
-          backgroundImage: client['photoUrl'] != null 
-              ? NetworkImage(client['photoUrl']) 
-              : null,
-          child: client['photoUrl'] == null 
-              ? Text((client['displayName'] ?? 'U').substring(0, 1)) 
-              : null,
+        leading: ProfileAvatar(
+          name: client['displayName'] ?? 'Unknown',
+          radius: 20,
         ),
         title: Text(client['displayName'] ?? 'Unknown'),
         subtitle: Text(client['email'] ?? ''),

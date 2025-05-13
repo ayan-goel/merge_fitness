@@ -4,13 +4,17 @@ class TrainingSession {
   final String id;
   final String trainerId;
   final String clientId;
-  final DateTime startTime;
-  final DateTime endTime;
+  DateTime startTime;
+  DateTime endTime;
   final String location;
   final String status; // scheduled, completed, cancelled
   final String? notes;
   final DateTime createdAt;
   final String? calendlyEventUri;
+  final String? sessionType;
+  final String clientName;
+  final String clientEmail;
+  final String? calendlyUrl;
   
   TrainingSession({
     required this.id,
@@ -23,6 +27,10 @@ class TrainingSession {
     this.notes,
     required this.createdAt,
     this.calendlyEventUri,
+    this.sessionType,
+    required this.clientName,
+    required this.clientEmail,
+    this.calendlyUrl,
   });
   
   factory TrainingSession.fromFirestore(DocumentSnapshot doc) {
@@ -39,6 +47,10 @@ class TrainingSession {
       notes: data['notes'],
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       calendlyEventUri: data['calendlyEventUri'],
+      sessionType: data['sessionType'],
+      clientName: data['clientName'] ?? 'Client',
+      clientEmail: data['clientEmail'] ?? '',
+      calendlyUrl: data['calendlyUrl'],
     );
   }
   
@@ -53,6 +65,10 @@ class TrainingSession {
       'notes': notes,
       'createdAt': Timestamp.fromDate(createdAt),
       'calendlyEventUri': calendlyEventUri,
+      'sessionType': sessionType,
+      'clientName': clientName,
+      'clientEmail': clientEmail,
+      'calendlyUrl': calendlyUrl,
     };
   }
   
@@ -87,5 +103,12 @@ class TrainingSession {
     final period = dateTime.hour >= 12 ? 'PM' : 'AM';
     
     return '$hour:$minute $period';
+  }
+  
+  // Check if a session can be cancelled (is in the future and not already cancelled)
+  bool get canBeCancelled {
+    return status != 'cancelled' && 
+           status != 'completed' && 
+           startTime.isAfter(DateTime.now());
   }
 } 

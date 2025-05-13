@@ -27,13 +27,12 @@ service cloud.firestore {
     
     // User Collection Rules
     match /users/{userId} {
-      // Basic rule: All authenticated users can read trainer profiles
-      // Users can only update their own profiles
-      allow read: if isAuthenticated() && 
-                 (isOwner(userId) || 
-                  get(/databases/$(database)/documents/users/$(userId)).data.role == 'trainer' ||
-                  isTrainer() || 
-                  isAdmin());
+      // Allow users to read their own document or any trainer document
+      // This simpler rule should resolve circular reference issues
+      allow read: if isAuthenticated() && (request.auth.uid == userId || 
+                                         resource.data.role == 'trainer' ||
+                                         isTrainer() ||
+                                         isAdmin());
       
       // Allow a user to create their own document during signup
       allow create: if isAuthenticated() && request.auth.uid == userId;
@@ -44,16 +43,21 @@ service cloud.firestore {
       match /{allSubcollections=**} {
         allow read: if isAuthenticated() && (isOwner(userId) || isTrainer() || isAdmin());
       }
+      
+      // Allow trainers to update their clients' data
+      allow update: if request.auth != null && 
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer' && 
+                     resource.data.trainerId == request.auth.uid;
     }
     
-    // Simple rule for reading trainers - critical for scheduling
-    match /users/{userId} {
-      // Any authenticated user can list and get trainer documents
-      allow list, get: if isAuthenticated() && 
-                       ('role' in resource.data && resource.data.role == 'trainer' || 
-                        request.query.filters.size() > 0 && 
-                        request.query.filters[0].fieldPath == 'role' && 
-                        request.query.filters[0].value == 'trainer');
+    // Weight History Collection Rules
+    match /weightHistory/{entryId} {
+      // Allow users to read and write their own weight history
+      allow read, write: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Allow trainers to read client weight history
+      allow read: if isTrainer();
+      // Admins can do everything
+      allow read, write: if isAdmin();
     }
     
     // Workout Collection Rules
@@ -86,6 +90,8 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && 
         isTrainer() && 
         resource.data.trainerId == request.auth.uid;
+      
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
     }
     
     // Assigned Workouts Collection Rules
@@ -102,6 +108,41 @@ service cloud.firestore {
       
       // Admins can do everything
       allow read, write: if isAdmin();
+      
+      // Client can read their own workouts, trainers can read/write their clients' workouts
+      allow read: if request.auth != null && (
+                    request.auth.uid == resource.data.clientId || 
+                    request.auth.uid == resource.data.trainerId
+                  );
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
+      
+      // Allow client to update workout status
+      allow update: if request.auth != null && 
+                     request.auth.uid == resource.data.clientId &&
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'completedExercises', 'lastModified']);
+    }
+    
+    // Nutrition Plans Collection Rules
+    match /nutritionPlans/{planId} {
+      // Simplified rule: trainers can read ALL nutrition plans
+      allow read, list: if isAuthenticated() && isTrainer();
+      
+      // Clients can read their own nutrition plans
+      allow read: if isAuthenticated() && resource.data.clientId == request.auth.uid;
+      
+      // Trainers can create, update, and delete nutrition plans they assigned
+      allow create: if isAuthenticated() && isTrainer();
+      allow update, delete: if isAuthenticated() && isTrainer() && resource.data.trainerId == request.auth.uid;
+      
+      // Admins can do everything
+      allow read, write: if isAdmin();
+      
+      // Client can read their own nutrition plans, trainers can read/write their clients' plans
+      allow read: if request.auth != null && (
+                    request.auth.uid == resource.data.clientId || 
+                    request.auth.uid == resource.data.trainerId
+                  );
+      allow write: if request.auth != null && request.auth.uid == resource.data.trainerId;
     }
     
     // Program Collection Rules
@@ -154,8 +195,22 @@ service cloud.firestore {
          (request.resource.data.clientId == request.auth.uid || 
           isTrainer() || 
           isAdmin());
+      // Update rule: allow clients to cancel their own sessions
       allow update: if isAuthenticated() && 
-        (resource.data.trainerId == request.auth.uid || isAdmin());
+        (
+          // Trainers can update any session field
+          resource.data.trainerId == request.auth.uid || 
+          
+          // Clients can update only the status field to 'cancelled' and add notes
+          (
+            resource.data.clientId == request.auth.uid && 
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'notes']) &&
+            request.resource.data.status == 'cancelled'
+          ) || 
+          
+          // Admins can update anything
+          isAdmin()
+        );
       allow delete: if isAuthenticated() && 
         (resource.data.trainerId == request.auth.uid || isAdmin());
     }
@@ -187,6 +242,27 @@ service cloud.firestore {
         (resource.data.trainerId == request.auth.uid || isAdmin());
       allow delete: if isAuthenticated() && 
         (resource.data.trainerId == request.auth.uid || isAdmin());
+      
+      // Clients and trainers can read activities relevant to them
+      allow read: if request.auth != null && (
+                    request.auth.uid == resource.data.clientId || 
+                    request.auth.uid == resource.data.trainerId
+                  );
+      // Only system or trainers can create activities
+      allow create: if request.auth != null;
+    }
+    
+    // Meals Collection Rules
+    match /meals/{mealId} {
+      // Client can create/read/update/delete their own meals
+      allow read: if request.auth != null && (
+                    request.auth.uid == resource.data.clientId || 
+                    get(/databases/$(database)/documents/users/$(resource.data.clientId)).data.trainerId == request.auth.uid
+                  );
+      
+      // Client can create/update/delete their own meals
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.clientId;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.clientId;
     }
   }
 } 

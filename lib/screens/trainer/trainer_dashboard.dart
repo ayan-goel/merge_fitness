@@ -7,6 +7,7 @@ import '../../models/user_model.dart';
 import '../../screens/home_screen.dart';
 import 'create_template_screen.dart';
 import 'trainer_scheduling_screen.dart';
+import 'client_details_screen.dart';
 
 class TrainerDashboard extends StatefulWidget {
   const TrainerDashboard({super.key});
@@ -57,7 +58,7 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
           .collection('activityFeed')
           .where('trainerId', isEqualTo: _trainer!.uid)
           .orderBy('timestamp', descending: true)
-          .limit(10)
+          .limit(50) // Increase limit to show more activities
           .get();
       
       final activities = snapshot.docs.map((doc) {
@@ -68,6 +69,9 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
           'message': data['message'] ?? 'Unknown activity',
           'timestamp': (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
           'relatedId': data['relatedId'],
+          'clientId': data['clientId'],
+          'cancellationReason': data['cancellationReason'],
+          'cancelledBy': data['cancelledBy'],
         };
       }).toList();
       
@@ -96,6 +100,9 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
               'message': data['message'] ?? 'Unknown activity',
               'timestamp': (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
               'relatedId': data['relatedId'],
+              'clientId': data['clientId'],
+              'cancellationReason': data['cancellationReason'],
+              'cancelledBy': data['cancelledBy'],
             };
           }).toList();
           
@@ -106,8 +113,8 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
             return bTime.compareTo(aTime); // descending
           });
           
-          // Limit to 10 items
-          final limitedActivities = activities.take(10).toList();
+          // Increase limit to show more activities
+          final limitedActivities = activities.take(50).toList();
           
           setState(() {
             _activityItems = limitedActivities;
@@ -115,6 +122,83 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
         } catch (fallbackError) {
           print("Fallback error loading activity feed: $fallbackError");
         }
+      }
+    }
+  }
+
+  // Add a method to clear the activity feed
+  Future<void> _clearActivityFeed() async {
+    try {
+      if (_trainer == null) return;
+      
+      setState(() {
+        _isLoading = true;
+      });
+      
+      // Show confirmation dialog
+      final shouldClear = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Clear Activity Feed'),
+          content: const Text('Are you sure you want to clear all activity feed entries? This cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Clear All'),
+            ),
+          ],
+        ),
+      ) ?? false;
+      
+      if (!shouldClear) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+      
+      // Get all activity feed entries for this trainer
+      final snapshot = await FirebaseFirestore.instance
+          .collection('activityFeed')
+          .where('trainerId', isEqualTo: _trainer!.uid)
+          .get();
+      
+      // Delete each document in a batch
+      final batch = FirebaseFirestore.instance.batch();
+      for (var doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+      
+      // Clear the local list
+      setState(() {
+        _activityItems = [];
+        _isLoading = false;
+      });
+      
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Activity feed cleared successfully')),
+        );
+      }
+    } catch (e) {
+      print('Error clearing activity feed: $e');
+      
+      setState(() {
+        _isLoading = false;
+      });
+      
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error clearing activity feed: $e')),
+        );
       }
     }
   }
@@ -147,25 +231,13 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Trainer Dashboard',
+                    DateFormat('EEEE, MMMM d, yyyy').format(DateTime.now()),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: Colors.grey[600],
                         ),
                   ),
                   const SizedBox(height: 16),
                   const Divider(),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.email_outlined,
-                        size: 16,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(_trainer!.email),
-                    ],
-                  ),
                 ],
               ),
             ),
@@ -233,9 +305,19 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
                 'Recent Activity',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              TextButton(
-                onPressed: _loadActivityFeed,
-                child: const Text('Refresh'),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: _clearActivityFeed,
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    child: const Text('Clear All'),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: _loadActivityFeed,
+                    child: const Text('Refresh'),
+                  ),
+                ],
               ),
             ],
           ),
@@ -247,6 +329,8 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
                     child: Text('No recent activities'),
                   )
                 : ListView.separated(
+                    shrinkWrap: true,
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(8.0),
                     itemCount: _activityItems.length,
                     separatorBuilder: (context, index) => const Divider(),
@@ -272,6 +356,10 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
         icon = Icons.calendar_month;
         iconColor = Colors.green;
         break;
+      case 'session_cancelled':
+        icon = Icons.cancel;
+        iconColor = Colors.red;
+        break;
       case 'workout_assigned':
         icon = Icons.fitness_center;
         iconColor = Colors.blue;
@@ -289,13 +377,36 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
     final timestamp = activity['timestamp'] as DateTime;
     final formattedDate = _formatActivityDate(timestamp);
     
+    // Handle multiline messages (like cancellation with reason)
+    final message = activity['message'] as String;
+    final messageParts = message.split('\n');
+    final primaryMessage = messageParts.first;
+    final hasSecondaryMessage = messageParts.length > 1;
+    
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: iconColor.withOpacity(0.2),
         child: Icon(icon, color: iconColor),
       ),
-      title: Text(activity['message']),
-      subtitle: Text(formattedDate),
+      title: Text(primaryMessage),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasSecondaryMessage)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                messageParts.sublist(1).join('\n'),
+                style: const TextStyle(
+                  fontStyle: FontStyle.italic,
+                  color: Colors.red,
+                ),
+              ),
+            ),
+          Text(formattedDate),
+        ],
+      ),
+      isThreeLine: hasSecondaryMessage,
       onTap: () => _handleActivityTap(activity),
     );
   }
@@ -304,6 +415,7 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
     // Handle navigation based on activity type
     switch (activity['type']) {
       case 'session_scheduled':
+      case 'session_cancelled':
         // Navigate to scheduling screen
         Navigator.push(
           context,
@@ -311,6 +423,21 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
             builder: (context) => const TrainerSchedulingScreen(),
           ),
         );
+        break;
+      case 'workout_completed':
+        // Navigate to client details if clientId is available
+        if (activity['clientId'] != null) {
+          // Import client_details_screen.dart if not already imported
+          Navigator.push(
+            context, 
+            MaterialPageRoute(
+              builder: (context) => ClientDetailsScreen(
+                clientId: activity['clientId'],
+                clientName: activity['message'].toString().split(' completed')[0],
+              ),
+            ),
+          );
+        }
         break;
       default:
         // Do nothing for other types for now

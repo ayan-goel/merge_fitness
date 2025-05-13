@@ -172,7 +172,6 @@ class AuthService {
   // Update user profile
   Future<void> updateUserProfile({
     String? displayName,
-    String? photoUrl,
     double? height,
     double? weight,
     DateTime? dateOfBirth,
@@ -190,15 +189,10 @@ class AuthService {
       await user.updateDisplayName(displayName);
     }
     
-    if (photoUrl != null) {
-      await user.updatePhotoURL(photoUrl);
-    }
-    
     // Update Firestore document
     Map<String, dynamic> data = {};
     
     if (displayName != null) data['displayName'] = displayName;
-    if (photoUrl != null) data['photoUrl'] = photoUrl;
     if (height != null) data['height'] = height;
     if (weight != null) data['weight'] = weight;
     if (dateOfBirth != null) data['dateOfBirth'] = Timestamp.fromDate(dateOfBirth);

@@ -7,11 +7,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:intl/intl.dart';
 import '../models/session_model.dart';
 
 class CalendlyService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  
+  // Timezone settings for EST
+  static const String targetTimeZone = 'America/New_York'; // EST timezone
   
   // Calendly API endpoints
   static const String _baseUrl = 'https://api.calendly.com';
@@ -288,7 +293,23 @@ class CalendlyService {
     }
   }
   
-  // Get available time slots from Calendly for a specific trainer
+  // Convert UTC time to Eastern Standard Time
+  DateTime _convertToEST(DateTime utcTime) {
+    final estTimeZone = tz.getLocation(targetTimeZone);
+    final estTime = tz.TZDateTime.from(utcTime, estTimeZone);
+    return estTime;
+  }
+  
+  // Convert Eastern Standard Time to UTC
+  DateTime _convertToUTC(DateTime estTime) {
+    final estTimeZone = tz.getLocation(targetTimeZone);
+    final estDateTime = tz.TZDateTime(estTimeZone, 
+        estTime.year, estTime.month, estTime.day, 
+        estTime.hour, estTime.minute, estTime.second);
+    return estDateTime.toUtc();
+  }
+  
+  // Get trainer's available time slots from Calendly for scheduling
   Future<List<Map<String, dynamic>>> getTrainerAvailability(String trainerId, {DateTime? startDate, DateTime? endDate}) async {
     try {
       final token = await _getCalendlyToken(trainerId);
@@ -379,22 +400,31 @@ class CalendlyService {
           
           for (final slot in List<Map<String, dynamic>>.from(data['collection'])) {
             try {
-              final startTime = DateTime.parse(slot['start_time']);
+              // Parse UTC time from Calendly
+              final startTimeUtc = DateTime.parse(slot['start_time']);
+              
+              // Convert to EST for display
+              final startTimeEst = _convertToEST(startTimeUtc);
               
               // For event_type_available_times, the end_time may not be included in the response
               // Calculate it based on the event type duration if not provided
-              DateTime endTime;
+              DateTime endTimeUtc;
               if (slot.containsKey('end_time') && slot['end_time'] != null) {
-                endTime = DateTime.parse(slot['end_time']);
+                endTimeUtc = DateTime.parse(slot['end_time']);
               } else {
                 // Default to 30-minute slots if no end_time is provided
                 // This is a common default in Calendly, but ideally we should get the duration from the event type
-                endTime = startTime.add(const Duration(minutes: 30));
+                endTimeUtc = startTimeUtc.add(const Duration(minutes: 30));
               }
               
+              // Convert end time to EST
+              final endTimeEst = _convertToEST(endTimeUtc);
+              
               availableTimes.add({
-                'start_time': startTime,
-                'end_time': endTime,
+                'start_time': startTimeEst,
+                'end_time': endTimeEst,
+                'start_time_utc': startTimeUtc, // Keep original UTC time for reference
+                'end_time_utc': endTimeUtc,
                 'status': slot['status'] ?? 'available',
                 'scheduling_url': slot['scheduling_url'],
                 'spot_number': slot['invitees_remaining'] ?? 1,
@@ -404,6 +434,11 @@ class CalendlyService {
               // Skip this slot and continue with others
             }
           }
+          
+          // Sort times by EST time, not UTC time
+          availableTimes.sort((a, b) => 
+            (a['start_time'] as DateTime).compareTo(b['start_time'] as DateTime)
+          );
           
           print('CalendlyService: getTrainerAvailability - Successfully parsed ${availableTimes.length} available time slots');
           return availableTimes;
@@ -422,7 +457,7 @@ class CalendlyService {
     }
   }
   
-  // Create a session in our Firestore database when scheduled through Calendly
+  // Create a session
   Future<TrainingSession> createSession({
     required String trainerId,
     required String clientId,
@@ -431,8 +466,19 @@ class CalendlyService {
     required String location,
     String? notes,
     String? calendlyEventUri,
+    String? sessionType,
   }) async {
     try {
+      // Ensure times are in EST
+      final estStartTime = _convertToEST(startTime);
+      final estEndTime = _convertToEST(endTime);
+      
+      // Get client information
+      final clientDoc = await _firestore.collection('users').doc(clientId).get();
+      final clientData = clientDoc.data() as Map<String, dynamic>?;
+      final clientName = clientData?['displayName'] ?? 'Client';
+      final clientEmail = clientData?['email'] ?? '';
+      
       // Create session document
       final sessionRef = _firestore.collection('sessions').doc();
       
@@ -440,13 +486,17 @@ class CalendlyService {
         id: sessionRef.id,
         trainerId: trainerId,
         clientId: clientId,
-        startTime: startTime,
-        endTime: endTime,
+        startTime: estStartTime,
+        endTime: estEndTime,
         location: location,
         status: 'scheduled',
         notes: notes,
         calendlyEventUri: calendlyEventUri,
         createdAt: DateTime.now(),
+        clientName: clientName,
+        clientEmail: clientEmail,
+        sessionType: sessionType,
+        calendlyUrl: calendlyEventUri != null ? 'https://calendly.com/events/${calendlyEventUri.split('/').last}' : null,
       );
       
       // Save to Firestore
@@ -469,6 +519,7 @@ class CalendlyService {
     required Map<String, dynamic> timeSlot,
     required String location,
     String? notes,
+    String? sessionType,
   }) async {
     try {
       final token = await _getCalendlyToken(trainerId);
@@ -485,15 +536,18 @@ class CalendlyService {
       }
       
       // For now, we'll create the event in our database without using the Calendly scheduling API
-      // In a complete implementation, you would use Calendly's scheduling API to create the event
+      // Ensure the times from Calendly are properly converted to EST
+      DateTime startTime = timeSlot['start_time'];
+      DateTime endTime = timeSlot['end_time'];
       
       return await createSession(
         trainerId: trainerId,
         clientId: clientId,
-        startTime: timeSlot['start_time'],
-        endTime: timeSlot['end_time'],
+        startTime: startTime,
+        endTime: endTime,
         location: location,
         notes: notes,
+        sessionType: sessionType,
       );
     } catch (e) {
       print('Error scheduling session: $e');
@@ -533,7 +587,21 @@ class CalendlyService {
           .orderBy('startTime')
           .get();
       
-      return snapshot.docs.map((doc) => TrainingSession.fromFirestore(doc)).toList();
+      final sessions = snapshot.docs
+          .map((doc) => TrainingSession.fromFirestore(doc))
+          .where((session) => session.status != 'cancelled') // Filter out cancelled sessions
+          .toList();
+      
+      // Ensure all times are properly in EST
+      for (var session in sessions) {
+        if (session.startTime.timeZoneName != targetTimeZone) {
+          // Convert start and end times to EST if they're not already
+          session.startTime = _convertToEST(session.startTime);
+          session.endTime = _convertToEST(session.endTime);
+        }
+      }
+      
+      return sessions;
     } catch (e) {
       print('Error getting client upcoming sessions: $e');
       
@@ -550,8 +618,19 @@ class CalendlyService {
           // Filter and sort manually
           final sessions = snapshot.docs
               .map((doc) => TrainingSession.fromFirestore(doc))
-              .where((session) => session.startTime.isAfter(now))
+              .where((session) => 
+                  session.startTime.isAfter(now) && 
+                  session.status != 'cancelled') // Filter out cancelled sessions and past sessions
               .toList();
+          
+          // Ensure all times are properly in EST
+          for (var session in sessions) {
+            if (session.startTime.timeZoneName != targetTimeZone) {
+              // Convert start and end times to EST if they're not already
+              session.startTime = _convertToEST(session.startTime);
+              session.endTime = _convertToEST(session.endTime);
+            }
+          }
           
           sessions.sort((a, b) => a.startTime.compareTo(b.startTime));
           return sessions;
@@ -598,13 +677,153 @@ class CalendlyService {
     }
   }
   
+  // Get upcoming (non-cancelled) sessions for a trainer
+  Future<List<TrainingSession>> getTrainerUpcomingSessions(String trainerId) async {
+    try {
+      final now = DateTime.now();
+      
+      final snapshot = await _firestore.collection('sessions')
+          .where('trainerId', isEqualTo: trainerId)
+          .where('startTime', isGreaterThan: now)
+          .orderBy('startTime')
+          .get();
+      
+      return snapshot.docs
+          .map((doc) => TrainingSession.fromFirestore(doc))
+          .where((session) => session.status != 'cancelled') // Filter out cancelled sessions
+          .toList();
+    } catch (e) {
+      print('Error getting trainer upcoming sessions: $e');
+      
+      // If the error is about indexes building, try an alternative approach
+      if (e.toString().contains('index is currently building') || 
+          e.toString().contains('requires an index')) {
+        try {
+          // Get without ordering (works without index)
+          final snapshot = await _firestore.collection('sessions')
+              .where('trainerId', isEqualTo: trainerId)
+              .get();
+          
+          final now = DateTime.now();
+          // Filter and sort manually
+          final sessions = snapshot.docs
+              .map((doc) => TrainingSession.fromFirestore(doc))
+              .where((session) => 
+                  session.startTime.isAfter(now) && 
+                  session.status != 'cancelled') // Filter out cancelled sessions and past sessions
+              .toList();
+          
+          sessions.sort((a, b) => a.startTime.compareTo(b.startTime));
+          return sessions;
+        } catch (fallbackError) {
+          print('Fallback error getting trainer upcoming sessions: $fallbackError');
+          return [];
+        }
+      }
+      return [];
+    }
+  }
+  
   // Format datetime for display
   String _formatDateTime(DateTime dateTime) {
-    final date = '${dateTime.month}/${dateTime.day}/${dateTime.year}';
-    final hour = dateTime.hour > 12 ? dateTime.hour - 12 : dateTime.hour;
-    final period = dateTime.hour >= 12 ? 'PM' : 'AM';
-    final time = '$hour:${dateTime.minute.toString().padLeft(2, '0')} $period';
+    // Ensure the datetime is in EST
+    final estDateTime = _convertToEST(dateTime);
+    
+    final date = '${estDateTime.month}/${estDateTime.day}/${estDateTime.year}';
+    final hour = estDateTime.hour > 12 ? estDateTime.hour - 12 : (estDateTime.hour == 0 ? 12 : estDateTime.hour);
+    final period = estDateTime.hour >= 12 ? 'PM' : 'AM';
+    final time = '$hour:${estDateTime.minute.toString().padLeft(2, '0')} $period';
     return '$date at $time';
+  }
+  
+  // Cancel a training session
+  Future<bool> cancelSession(String sessionId, {String? cancellationReason}) async {
+    try {
+      final sessionDoc = await _firestore.collection('sessions').doc(sessionId).get();
+      
+      if (!sessionDoc.exists) {
+        throw Exception('Session not found');
+      }
+      
+      final session = TrainingSession.fromFirestore(sessionDoc);
+      
+      // Only allow cancellation if the session is in the future
+      if (session.startTime.isBefore(DateTime.now())) {
+        throw Exception('Cannot cancel a session that has already started or completed');
+      }
+      
+      // Get current user ID to determine if it's client or trainer cancelling
+      final currentUserId = _auth.currentUser?.uid;
+      final isClientCancelling = currentUserId == session.clientId;
+      
+      if (isClientCancelling) {
+        // Client cancellation - restricted to only status and notes
+        final updatedNotes = cancellationReason != null
+            ? '${session.notes ?? ''}\n\nCancellation reason: $cancellationReason'
+            : session.notes;
+        
+        await _firestore.collection('sessions').doc(sessionId).update({
+          'status': 'cancelled',
+          'notes': updatedNotes,
+        });
+      } else {
+        // Trainer or admin cancellation - can update more fields
+        await _firestore.collection('sessions').doc(sessionId).update({
+          'status': 'cancelled',
+          'notes': cancellationReason != null 
+              ? '${session.notes ?? ''}\n\nCancellation reason: $cancellationReason'
+              : session.notes,
+        });
+      }
+      
+      // Get the name of the user who cancelled (client or trainer)
+      String? cancelledByName;
+      String activityMessage;
+      
+      try {
+        // Get current user to determine who cancelled
+        final currentUser = _auth.currentUser;
+        if (currentUser != null) {
+          final userDoc = await _firestore.collection('users').doc(currentUser.uid).get();
+          if (userDoc.exists) {
+            cancelledByName = userDoc.data()?['displayName'] ?? 'Unknown user';
+          }
+        }
+      } catch (e) {
+        print('Error getting cancellation user info: $e');
+        // Continue even if we can't get the user name
+      }
+      
+      // Create appropriate message based on who cancelled
+      final isClientCancellation = _auth.currentUser?.uid == session.clientId;
+      if (isClientCancellation) {
+        activityMessage = '${cancelledByName ?? session.clientName} cancelled a session scheduled for ${_formatDateTime(session.startTime)}';
+      } else {
+        activityMessage = 'You cancelled a session with ${session.clientName} scheduled for ${_formatDateTime(session.startTime)}';
+      }
+      
+      // Add reason if provided
+      if (cancellationReason != null && cancellationReason.isNotEmpty) {
+        activityMessage += '\nReason: $cancellationReason';
+      }
+      
+      // Add to activity feed
+      await _firestore.collection('activityFeed').add({
+        'trainerId': session.trainerId,
+        'clientId': session.clientId,
+        'type': 'session_cancelled',
+        'message': activityMessage,
+        'timestamp': FieldValue.serverTimestamp(),
+        'relatedId': session.id,
+        'cancellationReason': cancellationReason,
+        'cancelledBy': _auth.currentUser?.uid,
+      });
+      
+      return true;
+    } catch (e) {
+      print('Error cancelling session: $e');
+      throw Exception('Failed to cancel session: $e');
+    }
   }
   
   // Get all available trainers for scheduling

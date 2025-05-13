@@ -4,12 +4,16 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:timezone/timezone.dart' as tz;
 import 'firebase_options.dart';
 import 'services/notification_service.dart';
 
 // Import screens
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/client/client_profile_screen.dart';
+import 'screens/trainer/trainer_profile_screen.dart';
 
 // Global instance of NotificationService for easy access
 final NotificationService notificationService = NotificationService();
@@ -21,6 +25,10 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Initialize timezone data
+  tz_data.initializeTimeZones();
+  tz.setLocalLocation(tz.getLocation('America/New_York')); // Set EST as the default
   
   // Initialize Crashlytics only for mobile platforms
   if (!kIsWeb) {
@@ -120,6 +128,11 @@ class MergeFitnessApp extends StatelessWidget {
       // For now we'll start with the login screen.
       // Later we'll add authentication state checking to determine the starting screen.
       home: const LoginScreen(),
+      routes: {
+        '/home': (context) => const HomeScreen(),
+        '/client/profile': (context) => const ClientProfileScreen(),
+        '/trainer/profile': (context) => const TrainerProfileScreen(),
+      },
     );
   }
 }

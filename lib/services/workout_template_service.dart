@@ -142,8 +142,39 @@ class WorkoutTemplateService {
   Future<void> updateWorkoutStatus(String workoutId, WorkoutStatus status, {String? feedback}) async {
     final Map<String, dynamic> data = {'status': AssignedWorkout.workoutStatusToString(status)};
     
+    // Get the workout details first to access client and trainer info
+    final workoutDoc = await _assignedWorkoutsCollection.doc(workoutId).get();
+    if (!workoutDoc.exists) {
+      throw Exception('Workout not found');
+    }
+    
+    final workout = AssignedWorkout.fromFirestore(workoutDoc);
+    
     if (status == WorkoutStatus.completed) {
       data['completedDate'] = Timestamp.now();
+      
+      // Add to activity feed for the trainer
+      try {
+        // Get client name for the message
+        final clientDoc = await _usersCollection.doc(workout.clientId).get();
+        final clientData = clientDoc.data() as Map<String, dynamic>?;
+        final clientName = clientDoc.exists && clientData != null 
+            ? clientData['displayName'] ?? 'Client' 
+            : 'Client';
+        
+        // Add activity to feed
+        await FirebaseFirestore.instance.collection('activityFeed').add({
+          'trainerId': workout.trainerId,
+          'type': 'workout_completed',
+          'message': '$clientName completed the workout "${workout.workoutName}"',
+          'timestamp': FieldValue.serverTimestamp(),
+          'relatedId': workoutId,
+          'clientId': workout.clientId,
+        });
+      } catch (e) {
+        print('Error adding workout completion to activity feed: $e');
+        // Continue even if adding to activity feed fails
+      }
     }
     
     if (feedback != null) {
@@ -196,5 +227,85 @@ class WorkoutTemplateService {
   // Delete an assigned workout
   Future<void> deleteAssignedWorkout(String workoutId) async {
     await _assignedWorkoutsCollection.doc(workoutId).delete();
+  }
+
+  // Get detailed client information for trainers
+  Future<Map<String, dynamic>> getClientDetails(String clientId) async {
+    try {
+      // Get client document
+      final doc = await _usersCollection.doc(clientId).get();
+      if (!doc.exists) {
+        throw Exception('Client not found');
+      }
+      
+      final data = doc.data() as Map<String, dynamic>;
+      
+      // Calculate BMI if height and weight are available
+      double? bmi;
+      if (data['height'] != null && data['weight'] != null) {
+        // BMI = weight(kg) / (height(m) * height(m))
+        final heightInMeters = data['height'] / 100; // convert cm to meters
+        bmi = data['weight'] / (heightInMeters * heightInMeters);
+        // Round to 1 decimal place
+        bmi = double.parse(bmi!.toStringAsFixed(1));
+      }
+      
+      // Get most recent weight history entry
+      double? mostRecentWeight = data['weight'];
+      try {
+        final weightHistoryDoc = await _firestore.collection('weightHistory')
+            .where('userId', isEqualTo: clientId)
+            .orderBy('date', descending: true)
+            .limit(1)
+            .get();
+        
+        if (weightHistoryDoc.docs.isNotEmpty) {
+          final mostRecentEntry = weightHistoryDoc.docs.first.data();
+          mostRecentWeight = mostRecentEntry['weight'];
+        }
+      } catch (e) {
+        print('Error loading weight history: $e');
+        // Continue with the user's weight from their profile
+      }
+      
+      // Convert height to feet/inches for display
+      Map<String, dynamic>? heightImperial;
+      if (data['height'] != null) {
+        // 1 cm = 0.0328084 feet
+        double totalFeet = data['height'] * 0.0328084;
+        int feet = totalFeet.floor();
+        int inches = ((totalFeet - feet) * 12).round();
+        heightImperial = {
+          'feet': feet,
+          'inches': inches,
+        };
+      }
+      
+      // Convert weight to lbs for display
+      double? weightLbs;
+      if (mostRecentWeight != null) {
+        // 1 kg = 2.20462 lbs
+        weightLbs = mostRecentWeight * 2.20462;
+        weightLbs = double.parse(weightLbs.toStringAsFixed(1)); // Round to 1 decimal place
+      }
+      
+      return {
+        'id': clientId,
+        'displayName': data['displayName'] ?? 'Unknown',
+        'email': data['email'] ?? '',
+        'phoneNumber': data['phoneNumber'] ?? '',
+        'height': data['height'], // in cm
+        'heightImperial': heightImperial,
+        'weight': data['weight'], // in kg
+        'mostRecentWeight': mostRecentWeight, // in kg
+        'weightLbs': weightLbs, // in lbs
+        'dateOfBirth': data['dateOfBirth'],
+        'goals': data['goals'] ?? [],
+        'bmi': bmi,
+      };
+    } catch (e) {
+      print('Error getting client details: $e');
+      rethrow;
+    }
   }
 } 
