@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../models/meal_entry_model.dart';
 import '../../models/nutrition_plan_model.dart';
 import '../../services/meal_service.dart';
+import '../../services/food_recognition_service.dart';
 
 class MealEntryScreen extends StatefulWidget {
   final MealEntry meal;
@@ -21,6 +23,7 @@ class MealEntryScreen extends StatefulWidget {
 
 class _MealEntryScreenState extends State<MealEntryScreen> {
   final MealService _mealService = MealService();
+  final FoodRecognitionService _foodRecognitionService = FoodRecognitionService();
   final _formKey = GlobalKey<FormState>();
   
   final _nameController = TextEditingController();
@@ -41,6 +44,7 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
   DateTime _timeConsumed = DateTime.now();
   bool _isLoading = false;
   bool _isNewMeal = false;
+  bool _isAnalyzingImage = false;
   
   @override
   void initState() {
@@ -277,6 +281,178 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
     );
   }
   
+  // New method to scan food with camera
+  Future<void> _scanFoodWithCamera() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+      
+      if (image == null) {
+        // User canceled image capture
+        return;
+      }
+      
+      setState(() {
+        _isAnalyzingImage = true;
+      });
+      
+      // Display a snackbar to indicate processing
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Analyzing food image... This may take a moment.'),
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+      
+      // Analyze the image using the Gemini service
+      final nutrients = await _foodRecognitionService.analyzeFoodImage(image.path);
+      
+      if (nutrients.hasError) {
+        // Show error message if analysis failed
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(nutrients.errorMessage ?? 'Error analyzing food image'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+        setState(() {
+          _isAnalyzingImage = false;
+        });
+        return;
+      }
+      
+      // Update form fields with the recognized values
+      setState(() {
+        _caloriesController.text = nutrients.calories.toInt().toString();
+        _proteinController.text = nutrients.protein.toStringAsFixed(1);
+        _carbsController.text = nutrients.carbs.toStringAsFixed(1);
+        _fatController.text = nutrients.fat.toStringAsFixed(1);
+        _sodiumController.text = nutrients.sodium.toStringAsFixed(0);
+        _cholesterolController.text = nutrients.cholesterol.toStringAsFixed(0);
+        _fiberController.text = nutrients.fiber.toStringAsFixed(1);
+        _sugarController.text = nutrients.sugar.toStringAsFixed(1);
+        _isAnalyzingImage = false;
+      });
+      
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Food analyzed successfully! You can adjust values if needed.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isAnalyzingImage = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error analyzing food image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
+  // Method to upload image from gallery
+  Future<void> _uploadFoodImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+      
+      if (image == null) {
+        // User canceled image selection
+        return;
+      }
+      
+      setState(() {
+        _isAnalyzingImage = true;
+      });
+      
+      // Display a snackbar to indicate processing
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Analyzing food image... This may take a moment.'),
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+      
+      // Analyze the image using the Gemini service
+      final nutrients = await _foodRecognitionService.analyzeFoodImage(image.path);
+      
+      if (nutrients.hasError) {
+        // Show error message if analysis failed
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(nutrients.errorMessage ?? 'Error analyzing food image'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+        setState(() {
+          _isAnalyzingImage = false;
+        });
+        return;
+      }
+      
+      // Update form fields with the recognized values
+      setState(() {
+        _caloriesController.text = nutrients.calories.toInt().toString();
+        _proteinController.text = nutrients.protein.toStringAsFixed(1);
+        _carbsController.text = nutrients.carbs.toStringAsFixed(1);
+        _fatController.text = nutrients.fat.toStringAsFixed(1);
+        _sodiumController.text = nutrients.sodium.toStringAsFixed(0);
+        _cholesterolController.text = nutrients.cholesterol.toStringAsFixed(0);
+        _fiberController.text = nutrients.fiber.toStringAsFixed(1);
+        _sugarController.text = nutrients.sugar.toStringAsFixed(1);
+        _isAnalyzingImage = false;
+      });
+      
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Food analyzed successfully! You can adjust values if needed.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isAnalyzingImage = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error analyzing food image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
   @override
   Widget build(BuildContext context) {
     final isEditing = !_isNewMeal;
@@ -298,6 +474,71 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
+            // AI Food Analysis Card
+            Card(
+              color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.camera_alt),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'AI Food Analysis',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Spacer(),
+                        if (_isAnalyzingImage)
+                          Container(
+                            height: 20,
+                            width: 20,
+                            margin: const EdgeInsets.only(right: 8),
+                            child: const CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Take a picture of your food or upload an image to automatically analyze nutritional content.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _isAnalyzingImage ? null : _scanFoodWithCamera,
+                            icon: const Icon(Icons.camera_alt),
+                            label: const Text('Take Photo'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).colorScheme.primary,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _isAnalyzingImage ? null : _uploadFoodImage,
+                            icon: const Icon(Icons.photo_library),
+                            label: const Text('Upload Image'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
             // Meal Name
             TextFormField(
               controller: _nameController,

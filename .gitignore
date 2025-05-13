@@ -12,6 +12,7 @@
 .swiftpm/
 migrate_working_dir/
 lib/services/calendly_service.dart
+lib/config/api_keys.dart
 
 # Firebase Related
 lib/firebase_options.dart

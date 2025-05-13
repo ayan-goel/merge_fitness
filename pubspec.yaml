@@ -68,18 +68,10 @@ dependencies:
   timezone: ^0.9.2
   flutter_web_auth_2: ^4.1.0
   http: ^1.4.0
-
-  # Camera and image processing
-  camera: ^0.10.5+5
-  path_provider: ^2.1.1
-  path: ^1.8.3
   
-  # Firebase ML Kit
-  firebase_ml_model_downloader: ^0.2.4+8
-  google_mlkit_image_labeling: ^0.9.0
-  
-  # API integration
-  dio: ^5.3.3
+  # AI Integration
+  google_generative_ai: ^0.4.7
+  path_provider: ^2.1.2
 
 dev_dependencies:
   flutter_test:

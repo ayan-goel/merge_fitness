@@ -36,6 +36,7 @@ A mobile application for fitness clients to track workouts, receive reminders, l
 5. **Food Logging & Smart Swaps**
    - Log meals via photo/upload
    - Get trainer-approved healthy alternatives
+   - AI-powered food recognition to automatically determine nutritional information
 
 6. **Schedule & Reminders**
    - Book via Calendly
@@ -43,6 +44,11 @@ A mobile application for fitness clients to track workouts, receive reminders, l
 
 7. **Trainer ETA Map Tracker**
    - Live ETA map pin sharing
+
+## Features
+
+### AI Food Recognition
+The app includes an AI-powered food recognition feature that allows users to take a photo of their meal to automatically analyze and populate nutritional information. See [README_FOOD_RECOGNITION.md](README_FOOD_RECOGNITION.md) for setup and usage instructions.
 
 ## Project Setup
 
