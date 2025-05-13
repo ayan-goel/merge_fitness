@@ -129,6 +129,7 @@ class MergeFitnessApp extends StatelessWidget {
       // Later we'll add authentication state checking to determine the starting screen.
       home: const LoginScreen(),
       routes: {
+        '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
         '/client/profile': (context) => const ClientProfileScreen(),
         '/trainer/profile': (context) => const TrainerProfileScreen(),

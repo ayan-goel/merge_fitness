@@ -320,32 +320,98 @@ class _ClientMealHistoryScreenState extends State<ClientMealHistoryScreen> {
               ],
             ),
             const SizedBox(height: 8),
+            
+            // Calories - more prominently displayed
+            Row(
+              children: [
+                Icon(
+                  Icons.local_fire_department,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${meal.calories} calories',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Macronutrients section
             Text(
-              '${meal.calories} calories',
-              style: Theme.of(context).textTheme.bodyMedium,
+              'Macronutrients:',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
             ),
             const SizedBox(height: 4),
             Row(
               children: [
                 _macronutrientChip(
-                  'P',
+                  'Protein',
                   '${meal.macronutrients['protein']?.toInt() ?? 0}g',
                   Colors.red.shade100,
                 ),
                 const SizedBox(width: 8),
                 _macronutrientChip(
-                  'C',
+                  'Carbs',
                   '${meal.macronutrients['carbs']?.toInt() ?? 0}g',
                   Colors.green.shade100,
                 ),
                 const SizedBox(width: 8),
                 _macronutrientChip(
-                  'F',
+                  'Fat',
                   '${meal.macronutrients['fat']?.toInt() ?? 0}g',
                   Colors.blue.shade100,
                 ),
               ],
             ),
+            
+            // Micronutrients section
+            const SizedBox(height: 12),
+            if (meal.micronutrients.isNotEmpty) ...[
+              Text(
+                'Micronutrients:',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (meal.micronutrients['sodium'] != null)
+                    _macronutrientChip(
+                      'Sodium',
+                      '${meal.micronutrients['sodium']?.toInt() ?? 0}mg',
+                      Colors.purple.shade100,
+                    ),
+                  if (meal.micronutrients['cholesterol'] != null)
+                    _macronutrientChip(
+                      'Cholesterol',
+                      '${meal.micronutrients['cholesterol']?.toInt() ?? 0}mg',
+                      Colors.purple.shade100,
+                    ),
+                  if (meal.micronutrients['fiber'] != null)
+                    _macronutrientChip(
+                      'Fiber',
+                      '${meal.micronutrients['fiber']?.toInt() ?? 0}g',
+                      Colors.purple.shade100,
+                    ),
+                  if (meal.micronutrients['sugar'] != null)
+                    _macronutrientChip(
+                      'Sugar',
+                      '${meal.micronutrients['sugar']?.toInt() ?? 0}g',
+                      Colors.purple.shade100,
+                    ),
+                ],
+              ),
+            ],
+            
             const SizedBox(height: 8),
             if (meal.description != null && meal.description!.isNotEmpty)
               Text(

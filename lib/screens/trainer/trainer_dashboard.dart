@@ -213,135 +213,140 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
       return const Center(child: Text('Error loading trainer data'));
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Welcome section
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Welcome, ${_trainer!.displayName ?? 'Trainer'}',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    DateFormat('EEEE, MMMM d, yyyy').format(DateTime.now()),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(),
-                ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Dashboard'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Welcome section
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Welcome, ${_trainer!.displayName ?? 'Trainer'}',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      DateFormat('EEEE, MMMM d, yyyy').format(DateTime.now()),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-          // Quick actions
-          Text(
-            'Quick Actions',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildActionCard(
-                context,
-                icon: Icons.people,
-                title: 'Clients',
-                onTap: () {
-                  // Navigate to Clients tab (index 1)
-                  HomeScreen.navigateToTab(context, 1);
-                },
-              ),
-              _buildActionCard(
-                context,
-                icon: Icons.calendar_month,
-                title: 'Scheduling',
-                onTap: () {
-                  // Navigate to Scheduling screen
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const TrainerSchedulingScreen(),
-                    ),
-                  ).then((_) {
-                    // Refresh activity feed when returning
-                    _loadActivityFeed();
-                  });
-                },
-              ),
-              _buildActionCard(
-                context,
-                icon: Icons.fitness_center,
-                title: 'New Workout',
-                onTap: () {
-                  // Navigate to Create Template screen
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const CreateTemplateScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Activity feed
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Recent Activity',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: _clearActivityFeed,
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
-                    child: const Text('Clear All'),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: _loadActivityFeed,
-                    child: const Text('Refresh'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: Card(
-              child: _activityItems.isEmpty
-                ? const Center(
-                    child: Text('No recent activities'),
-                  )
-                : ListView.separated(
-                    shrinkWrap: true,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(8.0),
-                    itemCount: _activityItems.length,
-                    separatorBuilder: (context, index) => const Divider(),
-                    itemBuilder: (context, index) {
-                      final activity = _activityItems[index];
-                      return _buildActivityItem(activity);
-                    },
-                  ),
+            // Quick actions
+            Text(
+              'Quick Actions',
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildActionCard(
+                  context,
+                  icon: Icons.people,
+                  title: 'Clients',
+                  onTap: () {
+                    // Navigate to Clients tab (index 1)
+                    HomeScreen.navigateToTab(context, 1);
+                  },
+                ),
+                _buildActionCard(
+                  context,
+                  icon: Icons.calendar_month,
+                  title: 'Scheduling',
+                  onTap: () {
+                    // Navigate to Scheduling screen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const TrainerSchedulingScreen(),
+                      ),
+                    ).then((_) {
+                      // Refresh activity feed when returning
+                      _loadActivityFeed();
+                    });
+                  },
+                ),
+                _buildActionCard(
+                  context,
+                  icon: Icons.fitness_center,
+                  title: 'New Workout',
+                  onTap: () {
+                    // Navigate to Create Template screen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CreateTemplateScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Activity feed
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Recent Activity',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: _clearActivityFeed,
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      child: const Text('Clear All'),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: _loadActivityFeed,
+                      child: const Text('Refresh'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: Card(
+                child: _activityItems.isEmpty
+                  ? const Center(
+                      child: Text('No recent activities'),
+                    )
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(8.0),
+                      itemCount: _activityItems.length,
+                      separatorBuilder: (context, index) => const Divider(),
+                      itemBuilder: (context, index) {
+                        final activity = _activityItems[index];
+                        return _buildActivityItem(activity);
+                      },
+                    ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -72,6 +72,9 @@ class _ClientsScreenState extends State<ClientsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Clients'),
+      ),
       body: Column(
         children: [
           // Search bar

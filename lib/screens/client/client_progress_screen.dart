@@ -344,213 +344,211 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Text(
-              'Progress Tracking',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 24),
-            
-            // Weight and BMI Chart Section - Always show to debug
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _showBMI ? 'BMI Progress' : 'Weight Progress',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Switch(
-                          value: _showBMI,
-                          onChanged: (value) {
-                            setState(() {
-                              _showBMI = value;
-                              print("Toggled to ${_showBMI ? 'BMI' : 'Weight'} display");
-                            });
-                          },
-                          activeColor: Theme.of(context).colorScheme.primary,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      height: 250,
-                      child: _weightEntries.isEmpty 
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.scale,
-                                    size: 64,
-                                    color: Colors.grey[400],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'No weight data available yet\nRecord your weight on the dashboard',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.grey[600],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Progress Tracking'),
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Weight and BMI Chart Section - Always show to debug
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _showBMI ? 'BMI Progress' : 'Weight Progress',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          Switch(
+                            value: _showBMI,
+                            onChanged: (value) {
+                              setState(() {
+                                _showBMI = value;
+                                print("Toggled to ${_showBMI ? 'BMI' : 'Weight'} display");
+                              });
+                            },
+                            activeColor: Theme.of(context).colorScheme.primary,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 250,
+                        child: _weightEntries.isEmpty 
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.scale,
+                                      size: 64,
+                                      color: Colors.grey[400],
                                     ),
-                                  ),
-                                ],
-                              ),
-                            )
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No weight data available yet\nRecord your weight on the dashboard',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
                           : _buildProgressChart(),
+                      ),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: Text(
+                          _showBMI ? 'BMI Over Time' : 'Weight (lbs) Over Time',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            
+              // Stats cards
+              Row(
+                children: [
+                  _buildStatCard(
+                    context,
+                    title: 'Current Streak',
+                    value: '$_currentStreak ${_currentStreak == 1 ? 'day' : 'days'}',
+                    icon: Icons.local_fire_department,
+                    color: Colors.orange,
+                  ),
+                  const SizedBox(width: 16),
+                  _buildStatCard(
+                    context,
+                    title: 'Longest Streak',
+                    value: '$_longestStreak ${_longestStreak == 1 ? 'day' : 'days'}',
+                    icon: Icons.emoji_events,
+                    color: Colors.amber,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  _buildStatCard(
+                    context,
+                    title: 'Workouts Completed',
+                    value: '$_completedWorkoutsCount',
+                    icon: Icons.fitness_center,
+                    color: Colors.green,
+                  ),
+                  const SizedBox(width: 16),
+                  _buildStatCard(
+                    context,
+                    title: 'This Month',
+                    value: '${_getWorkoutsThisMonth()}',
+                    icon: Icons.calendar_month,
+                    color: Colors.blue,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+            
+              // Calendar
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TableCalendar(
+                    firstDay: DateTime.utc(2020, 1, 1),
+                    lastDay: DateTime.utc(2030, 12, 31),
+                    focusedDay: _focusedDay,
+                    calendarFormat: _calendarFormat,
+                    eventLoader: _getWorkoutsForDay,
+                    selectedDayPredicate: (day) {
+                      return isSameDay(_selectedDay, day);
+                    },
+                    onDaySelected: (selectedDay, focusedDay) {
+                      setState(() {
+                        _selectedDay = selectedDay;
+                        _focusedDay = focusedDay;
+                      });
+                    },
+                    onFormatChanged: (format) {
+                      setState(() {
+                        _calendarFormat = format;
+                      });
+                    },
+                    onPageChanged: (focusedDay) {
+                      _focusedDay = focusedDay;
+                    },
+                    calendarStyle: CalendarStyle(
+                      // Customize the calendar appearance
+                      markersMaxCount: 3,
+                      markerSize: 8,
+                      markerDecoration: const BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                      ),
+                      todayDecoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      selectedDecoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      // Make sure markers are visible
+                      markersAnchor: 1.7,
+                      markersAutoAligned: true,
                     ),
-                    const SizedBox(height: 8),
-                    Center(
-                      child: Text(
-                        _showBMI ? 'BMI Over Time' : 'Weight (lbs) Over Time',
-                        style: Theme.of(context).textTheme.bodySmall,
+                    headerStyle: HeaderStyle(
+                      formatButtonTextStyle: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      formatButtonDecoration: BoxDecoration(
+                        border: Border.all(color: Theme.of(context).colorScheme.primary),
+                        borderRadius: BorderRadius.circular(16.0),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            
-            // Stats cards
-            Row(
-              children: [
-                _buildStatCard(
-                  context,
-                  title: 'Current Streak',
-                  value: '$_currentStreak ${_currentStreak == 1 ? 'day' : 'days'}',
-                  icon: Icons.local_fire_department,
-                  color: Colors.orange,
-                ),
-                const SizedBox(width: 16),
-                _buildStatCard(
-                  context,
-                  title: 'Longest Streak',
-                  value: '$_longestStreak ${_longestStreak == 1 ? 'day' : 'days'}',
-                  icon: Icons.emoji_events,
-                  color: Colors.amber,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                _buildStatCard(
-                  context,
-                  title: 'Workouts Completed',
-                  value: '$_completedWorkoutsCount',
-                  icon: Icons.fitness_center,
-                  color: Colors.green,
-                ),
-                const SizedBox(width: 16),
-                _buildStatCard(
-                  context,
-                  title: 'This Month',
-                  value: '${_getWorkoutsThisMonth()}',
-                  icon: Icons.calendar_month,
-                  color: Colors.blue,
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            
-            // Calendar
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: TableCalendar(
-                  firstDay: DateTime.utc(2020, 1, 1),
-                  lastDay: DateTime.utc(2030, 12, 31),
-                  focusedDay: _focusedDay,
-                  calendarFormat: _calendarFormat,
-                  eventLoader: _getWorkoutsForDay,
-                  selectedDayPredicate: (day) {
-                    return isSameDay(_selectedDay, day);
-                  },
-                  onDaySelected: (selectedDay, focusedDay) {
-                    setState(() {
-                      _selectedDay = selectedDay;
-                      _focusedDay = focusedDay;
-                    });
-                  },
-                  onFormatChanged: (format) {
-                    setState(() {
-                      _calendarFormat = format;
-                    });
-                  },
-                  onPageChanged: (focusedDay) {
-                    _focusedDay = focusedDay;
-                  },
-                  calendarStyle: CalendarStyle(
-                    // Customize the calendar appearance
-                    markersMaxCount: 3,
-                    markerSize: 8,
-                    markerDecoration: const BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                    ),
-                    todayDecoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-                      shape: BoxShape.circle,
-                    ),
-                    selectedDecoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    // Make sure markers are visible
-                    markersAnchor: 1.7,
-                    markersAutoAligned: true,
-                  ),
-                  headerStyle: HeaderStyle(
-                    formatButtonTextStyle: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    formatButtonDecoration: BoxDecoration(
-                      border: Border.all(color: Theme.of(context).colorScheme.primary),
-                      borderRadius: BorderRadius.circular(16.0),
-                    ),
-                  ),
-                  calendarBuilders: CalendarBuilders(
-                    // Add a custom marker builder to make the markers more visible
-                    markerBuilder: (context, day, events) {
-                      if (events.isEmpty) return const SizedBox.shrink();
-                      
-                      return Positioned(
-                        bottom: 1,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.green,
+                    calendarBuilders: CalendarBuilders(
+                      // Add a custom marker builder to make the markers more visible
+                      markerBuilder: (context, day, events) {
+                        if (events.isEmpty) return const SizedBox.shrink();
+                        
+                        return Positioned(
+                          bottom: 1,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.green,
+                            ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
             
-            // Workouts for selected day
-            if (_selectedDay != null)
-              Container(
-                height: 300, // Fixed height for the workout list
-                child: _buildSelectedDayWorkouts(),
-              ),
-          ],
+              // Workouts for selected day
+              if (_selectedDay != null)
+                Container(
+                  height: 300, // Fixed height for the workout list
+                  child: _buildSelectedDayWorkouts(),
+                ),
+            ],
+          ),
         ),
       ),
     );

@@ -179,11 +179,6 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Assigned Workouts',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
                         child: TextButton.icon(
@@ -278,12 +273,6 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Nutrition Plan',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 12),
-                      
                       StreamBuilder<List<NutritionPlan>>(
                         stream: _nutritionService.getClientNutritionPlans(widget.clientId),
                         builder: (context, snapshot) {
@@ -416,6 +405,24 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                       
                       return Column(
                         children: [
+                          // Add a button to view client's meals - MOVED UP
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () => _navigateToClientMeals(),
+                                icon: const Icon(Icons.restaurant, size: 24),
+                                label: const Text('View Client\'s Meals', style: TextStyle(fontSize: 16)),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                          
                           Expanded(
                             child: ListView.builder(
                               padding: const EdgeInsets.all(16.0),
@@ -424,21 +431,6 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                                 final plan = plans[index];
                                 return NutritionPlanCard(plan: plan);
                               },
-                            ),
-                          ),
-                          // Add a button to view client's meals
-                          Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: () => _navigateToClientMeals(),
-                                icon: const Icon(Icons.restaurant),
-                                label: const Text('View Client\'s Meals'),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                ),
-                              ),
                             ),
                           ),
                         ],
@@ -660,10 +652,46 @@ class NutritionPlanCard extends StatelessWidget {
                 const SizedBox(width: 4.0),
                 Text(
                   'Calories: ${plan.dailyCalories} kcal',
-                  style: theme.textTheme.bodyMedium,
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
+            const SizedBox(height: 8.0),
+            
+            // Macronutrients
+            Text(
+              'Macronutrients:',
+              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 4.0),
+            Row(
+              children: [
+                _macronutrientChip('Protein', '${plan.macronutrients['protein']?.toInt() ?? 0}g', Colors.red.shade100),
+                const SizedBox(width: 8),
+                _macronutrientChip('Carbs', '${plan.macronutrients['carbs']?.toInt() ?? 0}g', Colors.green.shade100),
+                const SizedBox(width: 8),
+                _macronutrientChip('Fat', '${plan.macronutrients['fat']?.toInt() ?? 0}g', Colors.blue.shade100),
+              ],
+            ),
+            
+            // Micronutrients
+            const SizedBox(height: 8.0),
+            Text(
+              'Micronutrients:',
+              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 4.0),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _macronutrientChip('Sodium', '${plan.micronutrients['sodium']?.toInt() ?? 0}mg', Colors.purple.shade100),
+                _macronutrientChip('Cholesterol', '${plan.micronutrients['cholesterol']?.toInt() ?? 0}mg', Colors.purple.shade100),
+                _macronutrientChip('Fiber', '${plan.micronutrients['fiber']?.toInt() ?? 0}g', Colors.purple.shade100),
+                _macronutrientChip('Sugar', '${plan.micronutrients['sugar']?.toInt() ?? 0}g', Colors.purple.shade100),
+              ],
+            ),
+            
             if (plan.description != null && plan.description!.isNotEmpty) ...[
               const SizedBox(height: 8.0),
               Text(
@@ -676,6 +704,17 @@ class NutritionPlanCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+  
+  Widget _macronutrientChip(String label, String value, Color backgroundColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text('$label: $value'),
     );
   }
   

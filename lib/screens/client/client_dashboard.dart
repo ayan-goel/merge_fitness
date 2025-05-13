@@ -304,6 +304,9 @@ class _ClientDashboardState extends State<ClientDashboard> {
     }
     
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Dashboard'),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -335,12 +338,14 @@ class _ClientDashboardState extends State<ClientDashboard> {
               
               const SizedBox(height: 24),
               
-              // Today's Workout Section
-              Text(
-                "Today's Workout",
-                style: Theme.of(context).textTheme.titleLarge,
+              // Today's Workout Section with section header
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: Text(
+                  "Today's Workout",
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
               ),
-              const SizedBox(height: 16),
               
               // Workouts list with fixed height
               SizedBox(
@@ -416,11 +421,13 @@ class _ClientDashboardState extends State<ClientDashboard> {
               const SizedBox(height: 24),
               
               // Upcoming Sessions Section
-              Text(
-                'Training Sessions',
-                style: Theme.of(context).textTheme.titleLarge,
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: Text(
+                  'Training Sessions',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
               ),
-              const SizedBox(height: 16),
               
               // Show upcoming sessions if available
               if (_upcomingSessions.isNotEmpty) ...[
@@ -676,11 +683,13 @@ class _ClientDashboardState extends State<ClientDashboard> {
               const SizedBox(height: 24),
               
               // Today's Stats
-              Text(
-                'Your Progress',
-                style: Theme.of(context).textTheme.titleLarge,
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: Text(
+                  'Your Progress',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
               ),
-              const SizedBox(height: 16),
               
               Row(
                 children: [

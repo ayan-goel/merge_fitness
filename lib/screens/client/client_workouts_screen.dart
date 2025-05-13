@@ -122,110 +122,110 @@ class _ClientWorkoutsScreenState extends State<ClientWorkoutsScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     
-    return Column(
-      children: [
-        // Filters
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'My Workouts',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 16.0),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: _filterOptions.map((filter) => 
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: FilterChip(
-                        label: Text(filter),
-                        selected: _selectedFilter == filter,
-                        onSelected: (selected) {
-                          if (selected) {
-                            setState(() {
-                              _selectedFilter = filter;
-                            });
-                          }
-                        },
-                        selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                        checkmarkColor: Theme.of(context).colorScheme.primary,
-                      ),
-                    )
-                  ).toList(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        
-        // Workout list
-        Expanded(
-          child: StreamBuilder<List<AssignedWorkout>>(
-            stream: _workoutService.getClientWorkouts(_clientId!),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text('Error: ${snapshot.error}'),
-                );
-              }
-              
-              final allWorkouts = snapshot.data ?? [];
-              
-              // Filter workouts based on selected filter
-              final DateTime now = DateTime.now();
-              final DateTime today = DateTime(now.year, now.month, now.day);
-              
-              final filteredWorkouts = _filterWorkouts(allWorkouts, _selectedFilter, today);
-              
-              if (filteredWorkouts.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.fitness_center,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No ${_selectedFilter.toLowerCase()} workouts',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey,
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Workouts'),
+      ),
+      body: Column(
+        children: [
+          // Filters
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _filterOptions.map((filter) => 
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: FilterChip(
+                          label: Text(filter),
+                          selected: _selectedFilter == filter,
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _selectedFilter = filter;
+                              });
+                            }
+                          },
+                          selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                          checkmarkColor: Theme.of(context).colorScheme.primary,
                         ),
-                      ),
-                    ],
+                      )
+                    ).toList(),
                   ),
-                );
-              }
-              
-              return ListView.builder(
-                padding: const EdgeInsets.all(16.0),
-                itemCount: filteredWorkouts.length,
-                itemBuilder: (context, index) {
-                  final workout = filteredWorkouts[index];
-                  return WorkoutCard(
-                    workout: workout,
-                    onTap: () {
-                      navigateToWorkout(workout.id);
-                    },
-                  );
-                },
-              );
-            },
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+          
+          // Workout list
+          Expanded(
+            child: StreamBuilder<List<AssignedWorkout>>(
+              stream: _workoutService.getClientWorkouts(_clientId!),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('Error: ${snapshot.error}'),
+                  );
+                }
+                
+                final allWorkouts = snapshot.data ?? [];
+                
+                // Filter workouts based on selected filter
+                final DateTime now = DateTime.now();
+                final DateTime today = DateTime(now.year, now.month, now.day);
+                
+                final filteredWorkouts = _filterWorkouts(allWorkouts, _selectedFilter, today);
+                
+                if (filteredWorkouts.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.fitness_center,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No ${_selectedFilter.toLowerCase()} workouts',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16.0),
+                  itemCount: filteredWorkouts.length,
+                  itemBuilder: (context, index) {
+                    final workout = filteredWorkouts[index];
+                    return WorkoutCard(
+                      workout: workout,
+                      onTap: () {
+                        navigateToWorkout(workout.id);
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
   

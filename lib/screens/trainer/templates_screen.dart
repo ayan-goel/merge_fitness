@@ -109,6 +109,9 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     }
     
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Workout Templates'),
+      ),
       body: StreamBuilder<List<WorkoutTemplate>>(
         stream: _workoutService.getTrainerTemplates(_trainerId!),
         builder: (context, snapshot) {
