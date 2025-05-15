@@ -1859,29 +1859,33 @@ class TodayWorkoutCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppStyles.darkCharcoal,
+                  color: AppStyles.slateGray.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppStyles.slateGray.withOpacity(0.2),
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.fitness_center,
                       size: 16,
-                      color: AppStyles.mutedBlue,
+                      color: AppStyles.primarySage,
                     ),
                     const SizedBox(width: 8.0),
                     Text(
                       '${workout.exercises.length} exercise${workout.exercises.length > 1 ? 's' : ''}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppStyles.textDark,
                         fontSize: 14,
                       ),
                     ),
                     const Spacer(),
-                    const Icon(
+                    Icon(
                       Icons.arrow_forward_ios,
                       size: 14,
-                      color: AppStyles.mutedBlue,
+                      color: AppStyles.primarySage,
                     ),
                   ],
                 ),
