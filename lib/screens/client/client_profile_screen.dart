@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
 import '../../services/profile_image_service.dart';
 import '../../models/user_model.dart';
+import '../../models/goal_model.dart';
+import '../../theme/app_styles.dart';
 
 class ClientProfileScreen extends StatefulWidget {
   const ClientProfileScreen({super.key});
@@ -46,7 +48,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   bool _isLoading = true;
   bool _isEditing = false;
   bool _isSaving = false;
-  List<String> _goals = [];
+  List<Goal> _goals = [];
   
   @override
   void initState() {
@@ -204,11 +206,11 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   }
   
   void _addGoal() {
-    final goal = _goalController.text.trim();
-    if (goal.isEmpty) return;
+    final goalText = _goalController.text.trim();
+    if (goalText.isEmpty) return;
     
     setState(() {
-      _goals.add(goal);
+      _goals.add(Goal(value: goalText));
       _goalController.clear();
     });
   }
@@ -217,6 +219,15 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     setState(() {
       _goals.removeAt(index);
     });
+  }
+
+  void _toggleGoalCompletion(int index) {
+    if (index >= 0 && index < _goals.length) {
+      setState(() {
+        // Create a new goal with the opposite completed status
+        _goals[index] = _goals[index].copyWith(completed: !_goals[index].completed);
+      });
+    }
   }
   
   Future<void> _selectDate() async {
@@ -250,19 +261,55 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     }
   }
   
+  InputDecoration _getInputDecoration({
+    required String label,
+    required String hint,
+    IconData? prefixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
+      labelStyle: const TextStyle(
+        fontSize: 14,
+        color: AppStyles.textDark, // Use AppStyles instead of black87
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      filled: true,
+      fillColor: AppStyles.offWhite, // Use AppStyles instead of white
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppStyles.slateGray.withOpacity(0.4)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppStyles.primarySage, width: 2),
+      ),
+    );
+  }
+  
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(
+            color: AppStyles.primarySage,
+          ),
+        ),
       );
     }
     
-    final themeColor = Theme.of(context).colorScheme.primary;
+    final themeColor = AppStyles.primarySage;
     
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Profile'),
+        backgroundColor: AppStyles.offWhite,
+        foregroundColor: AppStyles.textDark,
+        elevation: 0,
         actions: [
           if (!_isEditing)
             IconButton(
@@ -308,10 +355,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                 _isEditing 
                   ? TextFormField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Full Name',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
+                      decoration: _getInputDecoration(
+                        label: 'Full Name',
+                        hint: '',
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -322,10 +368,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                     )
                   : TextFormField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Full Name',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
+                      decoration: _getInputDecoration(
+                        label: 'Full Name',
+                        hint: '',
                       ),
                       enabled: false,
                     ),
@@ -334,10 +379,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                 // Email
                 TextFormField(
                   controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email),
+                  decoration: _getInputDecoration(
+                    label: 'Email',
+                    hint: '',
                   ),
                   enabled: false,
                 ),
@@ -347,19 +391,17 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                 _isEditing 
                   ? TextFormField(
                       controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Phone Number',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.phone),
+                      decoration: _getInputDecoration(
+                        label: 'Phone Number',
+                        hint: '',
                       ),
                       keyboardType: TextInputType.phone,
                     )
                   : TextFormField(
                       controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Phone Number',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.phone),
+                      decoration: _getInputDecoration(
+                        label: 'Phone Number',
+                        hint: '',
                       ),
                       enabled: false,
                     ),
@@ -370,10 +412,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                   ? InkWell(
                       onTap: _selectDate,
                       child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Date of Birth',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.calendar_today),
+                        decoration: _getInputDecoration(
+                          label: 'Date of Birth',
+                          hint: '',
                         ),
                         child: Text(
                           _dateOfBirth != null
@@ -383,10 +424,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                       ),
                     )
                   : TextFormField(
-                      decoration: const InputDecoration(
-                        labelText: 'Date of Birth',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.calendar_today),
+                      decoration: _getInputDecoration(
+                        label: 'Date of Birth',
+                        hint: '',
                       ),
                       controller: TextEditingController(
                         text: _dateOfBirth != null
@@ -414,10 +454,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                       Expanded(
                         child: TextFormField(
                           controller: _heightFeetController,
-                          decoration: const InputDecoration(
-                            labelText: 'Height (feet)',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.height),
+                          decoration: _getInputDecoration(
+                            label: 'Height (feet)',
+                            hint: '',
                           ),
                           keyboardType: TextInputType.number,
                           validator: (value) {
@@ -434,9 +473,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                       Expanded(
                         child: TextFormField(
                           controller: _heightInchesController,
-                          decoration: const InputDecoration(
-                            labelText: 'Inches',
-                            border: OutlineInputBorder(),
+                          decoration: _getInputDecoration(
+                            label: 'Inches',
+                            hint: '',
                           ),
                           keyboardType: TextInputType.number,
                           validator: (value) {
@@ -457,10 +496,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                   )
                 else
                   TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: 'Height',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.height),
+                    decoration: _getInputDecoration(
+                      label: 'Height',
+                      hint: '',
                     ),
                     controller: TextEditingController(
                       text: _heightFeetController.text.isNotEmpty || _heightInchesController.text.isNotEmpty
@@ -475,10 +513,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                 _isEditing
                   ? TextFormField(
                       controller: _weightController,
-                      decoration: const InputDecoration(
-                        labelText: 'Current Weight (lbs)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.monitor_weight),
+                      decoration: _getInputDecoration(
+                        label: 'Current Weight (lbs)',
+                        hint: '',
                       ),
                       keyboardType: TextInputType.number,
                       validator: (value) {
@@ -491,10 +528,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                       },
                     )
                   : TextFormField(
-                      decoration: const InputDecoration(
-                        labelText: 'Current Weight (lbs)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.monitor_weight),
+                      decoration: _getInputDecoration(
+                        label: 'Current Weight (lbs)',
+                        hint: '',
                       ),
                       controller: TextEditingController(
                         text: _weightController.text.isEmpty ? 'Not specified' : '${_weightController.text} lbs'
@@ -543,15 +579,36 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                                 leading: Icon(Icons.fitness_center, color: themeColor, size: 20),
                                 title: Text(
-                                  entry.value,
-                                  style: const TextStyle(fontWeight: FontWeight.w500),
+                                  entry.value.value,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    color: entry.value.completed ? AppStyles.slateGray : AppStyles.textDark,
+                                    decoration: entry.value.completed ? TextDecoration.lineThrough : TextDecoration.none,
+                                  ),
                                 ),
-                                trailing: _isEditing ? IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                                  onPressed: () => _removeGoal(entry.key),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ) : null,
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (!_isEditing) 
+                                      IconButton(
+                                        icon: Icon(
+                                          entry.value.completed ? Icons.check_circle : Icons.circle_outlined,
+                                          color: entry.value.completed ? AppStyles.successGreen : AppStyles.slateGray,
+                                          size: 20,
+                                        ),
+                                        onPressed: () => _toggleGoalCompletion(entry.key),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                      ),
+                                    if (_isEditing)
+                                      IconButton(
+                                        icon: const Icon(Icons.delete, color: AppStyles.errorRed, size: 20),
+                                        onPressed: () => _removeGoal(entry.key),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                      ),
+                                  ],
+                                ),
                               );
                             }).toList(),
                           ],
@@ -568,9 +625,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _goalController,
-                            decoration: const InputDecoration(
-                              labelText: 'Add Goal',
-                              border: OutlineInputBorder(),
+                            decoration: _getInputDecoration(
+                              label: 'Add Goal',
+                              hint: '',
                             ),
                           ),
                         ),
@@ -610,15 +667,20 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                 if (!_isEditing) ...[
                   const Divider(),
                   const SizedBox(height: 16),
-                  Center(
+                  // Log out button
+                  SizedBox(
+                    width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: _signOut,
-                      icon: const Icon(Icons.exit_to_app),
-                      label: const Text('Logout'),
+                      icon: const Icon(Icons.logout),
+                      label: const Text("Sign Out"),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                        backgroundColor: AppStyles.errorRed,
+                        foregroundColor: AppStyles.textLight,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),

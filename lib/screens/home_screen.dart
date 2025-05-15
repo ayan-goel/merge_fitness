@@ -5,6 +5,8 @@ import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../services/workout_service.dart';
 import '../models/workout_model.dart';
+import '../theme/app_styles.dart';
+import '../widgets/merge_app_bar.dart';
 import 'login_screen.dart';
 import 'trainer/templates_screen.dart';
 import 'trainer/clients_screen.dart';
@@ -137,13 +139,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return Scaffold(
           body: _screens[_selectedIndex],
-          bottomNavigationBar: BottomNavigationBar(
-            items: _navItems,
-            currentIndex: _selectedIndex,
-            selectedItemColor: Theme.of(context).colorScheme.primary,
-            unselectedItemColor: Colors.grey,
-            onTap: _onItemTapped,
-            type: BottomNavigationBarType.fixed,
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  spreadRadius: 0,
+                  offset: const Offset(0, -1),
+                ),
+              ],
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16.0),
+                topRight: Radius.circular(16.0),
+              ),
+            ),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(_navItems.length, (index) {
+                    return _buildNavItem(index, _navItems[index]);
+                  }),
+                ),
+              ),
+            ),
           ),
         );
       },
@@ -311,6 +333,49 @@ class _HomeScreenState extends State<HomeScreen> {
       return const TrainerProfileScreen();
     } else {
       return const ClientProfileScreen();
+    }
+  }
+
+  Widget _buildNavItem(int index, BottomNavigationBarItem item) {
+    final IconData iconData = _getIconData(index);
+    
+    return GestureDetector(
+      onTap: () => _onItemTapped(index),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            iconData,
+            color: _selectedIndex == index ? Theme.of(context).colorScheme.primary : Colors.grey,
+            size: 24.0,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            item.label ?? '',
+            style: TextStyle(
+              color: _selectedIndex == index ? Theme.of(context).colorScheme.primary : Colors.grey,
+              fontSize: 10.0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  IconData _getIconData(int index) {
+    switch (index) {
+      case 0:
+        return Icons.dashboard;
+      case 1:
+        return _user?.role == UserRole.trainer ? Icons.people : Icons.fitness_center;
+      case 2:
+        return _user?.role == UserRole.trainer ? Icons.fitness_center : Icons.insights;
+      case 3:
+        return _user?.role == UserRole.trainer ? Icons.calendar_month : Icons.restaurant_menu;
+      case 4:
+        return Icons.person;
+      default:
+        return Icons.error;
     }
   }
 } 

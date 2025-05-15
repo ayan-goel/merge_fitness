@@ -561,11 +561,31 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
                         // Meal Name
                         TextFormField(
                           controller: _nameController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Meal Name*',
                             hintText: 'e.g., Breakfast, Chicken Salad',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            filled: true,
+                            fillColor: Theme.of(context).colorScheme.surface,
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
@@ -593,11 +613,31 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
                         // Description
                         TextFormField(
                           controller: _descriptionController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Description (Optional)',
                             hintText: 'e.g., Homemade meal with fresh ingredients',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            filled: true,
+                            fillColor: Theme.of(context).colorScheme.surface,
                           ),
                           maxLines: 2,
                         ),
@@ -623,15 +663,35 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
                         ),
                         const SizedBox(height: 16),
                         
-                        // Calories - container width set to match text fields above
+                        // Calories
                         TextFormField(
                           controller: _caloriesController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Calories*',
                             hintText: 'e.g., 500',
-                            border: OutlineInputBorder(),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.primary,
+                                width: 1.5,
+                              ),
+                            ),
                             suffixText: 'kcal',
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            filled: true,
+                            fillColor: Theme.of(context).colorScheme.surface,
                           ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: false),
                           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -666,12 +726,32 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
                             // Protein field
                             TextFormField(
                               controller: _proteinController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Protein',
                                 hintText: '20',
-                                border: OutlineInputBorder(),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    width: 1.5,
+                                  ),
+                                ),
                                 suffixText: 'g',
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                filled: true,
+                                fillColor: Theme.of(context).colorScheme.surface,
                               ),
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               inputFormatters: [
@@ -682,12 +762,32 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
                             // Carbs field
                             TextFormField(
                               controller: _carbsController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Carbs',
                                 hintText: '50',
-                                border: OutlineInputBorder(),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    width: 1.5,
+                                  ),
+                                ),
                                 suffixText: 'g',
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                filled: true,
+                                fillColor: Theme.of(context).colorScheme.surface,
                               ),
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               inputFormatters: [
@@ -698,12 +798,32 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
                             // Fat field
                             TextFormField(
                               controller: _fatController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Fat',
                                 hintText: '15',
-                                border: OutlineInputBorder(),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    width: 1.5,
+                                  ),
+                                ),
                                 suffixText: 'g',
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                filled: true,
+                                fillColor: Theme.of(context).colorScheme.surface,
                               ),
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               inputFormatters: [
@@ -736,12 +856,32 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
                             // Sodium field
                             TextFormField(
                               controller: _sodiumController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Sodium',
                                 hintText: '500',
-                                border: OutlineInputBorder(),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    width: 1.5,
+                                  ),
+                                ),
                                 suffixText: 'mg',
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                filled: true,
+                                fillColor: Theme.of(context).colorScheme.surface,
                               ),
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               inputFormatters: [
@@ -752,12 +892,32 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
                             // Cholesterol field
                             TextFormField(
                               controller: _cholesterolController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Cholesterol',
                                 hintText: '60',
-                                border: OutlineInputBorder(),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    width: 1.5,
+                                  ),
+                                ),
                                 suffixText: 'mg',
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                filled: true,
+                                fillColor: Theme.of(context).colorScheme.surface,
                               ),
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               inputFormatters: [
@@ -768,12 +928,32 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
                             // Fiber field
                             TextFormField(
                               controller: _fiberController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Fiber',
                                 hintText: '5',
-                                border: OutlineInputBorder(),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    width: 1.5,
+                                  ),
+                                ),
                                 suffixText: 'g',
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                filled: true,
+                                fillColor: Theme.of(context).colorScheme.surface,
                               ),
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               inputFormatters: [
@@ -784,12 +964,32 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
                             // Sugar field
                             TextFormField(
                               controller: _sugarController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Sugar',
                                 hintText: '10',
-                                border: OutlineInputBorder(),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    width: 1.5,
+                                  ),
+                                ),
                                 suffixText: 'g',
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                filled: true,
+                                fillColor: Theme.of(context).colorScheme.surface,
                               ),
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               inputFormatters: [
@@ -802,6 +1002,9 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
                     ),
                   ),
                 ),
+                
+                // Add more spacing between the cards
+                const SizedBox(height: 24),
                 
                 // Show nutritional targets if they exist
                 if (widget.nutritionPlan != null) ...[

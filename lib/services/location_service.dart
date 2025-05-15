@@ -46,22 +46,30 @@ class LocationService {
       final doc = await _firestore.collection(_locationCollection).doc(trainerId).get();
       
       if (!doc.exists) {
+        print('Trainer location document does not exist for trainer: $trainerId');
         return null;
       }
       
       final data = doc.data() as Map<String, dynamic>;
       
-      // Add timestamp age
-      final timestamp = data['timestamp'] as Timestamp;
-      final DateTime locationTime = timestamp.toDate();
-      final DateTime now = DateTime.now();
-      final int ageInMinutes = now.difference(locationTime).inMinutes;
-      
-      // Only return locations less than 24 hours old
-      if (ageInMinutes > 1440) {
+      // Check if trainer is sharing location
+      if (data['isSharing'] != true) {
         return null;
       }
       
+      // Add timestamp age if available
+      final timestamp = data['timestamp'] as Timestamp?;
+      int ageInMinutes = 0;
+      
+      if (timestamp != null) {
+        final DateTime locationTime = timestamp.toDate();
+        final DateTime now = DateTime.now();
+        ageInMinutes = now.difference(locationTime).inMinutes;
+      } else {
+        print('Timestamp is null for trainer: $trainerId');
+      }
+      
+      // Return data regardless of age as long as isSharing is true
       return {
         ...data,
         'ageInMinutes': ageInMinutes,
@@ -92,6 +100,29 @@ class LocationService {
     // Stop any existing stream
     await stopSharingLocation();
     
+    // Get current position first to set initial data
+    try {
+      final Position initialPosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high
+      );
+      
+      // Set initial location data immediately, don't wait for stream updates
+      await _firestore.collection(_locationCollection).doc(userId).set({
+        'latitude': initialPosition.latitude,
+        'longitude': initialPosition.longitude,
+        'accuracy': initialPosition.accuracy,
+        'heading': initialPosition.heading,
+        'speed': initialPosition.speed,
+        'timestamp': FieldValue.serverTimestamp(),
+        'isSharing': true,
+      }, SetOptions(merge: true));
+      
+      print('Initial location set for trainer $userId: ${initialPosition.latitude}, ${initialPosition.longitude}');
+    } catch (e) {
+      print('Error getting initial position: $e');
+      // Continue anyway, as the position stream might still work
+    }
+    
     // Start a new stream
     _positionStreamSubscription = Geolocator.getPositionStream(
       locationSettings: LocationSettings(
@@ -111,6 +142,8 @@ class LocationService {
             'timestamp': FieldValue.serverTimestamp(),
             'isSharing': true,
           }, SetOptions(merge: true));
+          
+          print('Updated location for trainer $userId: ${position.latitude}, ${position.longitude}');
         } catch (e) {
           print('Error updating location: $e');
         }
@@ -153,11 +186,28 @@ class LocationService {
       final doc = await _firestore.collection(_locationCollection).doc(trainerId).get();
       
       if (!doc.exists) {
+        print('Trainer location document does not exist for trainer: $trainerId');
         return false;
       }
       
       final data = doc.data() as Map<String, dynamic>;
-      return data['isSharing'] == true;
+      final isSharing = data['isSharing'] == true;
+      
+      // Check if there's actual location data present
+      if (isSharing) {
+        final hasLatitude = data.containsKey('latitude') && data['latitude'] != null;
+        final hasLongitude = data.containsKey('longitude') && data['longitude'] != null;
+        
+        // If sharing is true but no location data, print debug info
+        if (!hasLatitude || !hasLongitude) {
+          print('Trainer is set as sharing but missing location data. Has lat: $hasLatitude, has lng: $hasLongitude');
+        }
+        
+        // Still return true if isSharing is true, even if location data isn't present yet
+        return true;
+      }
+      
+      return false;
     } catch (e) {
       print('Error checking if trainer is sharing location: $e');
       return false;

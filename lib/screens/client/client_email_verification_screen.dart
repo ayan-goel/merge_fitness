@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../onboarding_quiz_screen.dart';
+import '../../theme/app_styles.dart';
 
 class ClientEmailVerificationScreen extends StatefulWidget {
   final User user;
@@ -201,15 +202,25 @@ class _ClientEmailVerificationScreenState extends State<ClientEmailVerificationS
             ),
             const SizedBox(height: 24),
             Text(
-              'Verify Your Email',
-              style: Theme.of(context).textTheme.headlineMedium,
-              textAlign: TextAlign.center,
+              isCheckingExpired 
+                ? 'Please Wait...'
+                : 'Check your email',
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: AppStyles.textDark,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Text(
-              'We\'ve sent a verification email to:\n${widget.user.email}',
-              style: Theme.of(context).textTheme.bodyLarge,
+              isCheckingExpired
+                ? 'Checking verification status...'
+                : 'We have sent a verification link to ${widget.user.email}',
               textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                color: AppStyles.slateGray,
+              ),
             ),
             const SizedBox(height: 24),
             const Text(
@@ -224,24 +235,24 @@ class _ClientEmailVerificationScreenState extends State<ClientEmailVerificationS
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
+                      color: AppStyles.mutedBlue.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       children: [
-                        const SizedBox(
+                        SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                            valueColor: AlwaysStoppedAnimation<Color>(AppStyles.mutedBlue),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           'Auto-checking: ${remainingChecks * 3}s',
-                          style: const TextStyle(
-                            color: Colors.blue,
+                          style: TextStyle(
+                            color: AppStyles.mutedBlue,
                             fontWeight: FontWeight.w500,
                           ),
                         ),

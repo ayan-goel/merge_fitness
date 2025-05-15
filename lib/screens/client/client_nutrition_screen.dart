@@ -184,8 +184,12 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading || _clientId == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(
+            color: AppStyles.primarySage,
+          ),
+        ),
       );
     }
 
@@ -196,6 +200,9 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Nutrition'),
+        backgroundColor: AppStyles.offWhite,
+        foregroundColor: AppStyles.textDark,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -204,11 +211,14 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
             // Date selector with arrows
             Container(
               padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
-              color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+              color: AppStyles.primarySage.withOpacity(0.15),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back_ios),
+                    icon: Icon(
+                      Icons.arrow_back_ios,
+                      color: AppStyles.textDark,
+                    ),
                     onPressed: _goToPreviousDay,
                     tooltip: 'Previous day',
                   ),
@@ -220,15 +230,20 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
                           isToday
                               ? 'Today'
                               : DateFormat('EEEE, MMMM d, yyyy').format(_selectedDate),
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          style: TextStyle(
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: AppStyles.textDark,
                           ),
                         ),
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.arrow_forward_ios),
+                    icon: Icon(
+                      Icons.arrow_forward_ios,
+                      color: isToday ? AppStyles.slateGray.withOpacity(0.3) : AppStyles.textDark,
+                    ),
                     onPressed: isToday ? null : _goToNextDay,
                     tooltip: isToday ? 'Cannot go to future dates' : 'Next day',
                   ),
@@ -248,23 +263,28 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
                       children: [
                         Text(
                           _activePlan!.name,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          style: const TextStyle(
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            color: AppStyles.textDark,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Daily Target: ${_activePlan!.dailyCalories} calories',
-                          style: Theme.of(context).textTheme.bodyMedium,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppStyles.slateGray,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            _macronutrientChip('Protein', '${_activePlan!.macronutrients['protein']?.toInt() ?? 0}g', Colors.red.shade100),
+                            _macronutrientChip('Protein', '${_activePlan!.macronutrients['protein']?.toInt() ?? 0}g', AppStyles.errorRed.withOpacity(0.2)),
                             const SizedBox(width: 8),
-                            _macronutrientChip('Carbs', '${_activePlan!.macronutrients['carbs']?.toInt() ?? 0}g', Colors.green.shade100),
+                            _macronutrientChip('Carbs', '${_activePlan!.macronutrients['carbs']?.toInt() ?? 0}g', AppStyles.successGreen.withOpacity(0.2)),
                             const SizedBox(width: 8),
-                            _macronutrientChip('Fat', '${_activePlan!.macronutrients['fat']?.toInt() ?? 0}g', Colors.blue.shade100),
+                            _macronutrientChip('Fat', '${_activePlan!.macronutrients['fat']?.toInt() ?? 0}g', AppStyles.mutedBlue.withOpacity(0.2)),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -281,7 +301,7 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
                                 _isPlanMicroExpanded 
                                   ? Icons.keyboard_arrow_up 
                                   : Icons.keyboard_arrow_down,
-                                color: Theme.of(context).colorScheme.primary,
+                                color: AppStyles.primarySage,
                               ),
                             ],
                           ),
@@ -292,10 +312,10 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              _macronutrientChip('Sodium', '${_activePlan!.micronutrients['sodium']?.toInt() ?? 0}mg', Colors.purple.shade100),
-                              _macronutrientChip('Cholesterol', '${_activePlan!.micronutrients['cholesterol']?.toInt() ?? 0}mg', Colors.purple.shade100),
-                              _macronutrientChip('Fiber', '${_activePlan!.micronutrients['fiber']?.toInt() ?? 0}g', Colors.purple.shade100),
-                              _macronutrientChip('Sugar', '${_activePlan!.micronutrients['sugar']?.toInt() ?? 0}g', Colors.purple.shade100),
+                              _macronutrientChip('Sodium', '${_activePlan!.micronutrients['sodium']?.toInt() ?? 0}mg', AppStyles.taupeBrown.withOpacity(0.2)),
+                              _macronutrientChip('Cholesterol', '${_activePlan!.micronutrients['cholesterol']?.toInt() ?? 0}mg', AppStyles.taupeBrown.withOpacity(0.2)),
+                              _macronutrientChip('Fiber', '${_activePlan!.micronutrients['fiber']?.toInt() ?? 0}g', AppStyles.taupeBrown.withOpacity(0.2)),
+                              _macronutrientChip('Sugar', '${_activePlan!.micronutrients['sugar']?.toInt() ?? 0}g', AppStyles.taupeBrown.withOpacity(0.2)),
                             ],
                           ),
                         ],
@@ -315,12 +335,16 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
                         const Icon(
                           Icons.restaurant_menu,
                           size: 48,
-                          color: Colors.grey,
+                          color: AppStyles.slateGray,
                         ),
                         const SizedBox(height: 16),
                         Text(
                           'No active nutrition plan',
-                          style: Theme.of(context).textTheme.titleMedium,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                            color: AppStyles.textDark,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         const Text(
@@ -361,7 +385,7 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
                           children: [
                             Text(
                               'Daily Progress',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -406,7 +430,7 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
                                     _isProgressMicroExpanded 
                                       ? Icons.keyboard_arrow_up 
                                       : Icons.keyboard_arrow_down,
-                                    color: Theme.of(context).colorScheme.primary,
+                                    color: AppStyles.primarySage,
                                   ),
                                 ],
                               ),
@@ -481,7 +505,11 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
                           const SizedBox(height: 16),
                           Text(
                             'No meals recorded for this day',
-                            style: Theme.of(context).textTheme.titleMedium,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              color: AppStyles.textDark,
+                            ),
                           ),
                           const SizedBox(height: 16),
                           ElevatedButton.icon(
@@ -501,11 +529,14 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: Text(
-                            'Meals',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
+                          padding: const EdgeInsets.symmetric(vertical: 16.0),
+                          child: Center(
+                            child: Text(
+                              'Meals',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
@@ -533,6 +564,10 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
   Widget _buildMealCard(MealEntry meal) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: InkWell(
         onTap: () => _navigateToEditMeal(meal),
         child: Padding(
@@ -545,15 +580,18 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
                   Expanded(
                     child: Text(
                       meal.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      style: const TextStyle(
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: AppStyles.textDark,
                       ),
                     ),
                   ),
                   Text(
                     DateFormat.jm().format(meal.timeConsumed),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppStyles.slateGray,
                     ),
                   ),
                 ],
@@ -561,7 +599,9 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
               const SizedBox(height: 8),
               Text(
                 '${meal.calories} calories',
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: const TextStyle(
+                  color: AppStyles.textDark,
+                ),
               ),
               const SizedBox(height: 4),
               Row(
@@ -569,19 +609,19 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
                   _macronutrientChip(
                     'P',
                     '${meal.macronutrients['protein']?.toInt() ?? 0}g',
-                    Colors.red.shade100,
+                    AppStyles.errorRed.withOpacity(0.2),
                   ),
                   const SizedBox(width: 8),
                   _macronutrientChip(
                     'C',
                     '${meal.macronutrients['carbs']?.toInt() ?? 0}g',
-                    Colors.green.shade100,
+                    AppStyles.successGreen.withOpacity(0.2),
                   ),
                   const SizedBox(width: 8),
                   _macronutrientChip(
                     'F',
                     '${meal.macronutrients['fat']?.toInt() ?? 0}g',
-                    Colors.blue.shade100,
+                    AppStyles.mutedBlue.withOpacity(0.2),
                   ),
                 ],
               ),
@@ -589,7 +629,10 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
               if (meal.description != null && meal.description!.isNotEmpty)
                 Text(
                   meal.description!,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: const TextStyle(
+                    color: AppStyles.slateGray,
+                    fontSize: 14,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -598,14 +641,19 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
                 children: [
                   TextButton.icon(
                     onPressed: () => _navigateToEditMeal(meal),
-                    icon: const Icon(Icons.edit, size: 18),
-                    label: const Text('Edit'),
+                    icon: Icon(Icons.edit, size: 18, color: AppStyles.primarySage),
+                    label: Text('Edit', style: TextStyle(color: AppStyles.primarySage)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppStyles.primarySage,
+                    ),
                   ),
                   TextButton.icon(
                     onPressed: () => _confirmDeleteMeal(meal),
-                    icon: const Icon(Icons.delete, size: 18),
-                    label: const Text('Delete'),
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    icon: Icon(Icons.delete, size: 18, color: AppStyles.errorRed),
+                    label: Text('Delete', style: TextStyle(color: AppStyles.errorRed)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppStyles.errorRed,
+                    ),
                   ),
                 ],
               ),
@@ -619,19 +667,19 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
   Widget _macronutrientChip(String label, String value, [Color? color]) {
     // Define darker, more mature colors to replace the pastels
     Color chipColor;
-    Color textColor = AppStyles.textWhite;
+    Color textColor = AppStyles.textDark;
     
     // Determine color based on label if not provided
     if (color == null) {
-      chipColor = Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5);
-    } else if (color == Colors.red.shade100) {
-      chipColor = const Color(0xFF8B2E35); // Darker red for protein
-    } else if (color == Colors.green.shade100) {
-      chipColor = const Color(0xFF2E5C3E); // Darker green for carbs
-    } else if (color == Colors.blue.shade100) {
-      chipColor = const Color(0xFF204060); // Darker blue for fat
-    } else if (color == Colors.purple.shade100) {
-      chipColor = const Color(0xFF4A2E58); // Darker purple for micros
+      chipColor = AppStyles.primarySage.withOpacity(0.5);
+    } else if (color == AppStyles.errorRed.withOpacity(0.2)) {
+      chipColor = AppStyles.errorRed; // Use errorRed for protein
+    } else if (color == AppStyles.successGreen.withOpacity(0.2)) {
+      chipColor = AppStyles.successGreen; // Use successGreen for carbs
+    } else if (color == AppStyles.mutedBlue.withOpacity(0.2)) {
+      chipColor = AppStyles.mutedBlue; // Use mutedBlue for fat
+    } else if (color == AppStyles.taupeBrown.withOpacity(0.2)) {
+      chipColor = AppStyles.taupeBrown; // Use taupeBrown for micronutrients
     } else {
       chipColor = color;
     }
@@ -639,16 +687,16 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: chipColor,
+        color: chipColor.withOpacity(0.2),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Color.fromARGB(255, chipColor.red + 20, chipColor.green + 20, chipColor.blue + 20),
+          color: chipColor.withOpacity(0.5),
           width: 1,
         ),
       ),
       child: Text(
         '$label: $value',
-        style: TextStyle(color: textColor, fontWeight: FontWeight.w500),
+        style: TextStyle(color: chipColor, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -668,8 +716,8 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
             Text(
               valueText,
               style: TextStyle(
-                color: isOverLimit ? Colors.red : null,
-                fontWeight: isOverLimit ? FontWeight.bold : null,
+                color: isOverLimit ? AppStyles.errorRed : null,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
@@ -682,7 +730,7 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
               height: 10,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: AppStyles.offWhite,
                 borderRadius: BorderRadius.circular(5),
               ),
             ),
@@ -692,8 +740,8 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
               width: MediaQuery.of(context).size.width * cappedProgress * 0.8, // Account for padding
               decoration: BoxDecoration(
                 color: isOverLimit 
-                    ? Colors.red 
-                    : (progress > 0.9 ? Colors.green : Theme.of(context).colorScheme.primary),
+                    ? AppStyles.errorRed
+                    : (progress > 0.9 ? AppStyles.successGreen : AppStyles.mutedBlue),
                 borderRadius: BorderRadius.circular(5),
               ),
             ),

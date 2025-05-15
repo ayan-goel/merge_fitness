@@ -21,8 +21,8 @@ class AppWidgets {
             title,
             style: const TextStyle(
               fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: AppStyles.textWhite,
+              fontWeight: FontWeight.w700,
+              color: AppStyles.textDark,
               letterSpacing: 0.15,
             ),
           ),
@@ -75,7 +75,7 @@ class AppWidgets {
       height: size,
       child: CircularProgressIndicator(
         valueColor: AlwaysStoppedAnimation<Color>(
-          color ?? AppStyles.primaryBlue,
+          color ?? AppStyles.mutedBlue,
         ),
         strokeWidth: 3,
       ),
@@ -92,15 +92,15 @@ class AppWidgets {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppStyles.surfaceCharcoal,
+        color: AppStyles.lightCharcoal,
         borderRadius: borderRadius ?? BorderRadius.circular(16),
         gradient: LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
           colors: [
-            AppStyles.surfaceCharcoal,
-            AppStyles.surfaceCharcoal.withOpacity(0.5),
-            AppStyles.surfaceCharcoal,
+            AppStyles.lightCharcoal,
+            AppStyles.lightCharcoal.withOpacity(0.5),
+            AppStyles.lightCharcoal,
           ],
           stops: const [0.1, 0.5, 0.9],
         ),
@@ -126,7 +126,7 @@ class AppWidgets {
         color = AppStyles.errorRed;
         break;
       case StatusType.info:
-        color = AppStyles.primaryBlue;
+        color = AppStyles.mutedBlue;
         break;
     }
     
@@ -165,7 +165,7 @@ class AppWidgets {
       icon: Icon(icon, size: 20),
       label: Text(label),
       style: ElevatedButton.styleFrom(
-        backgroundColor: color ?? AppStyles.primaryBlue,
+        backgroundColor: color ?? AppStyles.mutedBlue,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         shape: RoundedRectangleBorder(
@@ -197,7 +197,7 @@ class AppWidgets {
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: AppStyles.textGrey,
+              color: AppStyles.textDark,
             ),
             textAlign: TextAlign.center,
           ),

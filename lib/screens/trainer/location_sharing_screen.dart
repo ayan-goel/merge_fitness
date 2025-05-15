@@ -108,7 +108,7 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Location sharing stopped'),
-              backgroundColor: AppStyles.backgroundCharcoal,
+              backgroundColor: AppStyles.darkCharcoal,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -144,7 +144,7 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Location sharing started'),
-              backgroundColor: AppStyles.backgroundCharcoal,
+              backgroundColor: AppStyles.darkCharcoal,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -165,6 +165,8 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
         title: const Text('Share Your Location'),
         centerTitle: true,
         elevation: 0,
+        backgroundColor: AppStyles.offWhite,
+        foregroundColor: AppStyles.textDark,
       ),
       body: _isLoading
           ? Center(child: AppWidgets.circularProgressIndicator())
@@ -200,6 +202,7 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
                 ),
               ),
             ),
+      backgroundColor: AppStyles.offWhite,
     );
   }
   
@@ -212,7 +215,12 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
         ? '${difference.inHours}h ${difference.inMinutes.remainder(60)}m'
         : '${difference.inMinutes}m';
     
-    return AppWidgets.styledCard(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppStyles.cardShadow,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -222,7 +230,7 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
                 width: 48,
                 height: 48,
                 decoration: const BoxDecoration(
-                  color: AppStyles.primaryBlue,
+                  color: AppStyles.mutedBlue,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -239,14 +247,14 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
                     Text(
                       'Upcoming Session',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppStyles.textWhite,
+                        color: AppStyles.textDark,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
                       DateFormat('EEEE, MMMM d, yyyy').format(sessionTime),
                       style: TextStyle(
-                        color: AppStyles.textGrey,
+                        color: AppStyles.slateGray,
                         fontSize: 14,
                       ),
                     ),
@@ -256,18 +264,20 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
             ],
           ),
           const SizedBox(height: 24),
-          const Divider(color: AppStyles.dividerGrey, height: 1),
+          const Divider(color: Colors.grey, height: 1),
           const SizedBox(height: 24),
           _buildInfoRow(
             icon: Icons.person,
             title: 'Client',
             value: widget.session.clientName,
+            lightMode: true,
           ),
           const SizedBox(height: 16),
           _buildInfoRow(
             icon: Icons.access_time,
             title: 'Time',
             value: DateFormat('h:mm a').format(sessionTime),
+            lightMode: true,
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -291,6 +301,7 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
             icon: Icons.location_on,
             title: 'Location',
             value: widget.session.location,
+            lightMode: true,
           ),
           if (widget.session.notes != null && widget.session.notes!.isNotEmpty) ...[
             const SizedBox(height: 16),
@@ -298,10 +309,12 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
               icon: Icons.notes,
               title: 'Notes',
               value: widget.session.notes!,
+              lightMode: true,
             ),
           ],
         ],
       ),
+      padding: const EdgeInsets.all(24.0),
     );
   }
   
@@ -310,6 +323,7 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
     required String title,
     required String value,
     Widget? trailing,
+    bool lightMode = false,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,10 +331,10 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppStyles.surfaceCharcoal,
+            color: lightMode ? AppStyles.offWhite : AppStyles.lightCharcoal,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, size: 16, color: AppStyles.primaryBlue),
+          child: Icon(icon, size: 16, color: AppStyles.mutedBlue),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -330,15 +344,15 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
               Text(
                 title,
                 style: TextStyle(
-                  color: AppStyles.textGrey,
+                  color: AppStyles.slateGray,
                   fontSize: 12,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 value,
-                style: const TextStyle(
-                  color: AppStyles.textWhite,
+                style: TextStyle(
+                  color: lightMode ? AppStyles.textDark : AppStyles.textLight,
                   fontSize: 14,
                 ),
               ),
@@ -363,7 +377,7 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
   Widget _buildLocationSharingCard() {
     return Container(
       decoration: BoxDecoration(
-        color: AppStyles.surfaceCharcoal,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppStyles.cardShadow,
       ),
@@ -372,10 +386,10 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
           AnimatedBuilder(
             animation: _animation,
             builder: (context, child) {
-              final Color startColor = AppStyles.surfaceCharcoal;
+              final Color startColor = Colors.white;
               final Color endColor = _isSharing 
-                  ? AppStyles.successGreen.withOpacity(0.15)
-                  : AppStyles.surfaceCharcoal;
+                  ? AppStyles.primarySage.withOpacity(0.1)
+                  : Colors.white;
               
               return Container(
                 width: double.infinity,
@@ -388,7 +402,7 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
                   ),
                   border: Border.all(
                     color: _isSharing 
-                        ? AppStyles.successGreen.withOpacity(_animation.value * 0.3)
+                        ? AppStyles.primarySage.withOpacity(_animation.value * 0.3)
                         : Colors.transparent,
                     width: 1.5,
                   ),
@@ -404,7 +418,7 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
                         _isSharing ? Icons.location_on : Icons.location_off,
                         key: ValueKey<bool>(_isSharing),
                         size: 28,
-                        color: _isSharing ? AppStyles.successGreen : AppStyles.textGrey,
+                        color: _isSharing ? AppStyles.primarySage : AppStyles.slateGray,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -414,14 +428,14 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
                         Text(
                           'Location Sharing',
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: AppStyles.textWhite,
+                            color: AppStyles.textDark,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         Text(
                           _isSharing ? 'Enabled' : 'Disabled',
                           style: TextStyle(
-                            color: _isSharing ? AppStyles.successGreen : AppStyles.textGrey,
+                            color: _isSharing ? AppStyles.primarySage : AppStyles.slateGray,
                             fontSize: 14,
                           ),
                         ),
@@ -429,18 +443,18 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
-                        color: _isSharing ? AppStyles.successGreen : AppStyles.surfaceCharcoal,
-                        borderRadius: BorderRadius.circular(16),
+                        color: _isSharing ? AppStyles.primarySage : Colors.white,
+                        borderRadius: BorderRadius.circular(24),
                         border: _isSharing 
                             ? null 
-                            : Border.all(color: AppStyles.textGrey, width: 1),
+                            : Border.all(color: AppStyles.slateGray, width: 1),
                       ),
                       child: Text(
                         _isSharing ? 'ON' : 'OFF',
                         style: TextStyle(
-                          color: _isSharing ? Colors.white : AppStyles.textGrey,
+                          color: _isSharing ? Colors.white : AppStyles.slateGray,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -461,7 +475,7 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
                       ? 'Your location is currently being shared with your client. They can track your location on their app in real-time.'
                       : 'Enable location sharing to allow your client to track your location as you head to your session.',
                   style: TextStyle(
-                    color: AppStyles.textWhite,
+                    color: AppStyles.textDark,
                     fontSize: 14,
                     height: 1.5,
                   ),
@@ -503,10 +517,10 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Share your location',
                             style: TextStyle(
-                              color: AppStyles.textWhite,
+                              color: AppStyles.textDark,
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
                             ),
@@ -514,7 +528,7 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
                           Text(
                             'Toggle to ${_isSharing ? 'disable' : 'enable'} location sharing',
                             style: TextStyle(
-                              color: AppStyles.textGrey,
+                              color: AppStyles.slateGray,
                               fontSize: 14,
                             ),
                           ),
@@ -529,9 +543,9 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
                         child: Switch(
                           value: _isSharing,
                           onChanged: (_) => _toggleLocationSharing(),
-                          activeColor: AppStyles.successGreen,
-                          activeTrackColor: AppStyles.successGreen.withOpacity(0.3),
-                          inactiveThumbColor: Colors.grey,
+                          activeColor: AppStyles.primarySage,
+                          activeTrackColor: AppStyles.primarySage.withOpacity(0.3),
+                          inactiveThumbColor: AppStyles.slateGray,
                           inactiveTrackColor: Colors.grey.withOpacity(0.3),
                         ),
                       ),
@@ -546,7 +560,7 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> with Sing
                     icon: Icon(_isSharing ? Icons.location_off : Icons.location_on),
                     label: Text(_isSharing ? 'Stop Sharing' : 'Start Sharing'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _isSharing ? AppStyles.errorRed : AppStyles.successGreen,
+                      backgroundColor: _isSharing ? AppStyles.errorRed : AppStyles.primarySage,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       textStyle: const TextStyle(

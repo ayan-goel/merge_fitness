@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/session_model.dart';
 import '../../services/calendly_service.dart';
+import '../../theme/app_styles.dart';
 
 class AllSessionsScreen extends StatefulWidget {
   final List<TrainingSession> sessions;
@@ -85,7 +86,7 @@ class _AllSessionsScreenState extends State<AllSessionsScreen> {
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Yes, Cancel', style: TextStyle(color: Colors.red)),
+                child: const Text('Yes, Cancel', style: TextStyle(color: AppStyles.errorRed)),
               ),
             ],
           );
@@ -215,12 +216,12 @@ class _AllSessionsScreenState extends State<AllSessionsScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
+                    color: AppStyles.primarySage.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     Icons.event,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: AppStyles.primarySage,
                     size: 20,
                   ),
                 ),
@@ -250,8 +251,8 @@ class _AllSessionsScreenState extends State<AllSessionsScreen> {
                 if (session.canBeCancelled)
                   TextButton.icon(
                     onPressed: () => _showCancelSessionDialog(session),
-                    icon: const Icon(Icons.cancel, color: Colors.red, size: 16),
-                    label: const Text('Cancel', style: TextStyle(color: Colors.red)),
+                    icon: const Icon(Icons.cancel, color: AppStyles.errorRed, size: 16),
+                    label: const Text('Cancel', style: TextStyle(color: AppStyles.errorRed)),
                   ),
               ],
             ),
@@ -261,14 +262,14 @@ class _AllSessionsScreenState extends State<AllSessionsScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.notes, size: 16, color: Colors.grey),
+                  const Icon(Icons.notes, size: 16, color: AppStyles.slateGray),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       session.notes!,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[700],
+                        color: AppStyles.slateGray,
                         fontStyle: FontStyle.italic,
                       ),
                     ),

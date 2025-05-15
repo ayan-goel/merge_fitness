@@ -79,15 +79,15 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppStyles.backgroundCharcoal,
+      backgroundColor: AppStyles.offWhite,
       appBar: AppBar(
         title: Text(
           widget.workout.workoutName,
-          style: const TextStyle(color: AppStyles.textWhite),
+          style: const TextStyle(color: AppStyles.textDark),
         ),
-        backgroundColor: AppStyles.backgroundCharcoal,
+        backgroundColor: AppStyles.offWhite,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppStyles.textWhite),
+        iconTheme: const IconThemeData(color: AppStyles.textDark),
       ),
       body: Column(
         children: [
@@ -100,11 +100,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 children: [
                   // Header card with general info
                   Card(
-                    color: AppStyles.surfaceCharcoal,
+                    color: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    elevation: 4,
+                    elevation: 1,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
@@ -119,7 +119,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                   style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
-                                    color: AppStyles.textWhite,
+                                    color: AppStyles.textDark,
                                   ),
                                 ),
                               ),
@@ -133,14 +133,14 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                               style: TextStyle(
                                 fontSize: 16, 
                                 fontWeight: FontWeight.w600,
-                                color: AppStyles.textWhite,
+                                color: AppStyles.textDark,
                               ),
                             ),
                             const SizedBox(height: 4.0),
                             Text(
                               widget.workout.workoutDescription!,
                               style: const TextStyle(
-                                color: AppStyles.textGrey,
+                                color: AppStyles.slateGray,
                               ),
                             ),
                             const SizedBox(height: 16.0),
@@ -150,14 +150,14 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                               Icon(
                                 Icons.calendar_today,
                                 size: 16,
-                                color: AppStyles.primaryBlue,
+                                color: AppStyles.primarySage,
                               ),
                               const SizedBox(width: 8.0),
                               Text(
                                 'Scheduled: ${DateFormat('EEEE, MMMM d, yyyy').format(widget.workout.scheduledDate)}',
                                 style: const TextStyle(
                                   fontSize: 14,
-                                  color: AppStyles.textGrey,
+                                  color: AppStyles.slateGray,
                                 ),
                               ),
                             ],
@@ -169,14 +169,14 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                               style: TextStyle(
                                 fontSize: 16, 
                                 fontWeight: FontWeight.w600,
-                                color: AppStyles.textWhite,
+                                color: AppStyles.textDark,
                               ),
                             ),
                             const SizedBox(height: 4.0),
                             Container(
                               padding: const EdgeInsets.all(12.0),
                               decoration: BoxDecoration(
-                                color: AppStyles.backgroundCharcoal,
+                                color: AppStyles.offWhite,
                                 borderRadius: BorderRadius.circular(8.0),
                                 border: Border.all(
                                   color: AppStyles.dividerGrey,
@@ -196,7 +196,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                     child: Text(
                                       widget.workout.notes!,
                                       style: const TextStyle(
-                                        color: AppStyles.textGrey,
+                                        color: AppStyles.slateGray,
                                       ),
                                     ),
                                   ),
@@ -217,7 +217,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: AppStyles.textWhite,
+                      color: AppStyles.textDark,
                     ),
                   ),
                   const SizedBox(height: 16.0),
@@ -229,11 +229,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     itemBuilder: (context, index) {
                       final exercise = widget.workout.exercises[index];
                       return Card(
-                        color: AppStyles.surfaceCharcoal,
+                        color: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        elevation: 4,
+                        elevation: 1,
                         margin: const EdgeInsets.only(bottom: 12.0),
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
@@ -243,7 +243,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                               Row(
                                 children: [
                                   CircleAvatar(
-                                    backgroundColor: AppStyles.primaryBlue,
+                                    backgroundColor: AppStyles.primarySage,
                                     foregroundColor: Colors.white,
                                     child: Text('${index + 1}'),
                                   ),
@@ -257,7 +257,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                           style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
-                                            color: AppStyles.textWhite,
+                                            color: AppStyles.textDark,
                                           ),
                                         ),
                                         const SizedBox(height: 4.0),
@@ -265,7 +265,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                           '${exercise.sets} sets × ${exercise.reps} reps',
                                           style: const TextStyle(
                                             fontSize: 14,
-                                            color: AppStyles.textGrey,
+                                            color: AppStyles.slateGray,
                                           ),
                                         ),
                                       ],
@@ -279,7 +279,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                   exercise.description!,
                                   style: const TextStyle(
                                     fontSize: 14,
-                                    color: AppStyles.textGrey,
+                                    color: AppStyles.slateGray,
                                   ),
                                 ),
                               ],
@@ -319,12 +319,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           // Bottom status control buttons
           Container(
             decoration: BoxDecoration(
-              color: AppStyles.backgroundCharcoal,
+              color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, -1),
                 ),
               ],
               border: Border(
@@ -334,7 +334,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 ),
               ),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+            padding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 30.0),
+            margin: const EdgeInsets.only(bottom: 16.0),
             child: Row(
               children: [
                 if (_currentStatus != WorkoutStatus.inProgress && 
@@ -344,7 +345,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                       icon: const Icon(Icons.play_arrow),
                       label: const Text('Start Workout'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppStyles.primaryBlue,
+                        backgroundColor: AppStyles.primarySage,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -403,8 +404,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                       icon: const Icon(Icons.refresh),
                       label: const Text('Reset Status'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppStyles.primaryBlue,
-                        side: BorderSide(color: AppStyles.primaryBlue, width: 1.5),
+                        foregroundColor: AppStyles.primarySage,
+                        side: BorderSide(color: AppStyles.primarySage, width: 1.5),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -428,7 +429,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     
     switch (status) {
       case WorkoutStatus.assigned:
-        chipColor = AppStyles.primaryBlue;
+        chipColor = AppStyles.primarySage;
         statusText = 'To Do';
         break;
       case WorkoutStatus.inProgress:

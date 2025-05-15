@@ -11,25 +11,25 @@ class UIHelpers {
     switch (status.toLowerCase()) {
       case 'completed':
         return const LinearGradient(
-          colors: [Color(0xFF388E3C), Color(0xFF4CAF50)],
+          colors: [Color(0xFF7A9D78), Color(0xFF8FAF8D)], // Muted greens
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         );
       case 'in progress':
         return const LinearGradient(
-          colors: [Color(0xFFF57C00), Color(0xFFFFB74D)],
+          colors: [Color(0xFFCFB28E), Color(0xFFDBBE9A)], // Muted gold/amber
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         );
       case 'skipped':
         return const LinearGradient(
-          colors: [Color(0xFFD32F2F), Color(0xFFEF5350)],
+          colors: [Color(0xFFCB8A90), Color(0xFFD6A3A7)], // Muted red
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         );
       default: // assigned
         return const LinearGradient(
-          colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+          colors: [Color(0xFF6C8CA8), Color(0xFF9BB0C4)], // Muted blue
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         );
@@ -39,7 +39,7 @@ class UIHelpers {
   /// Get a color based on BMI category
   static Color getBmiCategoryColor(double bmi) {
     if (bmi < 18.5) {
-      return Colors.blue; // Underweight
+      return AppStyles.mutedBlue; // Underweight
     } else if (bmi < 25) {
       return AppStyles.successGreen; // Normal
     } else if (bmi < 30) {
@@ -62,7 +62,7 @@ class UIHelpers {
   
   /// Add a subtle glass effect to a container
   static BoxDecoration glassEffect({
-    Color baseColor = AppStyles.surfaceCharcoal,
+    Color baseColor = AppStyles.lightCharcoal,
     double opacity = 0.7,
     double borderRadius = 16,
     Color? borderColor,
@@ -143,9 +143,9 @@ class UIHelpers {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            (color ?? AppStyles.dividerGrey).withOpacity(0.01),
-            color ?? AppStyles.dividerGrey,
-            (color ?? AppStyles.dividerGrey).withOpacity(0.01),
+            (color ?? AppStyles.slateGray).withOpacity(0.01),
+            color ?? AppStyles.slateGray,
+            (color ?? AppStyles.slateGray).withOpacity(0.01),
           ],
           stops: const [0.0, 0.5, 1.0],
           begin: Alignment.centerLeft,
@@ -166,7 +166,7 @@ class UIHelpers {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color ?? AppStyles.primaryBlue,
+        color: color ?? AppStyles.mutedBlue,
         shape: BoxShape.circle,
       ),
       child: Center(
@@ -200,7 +200,7 @@ class UIHelpers {
         color: backgroundColor,
         boxShadow: [
           BoxShadow(
-            color: (backgroundColor ?? AppStyles.primaryBlue).withOpacity(0.3),
+            color: (backgroundColor ?? AppStyles.mutedBlue).withOpacity(0.3),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -248,7 +248,7 @@ class UIHelpers {
     bool outline = false,
     EdgeInsetsGeometry? padding,
   }) {
-    final badgeColor = color ?? AppStyles.primaryBlue;
+    final badgeColor = color ?? AppStyles.mutedBlue;
     
     return Container(
       padding: padding ?? const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

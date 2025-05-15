@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
+import '../models/goal_model.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../main.dart'; // For global notification service
 
@@ -175,7 +176,7 @@ class AuthService {
     double? height,
     double? weight,
     DateTime? dateOfBirth,
-    List<String>? goals,
+    List<Goal>? goals,
     String? phoneNumber,
     UserRole? role,
   }) async {
@@ -196,7 +197,7 @@ class AuthService {
     if (height != null) data['height'] = height;
     if (weight != null) data['weight'] = weight;
     if (dateOfBirth != null) data['dateOfBirth'] = Timestamp.fromDate(dateOfBirth);
-    if (goals != null) data['goals'] = goals;
+    if (goals != null) data['goals'] = goals.map((goal) => goal.toMap()).toList();
     if (phoneNumber != null) data['phoneNumber'] = phoneNumber;
     if (role != null) data['role'] = _userRoleToString(role);
     

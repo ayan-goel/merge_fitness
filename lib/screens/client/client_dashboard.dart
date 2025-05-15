@@ -363,18 +363,18 @@ class _ClientDashboardState extends State<ClientDashboard> {
     if (_isLoading) {
       return Center(
         child: AppWidgets.circularProgressIndicator(
-          color: AppStyles.primaryBlue,
+          color: AppStyles.primarySage,
           size: 50,
         ),
       );
     }
     
     if (_client == null) {
-      return const Center(
+      return Center(
         child: Text(
           'Error loading user data',
           style: TextStyle(
-            color: AppStyles.textWhite,
+            color: AppStyles.textLight,
             fontSize: 16,
           ),
         ),
@@ -385,7 +385,12 @@ class _ClientDashboardState extends State<ClientDashboard> {
       appBar: AppBar(
         title: const Text('Dashboard'),
         elevation: 0,
+        backgroundColor: AppStyles.offWhite,
+        foregroundColor: AppStyles.textDark,
+        actions: [], // Empty actions to remove any existing buttons
+        automaticallyImplyLeading: false, // Remove back button
       ),
+      backgroundColor: AppStyles.offWhite,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: AppStyles.screenPadding,
@@ -401,18 +406,18 @@ class _ClientDashboardState extends State<ClientDashboard> {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        AppStyles.surfaceCharcoal.withOpacity(0.9),
-                        AppStyles.backgroundCharcoal.withOpacity(0.95),
+                        AppStyles.offWhite.withOpacity(0.9),
+                        AppStyles.primarySage.withOpacity(0.2),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: AppStyles.primaryBlue.withOpacity(0.3),
+                      color: AppStyles.primarySage.withOpacity(0.3),
                       width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
+                        color: AppStyles.slateGray.withOpacity(0.1),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -429,17 +434,21 @@ class _ClientDashboardState extends State<ClientDashboard> {
                             Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: AppStyles.primaryBlue.withOpacity(0.15),
+                                    color: AppStyles.primarySage.withOpacity(0.25),
                                     borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(
+                                      color: AppStyles.primarySage.withOpacity(0.4),
+                                      width: 1,
+                                    ),
                                   ),
                                   child: Text(
                                     DateFormat('EEEE, MMMM d').format(DateTime.now()),
                                     style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppStyles.primaryBlue.withOpacity(0.9),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppStyles.textDark,
                                     ),
                                   ),
                                 ),
@@ -449,9 +458,9 @@ class _ClientDashboardState extends State<ClientDashboard> {
                             Text(
                               'Welcome, ${_client!.displayName ?? 'Client'}',
                               style: const TextStyle(
-                                fontSize: 24,
+                                fontSize: 28,
                                 fontWeight: FontWeight.bold,
-                                color: AppStyles.textWhite,
+                                color: AppStyles.textDark,
                                 letterSpacing: -0.5,
                               ),
                             ),
@@ -459,10 +468,10 @@ class _ClientDashboardState extends State<ClientDashboard> {
                             Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: AppStyles.backgroundCharcoal.withOpacity(0.4),
+                                color: AppStyles.primarySage.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: AppStyles.textGrey.withOpacity(0.1),
+                                  color: AppStyles.slateGray.withOpacity(0.1),
                                   width: 1,
                                 ),
                               ),
@@ -471,12 +480,12 @@ class _ClientDashboardState extends State<ClientDashboard> {
                                   Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: AppStyles.softGold.withOpacity(0.1),
+                                      color: AppStyles.taupeBrown.withOpacity(0.1),
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(
                                       Icons.format_quote,
-                                      color: AppStyles.softGold,
+                                      color: AppStyles.taupeBrown,
                                       size: 16,
                                     ),
                                   ),
@@ -487,9 +496,9 @@ class _ClientDashboardState extends State<ClientDashboard> {
                                       style: TextStyle(
                                         fontSize: 14,
                                         height: 1.4,
-                                        color: AppStyles.textWhite.withOpacity(0.9),
-                                        fontStyle: FontStyle.italic,
-                                        fontWeight: FontWeight.w300,
+                                        color: AppStyles.textDark,
+                                        fontStyle: FontStyle.normal,
+                                        fontWeight: FontWeight.w400,
                                       ),
                                     ),
                                   ),
@@ -535,9 +544,15 @@ class _ClientDashboardState extends State<ClientDashboard> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      color: AppStyles.surfaceCharcoal,
-                      elevation: 2,
-                      child: SizedBox(
+                      color: AppStyles.offWhite,
+                      elevation: 0,
+                      shadowColor: Colors.transparent,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          color: AppStyles.offWhite,
+                          boxShadow: AppStyles.cardShadow,
+                        ),
                         width: double.infinity,
                         child: Padding(
                           padding: const EdgeInsets.all(24.0),
@@ -547,7 +562,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                               Icon(
                                 Icons.fitness_center,
                                 size: 48,
-                                color: Colors.grey[400],
+                                color: AppStyles.slateGray,
                               ),
                               const SizedBox(height: 16),
                               Text(
@@ -555,7 +570,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.grey[300],
+                                  color: AppStyles.textDark,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -650,18 +665,8 @@ class _ClientDashboardState extends State<ClientDashboard> {
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Date header
+                                // Add spacing if there are multiple date groups
                                 if (dateIndex > 0) const SizedBox(height: 16),
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 8, bottom: 8),
-                                  child: Text(
-                                    _formatDateHeader(firstSession.startTime),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
                                 // Sessions for this date
                                 ...sessions.map((session) => _buildUpcomingSessionCard(session)).toList(),
                               ],
@@ -685,11 +690,11 @@ class _ClientDashboardState extends State<ClientDashboard> {
                                         : 'View All',
                                   ),
                                   style: OutlinedButton.styleFrom(
-                                    backgroundColor: AppStyles.surfaceCharcoal,
-                                    foregroundColor: AppStyles.primaryBlue,
-                                    side: const BorderSide(color: AppStyles.primaryBlue, width: 1.5),
+                                    backgroundColor: AppStyles.offWhite,
+                                    foregroundColor: AppStyles.primarySage,
+                                    side: const BorderSide(color: AppStyles.primarySage, width: 1.5),
                                     elevation: 1,
-                                    shadowColor: AppStyles.primaryBlue.withOpacity(0.2),
+                                    shadowColor: AppStyles.primarySage.withOpacity(0.2),
                                     padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(14),
@@ -714,11 +719,11 @@ class _ClientDashboardState extends State<ClientDashboard> {
                                   icon: const Icon(Icons.add_circle_outline, size: 20),
                                   label: const Text('Schedule New'),
                                   style: OutlinedButton.styleFrom(
-                                    backgroundColor: AppStyles.surfaceCharcoal,
-                                    foregroundColor: AppStyles.primaryBlue,
-                                    side: const BorderSide(color: AppStyles.primaryBlue, width: 1.5),
+                                    backgroundColor: AppStyles.offWhite,
+                                    foregroundColor: AppStyles.primarySage,
+                                    side: const BorderSide(color: AppStyles.primarySage, width: 1.5),
                                     elevation: 1,
-                                    shadowColor: AppStyles.primaryBlue.withOpacity(0.2),
+                                    shadowColor: AppStyles.primarySage.withOpacity(0.2),
                                     padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(14),
@@ -753,11 +758,11 @@ class _ClientDashboardState extends State<ClientDashboard> {
                                   icon: const Icon(Icons.add_circle_outline),
                                   label: const Text('Schedule New Session'),
                                   style: OutlinedButton.styleFrom(
-                                    backgroundColor: AppStyles.surfaceCharcoal,
-                                    foregroundColor: AppStyles.primaryBlue,
-                                    side: const BorderSide(color: AppStyles.primaryBlue, width: 1.5),
+                                    backgroundColor: AppStyles.offWhite,
+                                    foregroundColor: AppStyles.primarySage,
+                                    side: const BorderSide(color: AppStyles.primarySage, width: 1.5),
                                     elevation: 1,
-                                    shadowColor: AppStyles.primaryBlue.withOpacity(0.2),
+                                    shadowColor: AppStyles.primarySage.withOpacity(0.2),
                                     padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(14),
@@ -781,35 +786,40 @@ class _ClientDashboardState extends State<ClientDashboard> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  color: AppStyles.surfaceCharcoal,
-                  elevation: 2,
-                  child: SizedBox(
+                  color: AppStyles.offWhite,
+                  elevation: 0,
+                  shadowColor: Colors.transparent,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      color: AppStyles.offWhite,
+                      boxShadow: AppStyles.cardShadow,
+                    ),
                     width: double.infinity,
                     child: Padding(
                       padding: const EdgeInsets.all(24.0),
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             Icons.event_busy,
                             size: 48,
-                            color: Colors.grey[400],
+                            color: AppStyles.slateGray,
                           ),
                           const SizedBox(height: 16),
-                          const Text(
-                            'No upcoming sessions',
+                          Text(
+                            'Schedule a session with a trainer below',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
+                              color: AppStyles.textDark,
                             ),
+                            textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Schedule a session with a trainer below',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 24),
+                          // Schedule session button
                           SizedBox(
-                            width: 220,
+                            width: 240,
                             child: OutlinedButton.icon(
                               onPressed: () {
                                 Navigator.push(
@@ -821,14 +831,14 @@ class _ClientDashboardState extends State<ClientDashboard> {
                                   ),
                                 ).then((_) => _loadUpcomingSessions());
                               },
-                              icon: const Icon(Icons.add_circle_outline),
+                              icon: const Icon(Icons.add_circle_outline, size: 20),
                               label: const Text('Schedule Session'),
                               style: OutlinedButton.styleFrom(
-                                backgroundColor: AppStyles.surfaceCharcoal,
-                                foregroundColor: AppStyles.primaryBlue,
-                                side: const BorderSide(color: AppStyles.primaryBlue, width: 1.5),
+                                backgroundColor: AppStyles.offWhite,
+                                foregroundColor: AppStyles.primarySage,
+                                side: const BorderSide(color: AppStyles.primarySage, width: 1.5),
                                 elevation: 1,
-                                shadowColor: AppStyles.primaryBlue.withOpacity(0.2),
+                                shadowColor: AppStyles.primarySage.withOpacity(0.2),
                                 padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
@@ -874,7 +884,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                     title: 'Streak', 
                     value: '$_streak ${_streak == 1 ? 'day' : 'days'}',
                     icon: Icons.local_fire_department,
-                    color: Colors.orange,
+                    color: AppStyles.warningAmber,
                   ),
                   const SizedBox(width: 16),
                   _buildStatCard(
@@ -882,7 +892,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                     title: 'Completion', 
                     value: '$_completionPercentage%',
                     icon: Icons.check_circle_outline,
-                    color: Colors.green,
+                    color: AppStyles.successGreen,
                   ),
                 ],
               ),
@@ -910,7 +920,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
     return Expanded(
       child: Container(
         decoration: BoxDecoration(
-          color: AppStyles.surfaceCharcoal,
+          color: AppStyles.offWhite,
           borderRadius: BorderRadius.circular(16),
           boxShadow: AppStyles.cardShadow,
           border: Border.all(
@@ -941,14 +951,14 @@ class _ClientDashboardState extends State<ClientDashboard> {
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: AppStyles.textWhite,
+                  color: AppStyles.textDark,
                 ),
               ),
               Text(
                 title,
                 style: TextStyle(
                   fontSize: 14,
-                  color: AppStyles.textGrey,
+                  color: AppStyles.slateGray,
                 ),
               ),
             ],
@@ -960,386 +970,224 @@ class _ClientDashboardState extends State<ClientDashboard> {
   
   // Build upcoming session card
   Widget _buildUpcomingSessionCard(TrainingSession session) {
-    return AppAnimations.fadeSlide(
+    // Determine if the session is happening very soon (within 30 minutes)
+    final bool isImminent = session.startTime.difference(DateTime.now()).inMinutes < 30;
+    
+    // Format time to display
+    final String formattedTime = DateFormat('h:mm a').format(session.startTime);
+    
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12.0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      color: isImminent 
+          ? AppStyles.primarySage.withOpacity(0.15) 
+          : AppStyles.offWhite,
+      elevation: 0,
+      shadowColor: Colors.transparent,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: AppStyles.surfaceCharcoal,
+          color: isImminent 
+            ? AppStyles.primarySage.withOpacity(0.15) 
+            : AppStyles.offWhite,
           borderRadius: BorderRadius.circular(16),
           boxShadow: AppStyles.cardShadow,
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Column(
+          children: [
+            // Date header inside the card
+            Padding(
+              padding: const EdgeInsets.only(top: 12.0, left: 16.0, bottom: 4.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _formatDateHeader(session.startTime),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppStyles.textDark,
+                  ),
+                ),
+              ),
+            ),
+            Divider(
+              color: AppStyles.slateGray.withOpacity(0.2),
+              height: 1,
+              indent: 16,
+              endIndent: 16,
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  // Time column
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    width: 80,
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                     decoration: BoxDecoration(
-                      gradient: AppStyles.primaryGradient,
+                      color: isImminent 
+                          ? AppStyles.primarySage.withOpacity(0.2)
+                          : AppStyles.slateGray.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
-                      Icons.event,
-                      color: Colors.white,
-                      size: 22,
+                    child: Column(
+                      children: [
+                        Text(
+                          formattedTime,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: isImminent 
+                                ? AppStyles.primarySage 
+                                : AppStyles.textDark,
+                          ),
+                        ),
+                        if (isImminent) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppStyles.primarySage.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'Soon',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppStyles.primarySage,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   const SizedBox(width: 16),
+                  
+                  // Session details
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          session.formattedTimeRange,
+                          session.sessionType ?? "Training Session",
                           style: const TextStyle(
-                            fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: AppStyles.textWhite,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          session.location,
-                          style: TextStyle(
-                            color: AppStyles.textGrey,
-                            fontSize: 14,
+                            fontSize: 16,
+                            color: AppStyles.textDark,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: AppStyles.primaryBlue.withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.person,
-                                size: 12,
-                                color: AppStyles.primaryBlue,
-                              ),
+                            const Icon(
+                              Icons.person,
+                              size: 16,
+                              color: AppStyles.slateGray,
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 4),
                             Text(
-                              'With ${session.trainerName}',
-                              style: TextStyle(
-                                color: AppStyles.primaryBlue,
+                              'with ${session.trainerName}',
+                              style: const TextStyle(
+                                color: AppStyles.slateGray,
                                 fontSize: 14,
-                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
                         ),
+                        if (session.location != null && session.location!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on,
+                                size: 16,
+                                color: AppStyles.slateGray,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  session.location!,
+                                  style: const TextStyle(
+                                    color: AppStyles.slateGray,
+                                    fontSize: 14,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
-                  if (session.canBeCancelled)
-                    Theme(
-                      data: Theme.of(context).copyWith(
-                        popupMenuTheme: PopupMenuThemeData(
-                          color: AppStyles.cardCharcoal,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      child: PopupMenuButton(
-                        icon: Icon(
-                          Icons.more_vert,
-                          color: AppStyles.textGrey,
-                        ),
-                        tooltip: 'Session Options',
-                        elevation: 8,
-                        itemBuilder: (context) => [
-                          PopupMenuItem(
-                            value: 'cancel',
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.cancel,
-                                  color: AppStyles.errorRed,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  'Cancel Session',
-                                  style: TextStyle(color: AppStyles.textWhite),
-                                ),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'track',
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.location_on,
-                                  color: AppStyles.primaryBlue,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  'Track Trainer',
-                                  style: TextStyle(color: AppStyles.textWhite),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                        onSelected: (value) {
-                          if (value == 'cancel') {
-                            _showCancelSessionDialog(session);
-                          } else if (value == 'track') {
-                            _showTrainerLocationDialog(session);
-                          }
-                        },
-                      ),
+                  
+                  // Action menu
+                  PopupMenuButton<String>(
+                    icon: const Icon(
+                      Icons.more_vert,
+                      color: AppStyles.slateGray,
                     ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    itemBuilder: (context) => [
+                      if (session.trainerLocationEnabled)
+                        const PopupMenuItem(
+                          value: 'track',
+                          child: Row(
+                            children: [
+                              Icon(Icons.location_on, color: AppStyles.primarySage),
+                              SizedBox(width: 8),
+                              Text(
+                                'Track Trainer',
+                                style: TextStyle(color: AppStyles.textDark),
+                              ),
+                            ],
+                          ),
+                        ),
+                      const PopupMenuItem(
+                        value: 'cancel',
+                        child: Row(
+                          children: [
+                            Icon(Icons.cancel_outlined, color: AppStyles.errorRed),
+                            SizedBox(width: 8),
+                            Text(
+                              'Cancel Session',
+                              style: TextStyle(color: AppStyles.textDark),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onSelected: (value) async {
+                      if (value == 'cancel') {
+                        _showCancelSessionDialog(session);
+                      } else if (value == 'track' && session.trainerLocationEnabled) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => TrainerLocationScreen(
+                              session: session,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  ),
                 ],
               ),
-              
-              if (session.notes != null && session.notes!.isNotEmpty) ...[
-                const Divider(
-                  height: 24,
-                  thickness: 1,
-                  color: AppStyles.dividerGrey,
-                ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(
-                      Icons.notes,
-                      size: 16,
-                      color: AppStyles.textGrey,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        session.notes!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppStyles.textGrey,
-                          fontStyle: FontStyle.italic,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-  
-  // New method to show trainer location dialog
-  void _showTrainerLocationDialog(TrainingSession session) async {
-    // Check if the session is in the future or happening now
-    final now = DateTime.now();
-    final sessionStartTime = session.startTime;
-    
-    if (sessionStartTime.isBefore(now.subtract(const Duration(hours: 2)))) {
-      // Session is in the past (more than 2 hours ago)
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Track ${session.trainerName}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.event_busy,
-                size: 64,
-                color: Colors.grey,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'This session has already ended',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Trainer location tracking is only available for upcoming or current sessions.',
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
             ),
           ],
         ),
-      );
-    } else {
-      // Session is upcoming or happening now
-      // First check if the trainer is sharing their location
-      final LocationService locationService = LocationService();
-      
-      setState(() {
-        _isLoading = true;
-      });
-      
-      try {
-        final isSharing = await locationService.isTrainerSharingLocation(session.trainerId);
-        
-        if (!isSharing) {
-          setState(() {
-            _isLoading = false;
-          });
-          
-          // Show not sharing dialog
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text('Track ${session.trainerName}'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.location_off,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '${session.trainerName} is not sharing their location yet',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Ask your trainer to enable location sharing before the session.',
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Close'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => TrainerLocationScreen(session: session),
-                      ),
-                    );
-                  },
-                  child: const Text('Try Anyway'),
-                ),
-              ],
-            ),
-          );
-          return;
-        }
-        
-        // Check if we have location permission
-        final hasPermission = await locationService.checkLocationPermission();
-        
-        setState(() {
-          _isLoading = false;
-        });
-        
-        if (!hasPermission) {
-          // Show permission required dialog
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Location Permission Required'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.location_on,
-                    size: 64,
-                    color: Colors.blue,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Location permission is needed to show distance and travel time to your trainer.',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Please grant location permission when prompted.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    Navigator.of(context).pop();
-                    
-                    // Request permission again
-                    final permissionGranted = await locationService.checkLocationPermission();
-                    
-                    if (permissionGranted) {
-                      // Navigate to tracking screen
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => TrainerLocationScreen(session: session),
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Location permission is required for distance tracking'),
-                        ),
-                      );
-                    }
-                  },
-                  child: const Text('Grant Permission'),
-                ),
-              ],
-            ),
-          );
-        } else {
-          // We have permission, navigate to tracking screen
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TrainerLocationScreen(session: session),
-            ),
-          );
-        }
-      } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error checking trainer location: $e')),
-        );
-      }
-    }
+      ),
+    );
   }
   
   // Show cancel confirmation dialog
@@ -1381,7 +1229,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Yes, Cancel', style: TextStyle(color: Colors.red)),
+                child: const Text('Yes, Cancel', style: TextStyle(color: AppStyles.errorRed)),
               ),
             ],
           );
@@ -1448,7 +1296,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
   Widget _buildWeightEntryCard() {
     return Container(
       decoration: BoxDecoration(
-        color: AppStyles.surfaceCharcoal,
+        color: AppStyles.offWhite,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppStyles.cardShadow,
       ),
@@ -1494,7 +1342,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                               'Weight recorded for today!',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: AppStyles.textWhite,
+                                color: AppStyles.textDark,
                                 fontSize: 16,
                               ),
                             ),
@@ -1502,7 +1350,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                             Text(
                               '${_todayWeightEntry!.weightInPounds.toStringAsFixed(1)} lbs',
                               style: const TextStyle(
-                                color: AppStyles.textWhite,
+                                color: AppStyles.textDark,
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -1514,7 +1362,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                                   Text(
                                     'BMI: ${_todayWeightEntry!.bmi!.toStringAsFixed(1)}',
                                     style: const TextStyle(
-                                      color: AppStyles.textGrey,
+                                      color: AppStyles.slateGray,
                                       fontSize: 14,
                                     ),
                                   ),
@@ -1556,7 +1404,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppStyles.backgroundCharcoal,
+                  color: AppStyles.offWhite,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
@@ -1568,12 +1416,12 @@ class _ClientDashboardState extends State<ClientDashboard> {
                           width: 28,
                           height: 28,
                           decoration: BoxDecoration(
-                            color: AppStyles.primaryBlue.withOpacity(0.1),
+                            color: AppStyles.mutedBlue.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(
                             Icons.monitor_weight_outlined,
-                            color: AppStyles.primaryBlue,
+                            color: AppStyles.mutedBlue,
                             size: 18,
                           ),
                         ),
@@ -1581,7 +1429,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                         const Text(
                           "What's your weight today?",
                           style: TextStyle(
-                            color: AppStyles.textWhite,
+                            color: AppStyles.textDark,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -1592,7 +1440,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                     const Text(
                       "Tracking regularly helps monitor your progress.",
                       style: TextStyle(
-                        color: AppStyles.textGrey,
+                        color: AppStyles.slateGray,
                         fontSize: 14,
                       ),
                     ),
@@ -1603,7 +1451,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                           child: TextField(
                             controller: _weightController,
                             keyboardType: TextInputType.number,
-                            style: const TextStyle(color: AppStyles.textWhite),
+                            style: const TextStyle(color: AppStyles.textDark),
                             decoration: InputDecoration(
                               labelText: 'Enter weight',
                               hintText: _client?.weight != null 
@@ -1611,11 +1459,11 @@ class _ClientDashboardState extends State<ClientDashboard> {
                                 : 'Enter weight',
                               suffixText: 'lbs',
                               suffixStyle: const TextStyle(
-                                color: AppStyles.textGrey,
+                                color: AppStyles.slateGray,
                                 fontSize: 14,
                               ),
                               filled: true,
-                              fillColor: AppStyles.inputFieldCharcoal,
+                              fillColor: AppStyles.offWhite,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide.none,
@@ -1623,7 +1471,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: const BorderSide(
-                                  color: AppStyles.primaryBlue,
+                                  color: AppStyles.mutedBlue,
                                   width: 2,
                                 ),
                               ),
@@ -1641,9 +1489,9 @@ class _ClientDashboardState extends State<ClientDashboard> {
                           child: ElevatedButton(
                             onPressed: _isSubmittingWeight ? null : _submitWeightEntry,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppStyles.primaryBlue,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor: AppStyles.primaryBlue.withOpacity(0.4),
+                              backgroundColor: AppStyles.mutedBlue,
+                              foregroundColor: AppStyles.textDark,
+                              disabledBackgroundColor: AppStyles.mutedBlue.withOpacity(0.4),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1654,7 +1502,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                                   height: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2.0,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(AppStyles.textDark),
                                   ),
                                 )
                               : const Text(
@@ -1680,7 +1528,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
   // Helper function to get BMI category color
   Color _getBmiColor(double bmi) {
     if (bmi < 18.5) {
-      return Colors.blue; // Underweight
+      return AppStyles.mutedBlue; // Underweight
     } else if (bmi < 25) {
       return AppStyles.successGreen; // Normal
     } else if (bmi < 30) {
@@ -1698,7 +1546,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
           return Container(
             height: 200,
             decoration: BoxDecoration(
-              color: AppStyles.surfaceCharcoal,
+              color: AppStyles.offWhite,
               borderRadius: BorderRadius.circular(16),
               boxShadow: AppStyles.cardShadow,
             ),
@@ -1712,7 +1560,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
         
         return Container(
           decoration: BoxDecoration(
-            color: AppStyles.surfaceCharcoal,
+            color: AppStyles.offWhite,
             borderRadius: BorderRadius.circular(16),
             boxShadow: AppStyles.cardShadow,
           ),
@@ -1732,7 +1580,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                       ),
                       child: const Icon(
                         Icons.restaurant_menu,
-                        color: Colors.white,
+                        color: AppStyles.textDark,
                         size: 24,
                       ),
                     ),
@@ -1741,8 +1589,8 @@ class _ClientDashboardState extends State<ClientDashboard> {
                       child: Text(
                         'Nutrition Plan',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppStyles.textWhite,
-                          fontWeight: FontWeight.bold,
+                          color: AppStyles.textDark,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -1800,7 +1648,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
-                                color: AppStyles.textWhite,
+                                color: AppStyles.textDark,
                               ),
                             ),
                           ),
@@ -1810,7 +1658,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppStyles.backgroundCharcoal,
+                          color: AppStyles.offWhite.withOpacity(0.8),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Column(
@@ -1826,7 +1674,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                                 Text(
                                   '${currentPlan.dailyCalories} calories daily',
                                   style: const TextStyle(
-                                    color: AppStyles.textWhite,
+                                    color: AppStyles.textDark,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -1840,7 +1688,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                                 _buildMacronutrient(
                                   label: 'Protein',
                                   value: '${currentPlan.macronutrients['protein']?.toInt() ?? 0}g',
-                                  color: AppStyles.primaryBlue,
+                                  color: AppStyles.mutedBlue,
                                 ),
                                 const SizedBox(width: 8),
                                 _buildMacronutrient(
@@ -1865,7 +1713,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: AppStyles.backgroundCharcoal,
+                      color: AppStyles.offWhite,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Center(
@@ -1874,7 +1722,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                           Icon(
                             Icons.no_food,
                             size: 40,
-                            color: Colors.grey[600],
+                            color: AppStyles.slateGray,
                           ),
                           const SizedBox(height: 16),
                           const Text(
@@ -1882,14 +1730,14 @@ class _ClientDashboardState extends State<ClientDashboard> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: AppStyles.textGrey,
+                              color: AppStyles.textDark,
                             ),
                           ),
                           const SizedBox(height: 8),
                           const Text(
                             'Contact your trainer to set up a nutrition plan',
                             style: TextStyle(
-                              color: AppStyles.textGrey,
+                              color: AppStyles.slateGray,
                               fontSize: 14,
                             ),
                             textAlign: TextAlign.center,
@@ -1912,17 +1760,17 @@ class _ClientDashboardState extends State<ClientDashboard> {
     required String value,
     required Color color,
   }) {
-    // Create a darker, more saturated version of the color
-    Color darkColor = HSLColor.fromColor(color)
-        .withSaturation(0.7)
-        .withLightness(0.25)
+    // Create a lighter, less saturated version of the color for backgrounds
+    Color lightColor = HSLColor.fromColor(color)
+        .withSaturation(0.3)
+        .withLightness(0.9)
         .toColor();
     
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: darkColor,
+          color: lightColor,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: color.withOpacity(0.5),
@@ -1933,17 +1781,17 @@ class _ClientDashboardState extends State<ClientDashboard> {
           children: [
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 20,
-                color: AppStyles.textWhite,
+                color: AppStyles.textDark,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               label,
-              style: const TextStyle(
-                color: AppStyles.textWhite,
+              style: TextStyle(
+                color: AppStyles.textDark,
                 fontSize: 12,
               ),
             ),
@@ -1969,7 +1817,7 @@ class TodayWorkoutCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 16.0),
       decoration: BoxDecoration(
-        color: AppStyles.surfaceCharcoal,
+        color: AppStyles.offWhite,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppStyles.cardShadow,
       ),
@@ -1989,7 +1837,7 @@ class TodayWorkoutCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: AppStyles.textWhite,
+                        color: AppStyles.textDark,
                       ),
                     ),
                   ),
@@ -2001,7 +1849,7 @@ class TodayWorkoutCard extends StatelessWidget {
                 Text(
                   workout.workoutDescription!,
                   style: TextStyle(
-                    color: AppStyles.textGrey,
+                    color: AppStyles.slateGray,
                     fontSize: 14,
                     height: 1.4,
                   ),
@@ -2011,7 +1859,7 @@ class TodayWorkoutCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppStyles.backgroundCharcoal,
+                  color: AppStyles.darkCharcoal,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -2019,13 +1867,13 @@ class TodayWorkoutCard extends StatelessWidget {
                     const Icon(
                       Icons.fitness_center,
                       size: 16,
-                      color: AppStyles.primaryBlue,
+                      color: AppStyles.mutedBlue,
                     ),
                     const SizedBox(width: 8.0),
                     Text(
                       '${workout.exercises.length} exercise${workout.exercises.length > 1 ? 's' : ''}',
                       style: const TextStyle(
-                        color: AppStyles.textWhite,
+                        color: AppStyles.textDark,
                         fontSize: 14,
                       ),
                     ),
@@ -2033,7 +1881,7 @@ class TodayWorkoutCard extends StatelessWidget {
                     const Icon(
                       Icons.arrow_forward_ios,
                       size: 14,
-                      color: AppStyles.primaryBlue,
+                      color: AppStyles.mutedBlue,
                     ),
                   ],
                 ),
@@ -2051,7 +1899,7 @@ class TodayWorkoutCard extends StatelessWidget {
     
     switch (status) {
       case WorkoutStatus.assigned:
-        chipColor = AppStyles.primaryBlue;
+        chipColor = AppStyles.mutedBlue;
         statusText = 'To Do';
         break;
       case WorkoutStatus.inProgress:

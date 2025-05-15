@@ -120,18 +120,26 @@ class _ClientWorkoutsScreenState extends State<ClientWorkoutsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_clientId == null) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: CircularProgressIndicator(
+          color: AppStyles.primarySage,
+        ),
+      );
     }
     
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Workouts'),
+        backgroundColor: AppStyles.offWhite,
+        foregroundColor: AppStyles.textDark,
+        elevation: 0,
+        automaticallyImplyLeading: false,
       ),
       body: Column(
         children: [
           // Filters
           Container(
-            color: AppStyles.backgroundCharcoal,
+            color: AppStyles.offWhite,
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,8 +160,8 @@ class _ClientWorkoutsScreenState extends State<ClientWorkoutsScreen> {
                               });
                             }
                           },
-                          selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                          checkmarkColor: Theme.of(context).colorScheme.primary,
+                          selectedColor: AppStyles.primarySage.withOpacity(0.2),
+                          checkmarkColor: AppStyles.primarySage,
                         ),
                       )
                     ).toList(),
@@ -169,12 +177,19 @@ class _ClientWorkoutsScreenState extends State<ClientWorkoutsScreen> {
               stream: _workoutService.getClientWorkouts(_clientId!),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(
+                    child: CircularProgressIndicator(
+                      color: AppStyles.primarySage,
+                    ),
+                  );
                 }
                 
                 if (snapshot.hasError) {
                   return Center(
-                    child: Text('Error: ${snapshot.error}'),
+                    child: Text(
+                      'Error: ${snapshot.error}',
+                      style: TextStyle(color: AppStyles.textDark),
+                    ),
                   );
                 }
                 
@@ -194,14 +209,14 @@ class _ClientWorkoutsScreenState extends State<ClientWorkoutsScreen> {
                         Icon(
                           Icons.fitness_center,
                           size: 64,
-                          color: Colors.grey[400],
+                          color: AppStyles.slateGray.withOpacity(0.5),
                         ),
                         const SizedBox(height: 16),
                         Text(
                           'No ${_selectedFilter.toLowerCase()} workouts',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
-                            color: Colors.grey,
+                            color: AppStyles.slateGray,
                           ),
                         ),
                       ],
@@ -276,14 +291,26 @@ class WorkoutCard extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
-    final bool isPast = workout.scheduledDate.isBefore(DateTime.now()) && 
-                        !_isSameDay(workout.scheduledDate, DateTime.now());
-    final bool isToday = _isSameDay(workout.scheduledDate, DateTime.now());
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final workoutDate = DateTime(
+      workout.scheduledDate.year,
+      workout.scheduledDate.month,
+      workout.scheduledDate.day,
+    );
+    
+    final isPast = workoutDate.isBefore(today);
+    final isToday = workoutDate.isAtSameMomentAs(today);
     
     return Card(
-      margin: const EdgeInsets.only(bottom: 16.0),
+      color: AppStyles.offWhite,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -297,8 +324,10 @@ class WorkoutCard extends StatelessWidget {
                       children: [
                         Text(
                           workout.workoutName,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          style: TextStyle(
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: AppStyles.textDark,
                           ),
                         ),
                         const SizedBox(height: 4.0),
@@ -308,8 +337,8 @@ class WorkoutCard extends StatelessWidget {
                               Icons.calendar_today,
                               size: 16,
                               color: isToday 
-                                  ? Colors.green 
-                                  : (isPast ? Colors.red : Colors.blue),
+                                  ? AppStyles.successGreen 
+                                  : (isPast ? AppStyles.errorRed : AppStyles.mutedBlue),
                             ),
                             const SizedBox(width: 4.0),
                             Text(
@@ -319,8 +348,8 @@ class WorkoutCard extends StatelessWidget {
                               style: TextStyle(
                                 fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
                                 color: isToday 
-                                    ? Colors.green 
-                                    : (isPast ? Colors.red : null),
+                                    ? AppStyles.successGreen 
+                                    : (isPast ? AppStyles.errorRed : AppStyles.textDark),
                               ),
                             ),
                           ],
@@ -334,14 +363,45 @@ class WorkoutCard extends StatelessWidget {
               const SizedBox(height: 12.0),
               Text(
                 '${workout.exercises.length} exercise${workout.exercises.length > 1 ? 's' : ''}',
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppStyles.slateGray,
+                ),
               ),
               const SizedBox(height: 16.0),
               LinearProgressIndicator(
                 value: _getWorkoutProgressValue(workout),
-                backgroundColor: Colors.grey[300],
+                backgroundColor: AppStyles.offWhite.withOpacity(0.3),
                 valueColor: AlwaysStoppedAnimation<Color>(_getProgressColor(workout, context)),
               ),
+              if (workout.notes != null && workout.notes!.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppStyles.offWhite.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.notes,
+                        color: AppStyles.slateGray,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          workout.notes!,
+                          style: TextStyle(
+                            color: AppStyles.textDark.withOpacity(0.8),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),
@@ -367,19 +427,14 @@ class WorkoutCard extends StatelessWidget {
   Color _getProgressColor(AssignedWorkout workout, BuildContext context) {
     switch (workout.status) {
       case WorkoutStatus.assigned:
-        return Colors.blue;
+        return AppStyles.mutedBlue;
       case WorkoutStatus.inProgress:
-        return Colors.orange;
+        return AppStyles.warningAmber;
       case WorkoutStatus.completed:
-        return Colors.green;
+        return AppStyles.successGreen;
       case WorkoutStatus.skipped:
-        return Colors.red;
+        return AppStyles.errorRed;
     }
-  }
-  
-  // Helper to check if two dates are the same day
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
   
   Widget _buildStatusChip(BuildContext context, WorkoutStatus status) {
@@ -388,34 +443,37 @@ class WorkoutCard extends StatelessWidget {
     
     switch (status) {
       case WorkoutStatus.assigned:
-        chipColor = Colors.blue;
+        chipColor = AppStyles.mutedBlue;
         statusText = 'To Do';
         break;
       case WorkoutStatus.inProgress:
-        chipColor = Colors.orange;
+        chipColor = AppStyles.warningAmber;
         statusText = 'In Progress';
         break;
       case WorkoutStatus.completed:
-        chipColor = Colors.green;
+        chipColor = AppStyles.successGreen;
         statusText = 'Completed';
         break;
       case WorkoutStatus.skipped:
-        chipColor = Colors.red;
+        chipColor = AppStyles.errorRed;
         statusText = 'Skipped';
         break;
     }
     
-    return Chip(
-      label: Text(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: chipColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
         statusText,
         style: const TextStyle(
-          color: Colors.white,
+          color: AppStyles.textDark,
           fontSize: 12,
+          fontWeight: FontWeight.bold,
         ),
       ),
-      backgroundColor: chipColor,
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
     );
   }
 } 

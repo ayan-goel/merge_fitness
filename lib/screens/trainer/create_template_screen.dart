@@ -178,9 +178,30 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                 children: [
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Template Name',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 1.5,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.surface,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -192,9 +213,30 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                   const SizedBox(height: 16.0),
                   TextFormField(
                     controller: _descriptionController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Description (Optional)',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 1.5,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.surface,
                     ),
                     maxLines: 2,
                   ),
@@ -233,7 +275,7 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                       itemBuilder: (context, index) {
                         final exercise = _exercises[index];
                         return ExerciseListItem(
-                          key: ValueKey(exercise.id),
+                          key: Key('exercise_${exercise.id}_$index'),
                           exercise: exercise,
                           onEdit: () => _editExercise(index),
                           onDelete: () => _removeExercise(index),
@@ -343,7 +385,6 @@ class ExerciseListItem extends StatelessWidget {
             ],
             if (exercise.description != null && exercise.description!.isNotEmpty) ...[
               const SizedBox(height: 8.0),
-              const Divider(height: 8.0),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -422,7 +463,8 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
   }
   
   ExerciseTemplate _createExercise() {
-    final id = widget.exercise?.id ?? DateTime.now().millisecondsSinceEpoch.toString();
+    // Generate a truly unique ID
+    final id = widget.exercise?.id ?? 'exercise_${DateTime.now().millisecondsSinceEpoch}_${UniqueKey().toString()}';
     
     return ExerciseTemplate(
       id: id,
@@ -447,8 +489,30 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Exercise Name',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 1.5,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surface,
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -460,8 +524,30 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
               const SizedBox(height: 16.0),
               TextFormField(
                 controller: _descriptionController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Description/Instructions (Optional)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 1.5,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surface,
                 ),
                 maxLines: 3,
               ),
@@ -471,8 +557,30 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
                   Expanded(
                     child: TextFormField(
                       controller: _setsController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Sets',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 1.5,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surface,
                       ),
                       keyboardType: TextInputType.number,
                       validator: (value) {
@@ -490,8 +598,30 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
                   Expanded(
                     child: TextFormField(
                       controller: _repsController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Reps',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 1.5,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surface,
                       ),
                       keyboardType: TextInputType.number,
                       validator: (value) {
@@ -510,8 +640,30 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
               const SizedBox(height: 16.0),
               TextFormField(
                 controller: _restController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Rest Seconds (Optional)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 1.5,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surface,
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {

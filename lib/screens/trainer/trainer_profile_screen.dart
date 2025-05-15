@@ -4,6 +4,7 @@ import '../../services/auth_service.dart';
 import '../../services/profile_image_service.dart';
 import '../../services/calendly_service.dart';
 import '../../models/user_model.dart';
+import '../../theme/app_styles.dart';
 
 class TrainerProfileScreen extends StatefulWidget {
   const TrainerProfileScreen({super.key});
@@ -321,15 +322,49 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
     }
   }
   
+  // Add input decoration method to match client profile screen
+  InputDecoration _getInputDecoration({
+    required String label,
+    required String hint,
+    IconData? prefixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
+      labelStyle: const TextStyle(
+        fontSize: 14,
+        color: AppStyles.textDark,
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      filled: true,
+      fillColor: AppStyles.offWhite,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppStyles.slateGray.withOpacity(0.4)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppStyles.primarySage, width: 2),
+      ),
+    );
+  }
+  
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(
+            color: AppStyles.primarySage,
+          ),
+        ),
       );
     }
     
-    final themeColor = Theme.of(context).colorScheme.primary;
+    final themeColor = AppStyles.primarySage;
     
     return Scaffold(
       appBar: AppBar(
@@ -378,10 +413,10 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                 // Name
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person),
+                  decoration: _getInputDecoration(
+                    label: 'Full Name',
+                    hint: '',
+                    prefixIcon: Icons.person,
                   ),
                   enabled: _isEditing,
                   validator: (value) {
@@ -396,10 +431,10 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                 // Email
                 TextFormField(
                   controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email),
+                  decoration: _getInputDecoration(
+                    label: 'Email',
+                    hint: '',
+                    prefixIcon: Icons.email,
                   ),
                   enabled: false, // Email can't be changed through this screen
                 ),
@@ -408,10 +443,10 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                 // Phone Number
                 TextFormField(
                   controller: _phoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.phone),
+                  decoration: _getInputDecoration(
+                    label: 'Phone Number',
+                    hint: '',
+                    prefixIcon: Icons.phone,
                   ),
                   enabled: _isEditing,
                   keyboardType: TextInputType.phone,
@@ -421,7 +456,10 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                 // Calendly Integration Section
                 Text(
                   'Calendly Integration',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: themeColor,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 
@@ -495,6 +533,9 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                                 label: const Text('Change Event Type'),
                                 style: ElevatedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 12),
@@ -509,9 +550,12 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                                       )
                                     : const Text('Disconnect'),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
-                                  foregroundColor: Colors.white,
+                                  backgroundColor: AppStyles.errorRed,
+                                  foregroundColor: AppStyles.textLight,
                                   padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
                               ),
                             ],
@@ -532,6 +576,13 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                                       child: CircularProgressIndicator(strokeWidth: 2),
                                     )
                                   : const Text('Connect Calendly'),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                minimumSize: const Size(200, 48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -548,9 +599,16 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                       onPressed: _isSaving ? null : _saveChanges,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       child: _isSaving
-                          ? const CircularProgressIndicator()
+                          ? const SizedBox(
+                              width: 20, 
+                              height: 20, 
+                              child: CircularProgressIndicator(strokeWidth: 2)
+                            )
                           : const Text('Save Changes'),
                     ),
                   ),
@@ -563,12 +621,15 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                   Center(
                     child: ElevatedButton.icon(
                       onPressed: _signOut,
-                      icon: const Icon(Icons.exit_to_app),
-                      label: const Text('Logout'),
+                      icon: const Icon(Icons.logout),
+                      label: const Text('Sign Out'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppStyles.errorRed,
+                        foregroundColor: AppStyles.textLight,
                         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),

@@ -3,6 +3,7 @@ import '../../models/assigned_workout_model.dart';
 import '../../models/nutrition_plan_model.dart';
 import '../../services/workout_template_service.dart';
 import '../../services/nutrition_service.dart';
+import '../../theme/app_styles.dart';
 import 'assign_workout_screen.dart';
 import 'assign_nutrition_plan_screen.dart';
 import 'client_info_screen.dart';
@@ -329,7 +330,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                                     label: const Text('Delete Plan'),
                                     style: TextButton.styleFrom(
                                       foregroundColor: Colors.white,
-                                      backgroundColor: Colors.red,
+                                      backgroundColor: AppStyles.errorRed.withOpacity(0.7),
                                       padding: const EdgeInsets.symmetric(vertical: 12),
                                     ),
                                   ),
@@ -708,19 +709,19 @@ class NutritionPlanCard extends StatelessWidget {
   }
   
   Widget _macronutrientChip(String label, String value, Color backgroundColor) {
-    // Define darker, more mature colors to replace the pastels
+    // Define pastel colors to match the client meal history screen
     Color chipColor;
-    Color textColor = Colors.white;
+    Color textColor = AppStyles.textDark;
     
     // Determine color based on the passed background color
     if (backgroundColor == Colors.red.shade100) {
-      chipColor = const Color(0xFF8B2E35); // Darker red for protein
+      chipColor = AppStyles.errorRed; // Pastel red for protein
     } else if (backgroundColor == Colors.green.shade100) {
-      chipColor = const Color(0xFF2E5C3E); // Darker green for carbs
+      chipColor = AppStyles.successGreen; // Pastel green for carbs
     } else if (backgroundColor == Colors.blue.shade100) {
-      chipColor = const Color(0xFF204060); // Darker blue for fat
+      chipColor = AppStyles.mutedBlue; // Pastel blue for fat
     } else if (backgroundColor == Colors.purple.shade100) {
-      chipColor = const Color(0xFF4A2E58); // Darker purple for micros
+      chipColor = AppStyles.taupeBrown; // Pastel purple for micros
     } else {
       chipColor = backgroundColor;
     }
@@ -728,16 +729,16 @@ class NutritionPlanCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: chipColor,
+        color: chipColor.withOpacity(0.2),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Color.fromARGB(255, chipColor.red + 20, chipColor.green + 20, chipColor.blue + 20),
+          color: chipColor.withOpacity(0.5),
           width: 1,
         ),
       ),
       child: Text(
         '$label: $value', 
-        style: TextStyle(color: textColor, fontWeight: FontWeight.w500)
+        style: TextStyle(color: chipColor, fontWeight: FontWeight.w500)
       ),
     );
   }

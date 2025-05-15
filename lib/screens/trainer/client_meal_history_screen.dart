@@ -474,21 +474,21 @@ class _ClientMealHistoryScreenState extends State<ClientMealHistoryScreen> {
   }
   
   Widget _macronutrientChip(String label, String value, [Color? color]) {
-    // Define darker, more mature colors to replace the pastels
+    // Use pastel colors similar to the client side
     Color chipColor;
-    Color textColor = AppStyles.textWhite;
+    Color textColor = AppStyles.textDark; // Use dark text instead of light
     
     // Determine color based on label if not provided
     if (color == null) {
-      chipColor = Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5);
+      chipColor = AppStyles.primarySage;
     } else if (color == Colors.red.shade100) {
-      chipColor = const Color(0xFF8B2E35); // Darker red for protein
+      chipColor = AppStyles.errorRed; // Use errorRed for protein (consistent with client view)
     } else if (color == Colors.green.shade100) {
-      chipColor = const Color(0xFF2E5C3E); // Darker green for carbs
+      chipColor = AppStyles.successGreen; // Use successGreen for carbs
     } else if (color == Colors.blue.shade100) {
-      chipColor = const Color(0xFF204060); // Darker blue for fat
+      chipColor = AppStyles.mutedBlue; // Use mutedBlue for fat
     } else if (color == Colors.purple.shade100) {
-      chipColor = const Color(0xFF4A2E58); // Darker purple for micros
+      chipColor = AppStyles.taupeBrown; // Use taupeBrown for micronutrients
     } else {
       chipColor = color;
     }
@@ -496,16 +496,16 @@ class _ClientMealHistoryScreenState extends State<ClientMealHistoryScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: chipColor,
+        color: chipColor.withOpacity(0.2), // Use 0.2 opacity for pastel look
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Color.fromARGB(255, chipColor.red + 20, chipColor.green + 20, chipColor.blue + 20),
+          color: chipColor.withOpacity(0.5), // Use 0.5 opacity for border
           width: 1,
         ),
       ),
       child: Text(
         '$label: $value',
-        style: TextStyle(color: textColor, fontWeight: FontWeight.w500),
+        style: TextStyle(color: chipColor, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -530,7 +530,7 @@ class _ClientMealHistoryScreenState extends State<ClientMealHistoryScreen> {
             Text(
               valueText,
               style: TextStyle(
-                color: isOverLimit ? Colors.red : null,
+                color: isOverLimit ? AppStyles.errorRed : null,
                 fontWeight: isOverLimit ? FontWeight.bold : null,
               ),
               overflow: TextOverflow.ellipsis,
@@ -544,7 +544,7 @@ class _ClientMealHistoryScreenState extends State<ClientMealHistoryScreen> {
               width: constraints.maxWidth,
               height: 12,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Stack(
@@ -554,8 +554,8 @@ class _ClientMealHistoryScreenState extends State<ClientMealHistoryScreen> {
                     width: constraints.maxWidth * cappedProgress,
                     decoration: BoxDecoration(
                       color: isOverLimit 
-                          ? Colors.red 
-                          : (progress > 0.9 ? Colors.green : Theme.of(context).colorScheme.primary),
+                          ? AppStyles.errorRed.withOpacity(0.8)
+                          : (progress > 0.9 ? AppStyles.successGreen.withOpacity(0.8) : AppStyles.primarySage.withOpacity(0.8)),
                       borderRadius: BorderRadius.circular(6),
                     ),
                   ),

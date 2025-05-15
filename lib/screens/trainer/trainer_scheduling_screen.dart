@@ -145,9 +145,9 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
       padding: const EdgeInsets.all(24.0),
       margin: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: AppStyles.backgroundCharcoal,
+        color: AppStyles.offWhite,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppStyles.primaryBlue.withOpacity(0.5), width: 1.5),
+        border: Border.all(color: AppStyles.primarySage.withOpacity(0.5), width: 1.5),
         boxShadow: AppStyles.cardShadow,
       ),
       child: Column(
@@ -163,7 +163,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
-                  color: AppStyles.textWhite,
+                  color: AppStyles.textDark,
                 ),
               ),
             ],
@@ -174,7 +174,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
-              color: AppStyles.textWhite,
+              color: AppStyles.textDark,
               height: 1.4,
             ),
           ),
@@ -188,7 +188,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                   Navigator.pushNamed(context, '/trainer/profile');
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppStyles.primaryBlue,
+                  backgroundColor: AppStyles.primarySage,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -331,7 +331,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       decoration: BoxDecoration(
-        color: AppStyles.surfaceCharcoal,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppStyles.cardShadow,
         border: isCancelled 
@@ -352,8 +352,8 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                     height: 50,
                     decoration: BoxDecoration(
                       color: isCancelled
-                          ? AppStyles.dividerGrey.withOpacity(0.2)
-                          : AppStyles.backgroundCharcoal,
+                          ? AppStyles.slateGray.withOpacity(0.2)
+                          : AppStyles.offWhite,
                       borderRadius: BorderRadius.circular(12),
                       border: isCancelled 
                           ? Border.all(color: Colors.grey.withOpacity(0.5), width: 1)
@@ -361,7 +361,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                     ),
                     child: Icon(
                       Icons.fitness_center,
-                      color: isCancelled ? Colors.grey : AppStyles.primaryBlue,
+                      color: isCancelled ? Colors.grey : AppStyles.primarySage,
                       size: 24,
                     ),
                   ),
@@ -371,7 +371,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                       decoration: isCancelled ? TextDecoration.lineThrough : null,
-                      color: isCancelled ? AppStyles.textGrey : AppStyles.textWhite,
+                      color: isCancelled ? AppStyles.slateGray : AppStyles.textDark,
                     ),
                   ),
                   subtitle: Column(
@@ -383,7 +383,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                           Icon(
                             Icons.access_time,
                             size: 14,
-                            color: isCancelled ? Colors.grey : AppStyles.primaryBlue,
+                            color: isCancelled ? Colors.grey : AppStyles.primarySage,
                           ),
                           const SizedBox(width: 6),
                           Expanded(
@@ -391,7 +391,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                               '${DateFormat('h:mm a').format(session.startTime)} - ${DateFormat('h:mm a').format(session.endTime)}',
                               style: TextStyle(
                                 decoration: isCancelled ? TextDecoration.lineThrough : null,
-                                color: isCancelled ? AppStyles.textGrey : AppStyles.textGrey,
+                                color: isCancelled ? AppStyles.slateGray : AppStyles.slateGray,
                                 fontSize: 13,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -405,7 +405,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                           Icon(
                             Icons.location_on,
                             size: 14,
-                            color: isCancelled ? Colors.grey : AppStyles.primaryBlue,
+                            color: isCancelled ? Colors.grey : AppStyles.primarySage,
                           ),
                           const SizedBox(width: 6),
                           Expanded(
@@ -413,7 +413,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                               session.location,
                               style: TextStyle(
                                 decoration: isCancelled ? TextDecoration.lineThrough : null,
-                                color: isCancelled ? AppStyles.textGrey : AppStyles.textGrey,
+                                color: isCancelled ? AppStyles.slateGray : AppStyles.slateGray,
                                 fontSize: 13,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -449,7 +449,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                           icon: const Icon(
                             Icons.open_in_new,
                             size: 20,
-                            color: AppStyles.primaryBlue,
+                            color: AppStyles.primarySage,
                           ),
                           tooltip: 'View in Calendly',
                           padding: const EdgeInsets.all(8),
@@ -466,7 +466,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                           icon: const Icon(
                             Icons.location_on,
                             size: 20,
-                            color: AppStyles.softGold,
+                            color: AppStyles.taupeBrown,
                           ),
                           tooltip: 'Share Location',
                           padding: const EdgeInsets.all(8),
@@ -496,7 +496,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: const BoxDecoration(
-                color: AppStyles.backgroundCharcoal,
+                color: AppStyles.offWhite,
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(16),
                   bottomRight: Radius.circular(16),
@@ -510,7 +510,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: AppStyles.textGrey,
+                      color: AppStyles.slateGray,
                       letterSpacing: 1.2,
                     ),
                   ),
@@ -518,7 +518,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                   Text(
                     session.notes!,
                     style: TextStyle(
-                      color: isCancelled ? AppStyles.textGrey.withOpacity(0.7) : AppStyles.textGrey,
+                      color: isCancelled ? AppStyles.slateGray.withOpacity(0.7) : AppStyles.slateGray,
                       fontStyle: FontStyle.italic,
                       fontSize: 13,
                     ),
@@ -552,7 +552,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
         builder: (BuildContext context) {
           return AlertDialog(
             title: const Text('Cancel Training Session'),
-            backgroundColor: AppStyles.cardCharcoal,
+            backgroundColor: AppStyles.offWhite,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -564,14 +564,14 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                   'Are you sure you want to cancel this session?',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppStyles.textWhite,
+                    color: AppStyles.textDark,
                   ),
                 ),
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppStyles.backgroundCharcoal,
+                    color: AppStyles.offWhite,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -582,12 +582,12 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                           const Icon(
                             Icons.calendar_today,
                             size: 16,
-                            color: AppStyles.primaryBlue,
+                            color: AppStyles.primarySage,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             'Date: ${session.formattedDate}',
-                            style: const TextStyle(color: AppStyles.textWhite),
+                            style: const TextStyle(color: AppStyles.textDark),
                           ),
                         ],
                       ),
@@ -597,12 +597,12 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                           const Icon(
                             Icons.access_time,
                             size: 16,
-                            color: AppStyles.primaryBlue,
+                            color: AppStyles.primarySage,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             'Time: ${session.formattedTimeRange}',
-                            style: const TextStyle(color: AppStyles.textWhite),
+                            style: const TextStyle(color: AppStyles.textDark),
                           ),
                         ],
                       ),
@@ -612,13 +612,13 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                           const Icon(
                             Icons.person,
                             size: 16,
-                            color: AppStyles.primaryBlue,
+                            color: AppStyles.primarySage,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Client: ${session.clientName}',
-                              style: const TextStyle(color: AppStyles.textWhite),
+                              style: const TextStyle(color: AppStyles.textDark),
                             ),
                           ),
                         ],
@@ -629,26 +629,26 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                 const SizedBox(height: 24),
                 const Text(
                   'Reason for cancellation (optional):',
-                  style: TextStyle(color: AppStyles.textGrey),
+                  style: TextStyle(color: AppStyles.textDark),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: reasonController,
                   decoration: InputDecoration(
                     hintText: 'Enter reason here',
-                    hintStyle: TextStyle(color: AppStyles.textGrey.withOpacity(0.5)),
+                    hintStyle: TextStyle(color: AppStyles.slateGray.withOpacity(0.5)),
                     filled: true,
-                    fillColor: AppStyles.inputFieldCharcoal,
+                    fillColor: AppStyles.offWhite,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppStyles.primaryBlue, width: 2),
+                      borderSide: const BorderSide(color: AppStyles.primarySage, width: 2),
                     ),
                   ),
-                  style: const TextStyle(color: AppStyles.textWhite),
+                  style: const TextStyle(color: AppStyles.textDark),
                   maxLines: 2,
                 ),
               ],
@@ -657,7 +657,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
                 style: TextButton.styleFrom(
-                  foregroundColor: AppStyles.textWhite,
+                  foregroundColor: AppStyles.textDark,
                 ),
                 child: const Text('No, Keep It'),
               ),
@@ -692,7 +692,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Session cancelled successfully'),
-              backgroundColor: AppStyles.backgroundCharcoal,
+              backgroundColor: AppStyles.offWhite,
               behavior: SnackBarBehavior.floating,
             ),
           );

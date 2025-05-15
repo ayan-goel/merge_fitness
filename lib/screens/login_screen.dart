@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
+import '../theme/app_styles.dart';
+import '../widgets/merge_button.dart';
 import 'home_screen.dart';
 import 'onboarding_quiz_screen.dart';
 import 'trainer/trainer_onboarding_screen.dart';
@@ -253,36 +255,49 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Logo and app name
                 Column(
                   children: [
-                    // Logo placeholder
+                    // MERGE Logo
                     Container(
-                      width: 100,
-                      height: 100,
+                      width: 180,
+                      height: 180,
+                      padding: const EdgeInsets.all(25),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.fitness_center,
                         color: Colors.white,
-                        size: 50,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppStyles.slateGray.withOpacity(0.1),
+                            blurRadius: 10,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Image.asset(
+                        'assets/images/mergelogo.png',
+                        fit: BoxFit.contain,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     
-                    // App name
+                    // App name - using the theme color
                     Text(
-                      'Merge Fitness',
-                      style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.bold,
+                      'Welcome to Merge!',
+                      style: TextStyle(
+                        fontSize: 28,
+                        color: AppStyles.primarySage,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     
-                    // Tagline
+                    // Tagline - Updated for a more calming feel
                     Text(
-                      'Your personal fitness companion',
-                      style: Theme.of(context).textTheme.bodyLarge,
+                      'Harmonize Your Health Journey',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppStyles.slateGray,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                     const SizedBox(height: 48),
                   ],
@@ -305,10 +320,41 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Email field
                       TextFormField(
                         controller: _emailController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Email',
-                          prefixIcon: Icon(Icons.email_outlined),
-                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(
+                            Icons.email_outlined,
+                            color: AppStyles.mutedBlue,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(
+                              color: AppStyles.slateGray.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(
+                              color: AppStyles.slateGray.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(
+                              color: AppStyles.primarySage,
+                              width: 1.5,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: Theme.of(context).brightness == Brightness.light
+                              ? Colors.grey.shade50
+                              : AppStyles.lightCharcoal,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 18,
+                          ),
                         ),
                         keyboardType: TextInputType.emailAddress,
                         autocorrect: false,
@@ -328,10 +374,41 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Password field
                       TextFormField(
                         controller: _passwordController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Password',
-                          prefixIcon: Icon(Icons.lock_outline),
-                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(
+                            Icons.lock_outline,
+                            color: AppStyles.mutedBlue,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(
+                              color: AppStyles.slateGray.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(
+                              color: AppStyles.slateGray.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(
+                              color: AppStyles.primarySage,
+                              width: 1.5,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: Theme.of(context).brightness == Brightness.light
+                              ? Colors.grey.shade50
+                              : AppStyles.lightCharcoal,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 18,
+                          ),
                         ),
                         obscureText: true,
                         textInputAction: _isLogin ? TextInputAction.done : TextInputAction.next,
@@ -356,10 +433,41 @@ class _LoginScreenState extends State<LoginScreen> {
                       if (!_isLogin)
                         TextFormField(
                           controller: _confirmPasswordController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Confirm Password',
-                            prefixIcon: Icon(Icons.check_circle_outline),
-                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(
+                              Icons.check_circle_outline,
+                              color: AppStyles.mutedBlue,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: AppStyles.slateGray.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: AppStyles.slateGray.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: AppStyles.primarySage,
+                                width: 1.5,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Theme.of(context).brightness == Brightness.light
+                                ? Colors.grey.shade50
+                                : AppStyles.lightCharcoal,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 18,
+                            ),
                           ),
                           obscureText: true,
                           textInputAction: TextInputAction.done,
@@ -378,22 +486,45 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Trainer toggle (signup only)
                       if (!_isLogin) ...[
                         const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Switch(
-                              value: _isTrainer,
-                              onChanged: (value) {
-                                setState(() {
-                                  _isTrainer = value;
-                                });
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _isTrainer ? 'Register as a Trainer' : 'Register as a Client',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).brightness == Brightness.light 
+                                ? Colors.grey.shade50 
+                                : AppStyles.lightCharcoal,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _isTrainer ? Icons.fitness_center : Icons.person,
+                                color: AppStyles.taupeBrown,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _isTrainer ? 'Register as a Trainer' : 'Register as a Client',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    color: Theme.of(context).brightness == Brightness.light
+                                        ? AppStyles.textDark 
+                                        : AppStyles.textLight,
+                                  ),
+                                ),
+                              ),
+                              Switch(
+                                value: _isTrainer,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _isTrainer = value;
+                                  });
+                                },
+                                activeColor: AppStyles.primarySage,
+                                activeTrackColor: AppStyles.primarySage.withOpacity(0.4),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                       
@@ -404,9 +535,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       if (_isLogin)
                         Align(
                           alignment: Alignment.center,
-                          child: TextButton(
+                          child: MergeButton(
+                            text: 'Forgot Password?',
                             onPressed: _handleForgotPassword,
-                            child: const Text('Forgot Password?'),
+                            type: MergeButtonType.text,
+                            size: MergeButtonSize.small,
+                            color: AppStyles.mutedBlue,
                           ),
                         ),
                       const SizedBox(height: 8),
@@ -414,46 +548,69 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Error message
                       if (_errorMessage != null)
                         Container(
-                          padding: const EdgeInsets.all(8),
-                          color: Colors.red.withOpacity(0.1),
-                          child: Text(
-                            _errorMessage!,
-                            style: TextStyle(
-                              color: Colors.red[700],
-                              fontSize: 14,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppStyles.errorRed.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppStyles.errorRed.withOpacity(0.3),
+                              width: 1,
                             ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                color: AppStyles.errorRed,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _errorMessage!,
+                                  style: TextStyle(
+                                    color: AppStyles.errorRed.withOpacity(0.8),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       if (_errorMessage != null)
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
                       
                       // Login/Signup button
-                      ElevatedButton(
+                      MergeButton(
+                        text: _isLogin ? 'Log In' : 'Sign Up',
                         onPressed: _isLoading ? null : _handleAuth,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12.0),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.0,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(_isLogin ? 'Log In' : 'Sign Up'),
+                        isLoading: _isLoading,
+                        fullWidth: true,
+                        type: MergeButtonType.primary,
+                        size: MergeButtonSize.medium,
                       ),
                       const SizedBox(height: 16),
                       
                       // Toggle auth mode
-                      TextButton(
-                        onPressed: _toggleAuthMode,
-                        child: Text(
-                          _isLogin
-                              ? 'Don\'t have an account? Sign Up'
-                              : 'Already have an account? Log In',
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _isLogin
+                                ? "Don't have an account? "
+                                : 'Already have an account? ',
+                            style: TextStyle(
+                              color: Theme.of(context).brightness == Brightness.light
+                                ? AppStyles.textDark.withOpacity(0.7)
+                                : AppStyles.textLight.withOpacity(0.7),
+                            ),
+                          ),
+                          MergeButton(
+                            text: _isLogin ? 'Sign Up' : 'Log In',
+                            onPressed: _toggleAuthMode,
+                            type: MergeButtonType.text,
+                          ),
+                        ],
                       ),
                     ],
                   ),

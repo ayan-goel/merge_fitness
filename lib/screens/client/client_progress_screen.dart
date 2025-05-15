@@ -10,6 +10,7 @@ import '../../services/weight_service.dart';
 import '../../models/weight_entry_model.dart';
 import '../../models/user_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../theme/app_styles.dart';
 
 // A simple workout data model for progress tracking
 class WorkoutProgressData {
@@ -339,12 +340,19 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: CircularProgressIndicator(
+          color: AppStyles.primarySage,
+        ),
+      );
     }
     
     return Scaffold(
       appBar: AppBar(
         title: const Text('Progress Tracking'),
+        backgroundColor: AppStyles.offWhite,
+        foregroundColor: AppStyles.textDark,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -354,6 +362,10 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
             children: [
               // Weight and BMI Chart Section - Always show to debug
               Card(
+                color: AppStyles.offWhite,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -364,7 +376,11 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                         children: [
                           Text(
                             _showBMI ? 'BMI Progress' : 'Weight Progress',
-                            style: Theme.of(context).textTheme.titleMedium,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppStyles.textDark,
+                            ),
                           ),
                           Switch(
                             value: _showBMI,
@@ -374,7 +390,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                                 print("Toggled to ${_showBMI ? 'BMI' : 'Weight'} display");
                               });
                             },
-                            activeColor: Theme.of(context).colorScheme.primary,
+                            activeColor: AppStyles.primarySage,
                           ),
                         ],
                       ),
@@ -389,7 +405,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                                     Icon(
                                       Icons.scale,
                                       size: 64,
-                                      color: Colors.grey[400],
+                                      color: AppStyles.slateGray.withOpacity(0.5),
                                     ),
                                     const SizedBox(height: 16),
                                     Text(
@@ -397,7 +413,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
                                         fontSize: 16,
-                                        color: Colors.grey[600],
+                                        color: AppStyles.slateGray,
                                       ),
                                     ),
                                   ],
@@ -409,7 +425,10 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                       Center(
                         child: Text(
                           _showBMI ? 'BMI Over Time' : 'Weight (lbs) Over Time',
-                          style: Theme.of(context).textTheme.bodySmall,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppStyles.slateGray,
+                          ),
                         ),
                       ),
                     ],
@@ -426,7 +445,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                     title: 'Current Streak',
                     value: '$_currentStreak ${_currentStreak == 1 ? 'day' : 'days'}',
                     icon: Icons.local_fire_department,
-                    color: Colors.orange,
+                    color: AppStyles.warningAmber,
                   ),
                   const SizedBox(width: 16),
                   _buildStatCard(
@@ -434,7 +453,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                     title: 'Longest Streak',
                     value: '$_longestStreak ${_longestStreak == 1 ? 'day' : 'days'}',
                     icon: Icons.emoji_events,
-                    color: Colors.amber,
+                    color: AppStyles.softGold,
                   ),
                 ],
               ),
@@ -446,7 +465,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                     title: 'Days Completed',
                     value: '$_completedWorkoutsCount',
                     icon: Icons.fitness_center,
-                    color: Colors.green,
+                    color: AppStyles.successGreen,
                   ),
                   const SizedBox(width: 16),
                   _buildStatCard(
@@ -454,7 +473,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                     title: 'This Month',
                     value: '${_getWorkoutsThisMonth()}',
                     icon: Icons.calendar_month,
-                    color: Colors.blue,
+                    color: AppStyles.mutedBlue,
                   ),
                 ],
               ),
@@ -492,15 +511,15 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                       markersMaxCount: 3,
                       markerSize: 8,
                       markerDecoration: const BoxDecoration(
-                        color: Colors.green,
+                        color: AppStyles.successGreen,
                         shape: BoxShape.circle,
                       ),
                       todayDecoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                        color: AppStyles.primarySage.withOpacity(0.5),
                         shape: BoxShape.circle,
                       ),
                       selectedDecoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
+                        color: AppStyles.primarySage,
                         shape: BoxShape.circle,
                       ),
                       // Make sure markers are visible
@@ -508,11 +527,11 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                       markersAutoAligned: true,
                     ),
                     headerStyle: HeaderStyle(
-                      formatButtonTextStyle: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
+                      formatButtonTextStyle: const TextStyle(
+                        color: AppStyles.primarySage,
                       ),
                       formatButtonDecoration: BoxDecoration(
-                        border: Border.all(color: Theme.of(context).colorScheme.primary),
+                        border: Border.all(color: AppStyles.primarySage),
                         borderRadius: BorderRadius.circular(16.0),
                       ),
                     ),
@@ -579,14 +598,14 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
             Icon(
               Icons.fitness_center,
               size: 64,
-              color: Colors.grey[400],
+              color: AppStyles.slateGray.withOpacity(0.5),
             ),
             const SizedBox(height: 16),
             Text(
               'No workouts completed on this day',
               style: TextStyle(
                 fontSize: 18,
-                color: Colors.grey[600],
+                color: AppStyles.slateGray,
               ),
             ),
           ],
@@ -599,22 +618,101 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
       itemBuilder: (context, index) {
         final workout = workouts[index];
         return Card(
+          color: AppStyles.offWhite,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           margin: const EdgeInsets.only(bottom: 12.0),
           child: ListTile(
             leading: const CircleAvatar(
-              backgroundColor: Colors.green,
-              child: Icon(Icons.check, color: Colors.white),
+              backgroundColor: AppStyles.successGreen,
+              child: Icon(Icons.check, color: AppStyles.textDark),
             ),
-            title: Text(
+            title: const Text(
               'Workout Completed',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppStyles.textDark,
+              ),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 4),
-                Text('Program: ${workout.workoutName}'),
-                Text('Completed at: ${DateFormat.jm().format(workout.completedDate)}'),
+                Text(
+                  'Program: ${workout.workoutName}',
+                  style: const TextStyle(color: AppStyles.slateGray),
+                ),
+                Text(
+                  'Completed at: ${DateFormat.jm().format(workout.completedDate)}',
+                  style: const TextStyle(color: AppStyles.slateGray),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
+  Widget _buildWorkoutList(List<WorkoutProgressData> workouts) {
+    if (workouts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.fitness_center,
+              size: 64,
+              color: AppStyles.slateGray.withOpacity(0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No workouts completed on this day',
+              style: TextStyle(
+                fontSize: 18,
+                color: AppStyles.slateGray,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return ListView.builder(
+      itemCount: workouts.length,
+      itemBuilder: (context, index) {
+        final workout = workouts[index];
+        return Card(
+          color: AppStyles.offWhite,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: const EdgeInsets.only(bottom: 12.0),
+          child: ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: AppStyles.successGreen,
+              child: Icon(Icons.check, color: AppStyles.textDark),
+            ),
+            title: const Text(
+              'Workout Completed',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppStyles.textDark,
+              ),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  'Program: ${workout.workoutName}',
+                  style: const TextStyle(color: AppStyles.slateGray),
+                ),
+                Text(
+                  'Completed at: ${DateFormat.jm().format(workout.completedDate)}',
+                  style: const TextStyle(color: AppStyles.slateGray),
+                ),
               ],
             ),
           ),
@@ -632,6 +730,10 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
   }) {
     return Expanded(
       child: Card(
+        color: AppStyles.offWhite,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -644,11 +746,18 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
               const SizedBox(height: 8),
               Text(
                 value,
-                style: Theme.of(context).textTheme.titleLarge,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppStyles.textDark,
+                ),
               ),
               Text(
                 title,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppStyles.slateGray,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -662,7 +771,10 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
   Widget _buildProgressChart() {
     if (_weightEntries.isEmpty) {
       return const Center(
-        child: Text('No weight data available'),
+        child: Text(
+          'No weight data available',
+          style: TextStyle(color: AppStyles.textDark),
+        ),
       );
     }
 
@@ -716,7 +828,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
         return FlSpot(index, value);
       }).toList(),
       isCurved: true,
-      color: Theme.of(context).colorScheme.primary,
+      color: AppStyles.primarySage,
       barWidth: 3,
       isStrokeCapRound: true,
       dotData: FlDotData(
@@ -724,15 +836,15 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
         getDotPainter: (spot, percent, barData, index) {
           return FlDotCirclePainter(
             radius: 4,
-            color: Theme.of(context).colorScheme.primary,
+            color: AppStyles.primarySage,
             strokeWidth: 1,
-            strokeColor: Theme.of(context).colorScheme.surface,
+            strokeColor: AppStyles.offWhite,
           );
         },
       ),
       belowBarData: BarAreaData(
         show: true,
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+        color: AppStyles.primarySage.withOpacity(0.2),
       ),
     );
 
@@ -745,7 +857,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
           horizontalInterval: _showBMI ? 5 : 10, // Interval based on data type
           getDrawingHorizontalLine: (value) {
             return FlLine(
-              color: Colors.grey.withOpacity(0.3),
+              color: AppStyles.slateGray.withOpacity(0.3),
               strokeWidth: 1,
             );
           },
@@ -776,9 +888,9 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                       padding: const EdgeInsets.only(top: 8.0),
                       child: Text(
                         DateFormat('MM/dd').format(date),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10,
-                          color: Colors.grey,
+                          color: AppStyles.slateGray,
                         ),
                       ),
                     );
@@ -796,9 +908,9 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                 if (value % (_showBMI ? 5 : 20) == 0) {
                   return Text(
                     value.toInt().toString(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
-                      color: Colors.grey,
+                      color: AppStyles.slateGray,
                     ),
                   );
                 }
@@ -810,7 +922,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
         borderData: FlBorderData(
           show: true,
           border: Border.all(
-            color: Colors.grey.withOpacity(0.3),
+            color: AppStyles.slateGray.withOpacity(0.3),
             width: 1,
           ),
         ),
@@ -821,7 +933,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
         lineBarsData: [lineData],
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
-            getTooltipColor: (_) => Theme.of(context).colorScheme.surface,
+            getTooltipColor: (_) => AppStyles.offWhite,
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((touchedSpot) {
                 final index = touchedSpot.x.toInt();
@@ -836,8 +948,8 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                   
                   return LineTooltipItem(
                     '$date\n$prefix$value$suffix',
-                    TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface,
+                    const TextStyle(
+                      color: AppStyles.textDark,
                       fontWeight: FontWeight.bold,
                     ),
                   );

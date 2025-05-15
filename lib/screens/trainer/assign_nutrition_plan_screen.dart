@@ -304,10 +304,31 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                     // Plan Name
                     TextFormField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Plan Name*',
                         hintText: 'e.g., Weight Loss Meal Plan',
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 1.5,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surface,
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -321,10 +342,31 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                     // Description
                     TextFormField(
                       controller: _descriptionController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Description (Optional)',
                         hintText: 'Brief description of the nutrition plan',
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 1.5,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surface,
                       ),
                       maxLines: 2,
                     ),
@@ -406,11 +448,32 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                     // Daily Calories
                     TextFormField(
                       controller: _caloriesController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Daily Calories*',
                         hintText: 'e.g., 2000',
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 1.5,
+                          ),
+                        ),
                         suffixText: 'kcal',
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surface,
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: false),
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -439,11 +502,32 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _proteinController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Protein',
                               hintText: '120',
-                              border: OutlineInputBorder(),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 1.5,
+                                ),
+                              ),
                               suffixText: 'g',
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              filled: true,
+                              fillColor: Theme.of(context).colorScheme.surface,
                             ),
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             inputFormatters: [
@@ -455,11 +539,32 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _carbsController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Carbs',
                               hintText: '200',
-                              border: OutlineInputBorder(),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 1.5,
+                                ),
+                              ),
                               suffixText: 'g',
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              filled: true,
+                              fillColor: Theme.of(context).colorScheme.surface,
                             ),
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             inputFormatters: [
@@ -471,11 +576,32 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _fatController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Fat',
                               hintText: '65',
-                              border: OutlineInputBorder(),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 1.5,
+                                ),
+                              ),
                               suffixText: 'g',
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              filled: true,
+                              fillColor: Theme.of(context).colorScheme.surface,
                             ),
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             inputFormatters: [
@@ -503,11 +629,32 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _sodiumController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Sodium',
                               hintText: '2300',
-                              border: OutlineInputBorder(),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 1.5,
+                                ),
+                              ),
                               suffixText: 'mg',
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              filled: true,
+                              fillColor: Theme.of(context).colorScheme.surface,
                             ),
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             inputFormatters: [
@@ -519,11 +666,32 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _cholesterolController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Cholesterol',
                               hintText: '300',
-                              border: OutlineInputBorder(),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 1.5,
+                                ),
+                              ),
                               suffixText: 'mg',
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              filled: true,
+                              fillColor: Theme.of(context).colorScheme.surface,
                             ),
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             inputFormatters: [
@@ -539,11 +707,32 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _fiberController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Fiber',
                               hintText: '25',
-                              border: OutlineInputBorder(),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 1.5,
+                                ),
+                              ),
                               suffixText: 'g',
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              filled: true,
+                              fillColor: Theme.of(context).colorScheme.surface,
                             ),
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             inputFormatters: [
@@ -555,11 +744,32 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _sugarController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Sugar',
                               hintText: '50',
-                              border: OutlineInputBorder(),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 1.5,
+                                ),
+                              ),
                               suffixText: 'g',
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              filled: true,
+                              fillColor: Theme.of(context).colorScheme.surface,
                             ),
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             inputFormatters: [
@@ -597,10 +807,31 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _mealSuggestionController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Add Meal Suggestion',
                               hintText: 'e.g., Grilled chicken with vegetables',
-                              border: OutlineInputBorder(),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 1.5,
+                                ),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              filled: true,
+                              fillColor: Theme.of(context).colorScheme.surface,
                             ),
                           ),
                         ),
@@ -668,10 +899,31 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                     // Notes field
                     TextFormField(
                       controller: _notesController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Additional Notes (Optional)',
                         hintText: 'Any other instructions or notes for the client',
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 1.5,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surface,
                       ),
                       maxLines: 3,
                     ),

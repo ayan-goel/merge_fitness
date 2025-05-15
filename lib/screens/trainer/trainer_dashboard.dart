@@ -267,128 +267,134 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
+        backgroundColor: AppStyles.offWhite,
+        elevation: 0,
+        actions: [], // Empty actions to remove any existing buttons
+        automaticallyImplyLeading: false, // Remove back button
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Welcome section
+            // Welcome section - using flexible sizing instead of fixed height
             Container(
+              // Remove fixed height to prevent overflow
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    AppStyles.surfaceCharcoal.withOpacity(0.9),
-                    AppStyles.backgroundCharcoal.withOpacity(0.95),
+                    AppStyles.offWhite.withOpacity(0.9),
+                    AppStyles.primarySage.withOpacity(0.2),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: AppStyles.primaryBlue.withOpacity(0.3),
+                  color: AppStyles.primarySage.withOpacity(0.3),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withOpacity(0.1),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: Stack(
-                children: [
-                  // Content
-                  Padding(
-                    padding: const EdgeInsets.all(28.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              child: Padding(
+                padding: const EdgeInsets.all(20.0), // Reduced padding from 28 to 20
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min, // Use minimum required space
+                  children: [
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppStyles.primaryBlue.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              child: Text(
-                                DateFormat('EEEE, MMMM d, yyyy').format(DateTime.now()),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppStyles.primaryBlue.withOpacity(0.9),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        Text(
-                          'Welcome, ${_trainer!.displayName ?? 'Trainer'}',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: AppStyles.textWhite,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
                         Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: AppStyles.backgroundCharcoal.withOpacity(0.4),
-                            borderRadius: BorderRadius.circular(12),
+                            color: AppStyles.primarySage.withOpacity(0.25),
+                            borderRadius: BorderRadius.circular(30),
                             border: Border.all(
-                              color: AppStyles.textGrey.withOpacity(0.1),
+                              color: AppStyles.primarySage.withOpacity(0.4),
                               width: 1,
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppStyles.softGold.withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.format_quote,
-                                  color: AppStyles.softGold,
-                                  size: 16,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _randomMotivationalMessage,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    height: 1.4,
-                                    color: AppStyles.textWhite.withOpacity(0.9),
-                                    fontStyle: FontStyle.italic,
-                                    fontWeight: FontWeight.w300,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            DateFormat('EEEE, MMMM d, yyyy').format(DateTime.now()),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppStyles.textDark,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 18),
+                    Text(
+                      'Welcome, ${_trainer!.displayName ?? 'Trainer'}',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: AppStyles.textDark,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppStyles.primarySage.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppStyles.slateGray.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppStyles.taupeBrown.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.format_quote,
+                              color: AppStyles.taupeBrown,
+                              size: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _randomMotivationalMessage,
+                              style: TextStyle(
+                                fontSize: 14,
+                                height: 1.4,
+                                color: AppStyles.textDark,
+                                fontStyle: FontStyle.normal,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 12), // Further reduced from 16
 
-            // Quick actions
+            // Quick actions - more compact row
             Text(
               'Quick Actions',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -434,50 +440,62 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12), // Further reduced from 16
 
-            // Activity feed
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Recent Activity',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                Row(
-                  children: [
-                    TextButton(
-                      onPressed: _clearActivityFeed,
-                      style: TextButton.styleFrom(foregroundColor: Colors.red),
-                      child: const Text('Clear All'),
-                    ),
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: _loadActivityFeed,
-                      child: const Text('Refresh'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
+            // Activity feed - giving it a flexible weight of 1 to take remaining space
             Expanded(
-              child: Card(
-                child: _activityItems.isEmpty
-                  ? const Center(
-                      child: Text('No recent activities'),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(8.0),
-                      itemCount: _activityItems.length,
-                      separatorBuilder: (context, index) => const Divider(),
-                      itemBuilder: (context, index) {
-                        final activity = _activityItems[index];
-                        return _buildActivityItem(activity);
-                      },
+              flex: 2, // Give it more weight
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Recent Activity',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      Row(
+                        children: [
+                          TextButton(
+                            onPressed: _clearActivityFeed,
+                            style: TextButton.styleFrom(foregroundColor: AppStyles.errorRed),
+                            child: const Text('Clear All'),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: _loadActivityFeed,
+                            child: const Text('Refresh'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: Card(
+                      elevation: 2,
+                      margin: const EdgeInsets.only(bottom: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: _activityItems.isEmpty
+                        ? const Center(
+                            child: Text('No recent activities'),
+                          )
+                        : ListView.separated(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0), // Reduced vertical padding
+                            itemCount: _activityItems.length,
+                            separatorBuilder: (context, index) => const Divider(height: 8, thickness: 1),
+                            itemBuilder: (context, index) {
+                              final activity = _activityItems[index];
+                              return _buildActivityItem(activity);
+                            },
+                          ),
                     ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -494,23 +512,23 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
     switch (activity['type']) {
       case 'session_scheduled':
         icon = Icons.calendar_month;
-        iconColor = Colors.green;
+        iconColor = AppStyles.successGreen;
         break;
       case 'session_cancelled':
         icon = Icons.cancel;
-        iconColor = Colors.red;
+        iconColor = AppStyles.errorRed;
         break;
       case 'workout_assigned':
         icon = Icons.fitness_center;
-        iconColor = Colors.blue;
+        iconColor = AppStyles.mutedBlue;
         break;
       case 'workout_completed':
         icon = Icons.check_circle;
-        iconColor = Colors.purple;
+        iconColor = AppStyles.primarySage;
         break;
       default:
         icon = Icons.notifications;
-        iconColor = Colors.grey;
+        iconColor = AppStyles.slateGray;
     }
     
     // Format timestamp
@@ -524,29 +542,47 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
     final hasSecondaryMessage = messageParts.length > 1;
     
     return ListTile(
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       leading: CircleAvatar(
+        radius: 24,
         backgroundColor: iconColor.withOpacity(0.2),
-        child: Icon(icon, color: iconColor),
+        child: Icon(icon, color: iconColor, size: 24),
       ),
-      title: Text(primaryMessage),
+      title: Text(
+        primaryMessage,
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (hasSecondaryMessage)
             Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.only(bottom: 4, top: 4),
               child: Text(
                 messageParts.sublist(1).join('\n'),
                 style: const TextStyle(
                   fontStyle: FontStyle.italic,
-                  color: Colors.red,
+                  color: AppStyles.errorRed,
+                  fontSize: 12,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-          Text(formattedDate),
+          SizedBox(height: hasSecondaryMessage ? 4 : 2),
+          Text(
+            formattedDate,
+            style: const TextStyle(fontSize: 12),
+          ),
         ],
       ),
       isThreeLine: hasSecondaryMessage,
+      dense: true, // Makes the tile more compact
       onTap: () => _handleActivityTap(activity),
     );
   }
@@ -613,21 +649,23 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
         elevation: 2,
         child: Container(
           width: (MediaQuery.of(context).size.width - 64) / 3, // Consistent width accounting for padding
-          height: 100, // Fixed height for consistency
-          padding: const EdgeInsets.all(16),
+          height: 85, // Reduced height
+          padding: const EdgeInsets.all(12), // Reduced padding
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 icon,
-                size: 32,
+                size: 28, // Reduced icon size
                 color: Theme.of(context).colorScheme.primary,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6), // Reduced spacing
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ],

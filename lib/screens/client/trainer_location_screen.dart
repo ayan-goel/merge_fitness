@@ -64,8 +64,12 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
   
   // Check if trainer is sharing their location
   Future<void> _checkTrainerSharing() async {
+    if (!mounted) return;
+    
     try {
       final isSharing = await _locationService.isTrainerSharingLocation(widget.session.trainerId);
+      
+      if (!mounted) return;
       
       if (!isSharing) {
         setState(() {
@@ -77,6 +81,9 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
       
       // Check for client location permission
       final hasPermission = await _locationService.checkLocationPermission();
+      
+      if (!mounted) return;
+      
       if (!hasPermission) {
         setState(() {
           _errorMessage = 'Location permission is required to show distance information.';
@@ -88,9 +95,13 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
       // Trainer is sharing location, get initial position
       await _updateTrainerLocation();
       
+      if (!mounted) return;
+      
       // Start periodic updates
       _startLocationUpdates();
     } catch (e) {
+      if (!mounted) return;
+      
       setState(() {
         _isLoading = false;
         _errorMessage = 'Error checking trainer location: $e';
@@ -100,25 +111,40 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
   
   // Update the trainer's location
   Future<void> _updateTrainerLocation() async {
+    if (!mounted) return;
+    
     try {
       final locationData = await _locationService.getTrainerLocation(widget.session.trainerId);
       
+      if (!mounted) return;
+      
       if (locationData == null) {
         setState(() {
-          _errorMessage = 'Trainer location not available.';
+          _errorMessage = '${widget.session.trainerName} has enabled location sharing, but their location data is not available yet. Please try again in a moment.';
           _isLoading = false;
         });
         return;
       }
       
-      final lat = locationData['latitude'] as double;
-      final lng = locationData['longitude'] as double;
+      final lat = locationData['latitude'] as double?;
+      final lng = locationData['longitude'] as double?;
+      
+      if (lat == null || lng == null) {
+        setState(() {
+          _errorMessage = '${widget.session.trainerName} has enabled location sharing, but their location data is still being updated. Please check again in a moment.';
+          _isLoading = false;
+        });
+        return;
+      }
+      
       final heading = locationData['heading'] as double? ?? 0.0;
       final updatedAt = locationData['timestamp'];
       
       // Calculate distance and travel time
       final distance = await _locationService.calculateDistanceToTrainer(widget.session.trainerId);
       final travelTime = await _locationService.estimateTravelTimeInMinutes(widget.session.trainerId);
+      
+      if (!mounted) return;
       
       setState(() {
         _trainerPosition = LatLng(lat, lng);
@@ -137,11 +163,14 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
         _distanceToTrainer = distance;
         _travelTimeMinutes = travelTime;
         _isLoading = false;
+        _errorMessage = null; // Clear any previous error
       });
       
       // Move camera to trainer position
       _moveCamera();
     } catch (e) {
+      if (!mounted) return;
+      
       setState(() {
         _errorMessage = 'Error getting trainer location: $e';
         _isLoading = false;
@@ -196,8 +225,12 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
             tooltip: 'Refresh location',
           ),
         ],
+        backgroundColor: AppStyles.offWhite,
+        foregroundColor: AppStyles.textDark,
+        elevation: 0,
       ),
       body: _buildBody(),
+      backgroundColor: AppStyles.offWhite,
     );
   }
   
@@ -208,7 +241,7 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             AppWidgets.circularProgressIndicator(
-              color: AppStyles.primaryBlue,
+              color: AppStyles.primarySage,
               size: 50,
             ),
             const SizedBox(height: 24),
@@ -216,7 +249,7 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
               child: const Text(
                 'Loading trainer location...',
                 style: TextStyle(
-                  color: AppStyles.textWhite,
+                  color: AppStyles.textDark,
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
@@ -239,7 +272,7 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: AppStyles.surfaceCharcoal,
+                    color: AppStyles.slateGray.withOpacity(0.2),
                     shape: BoxShape.circle,
                     boxShadow: AppStyles.cardShadow,
                   ),
@@ -256,28 +289,45 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppStyles.textWhite,
+                    color: AppStyles.textDark,
                   ),
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Trainers can share their location when heading to your session.',
+                  'Trainers can share their location with you at any time.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: AppStyles.textGrey,
+                    color: AppStyles.slateGray,
                     fontSize: 14,
                   ),
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     setState(() {
                       _isLoading = true;
                       _errorMessage = null;
                     });
-                    _checkTrainerSharing();
+                    
+                    // Add a small delay to give time for location data to update
+                    await Future.delayed(const Duration(seconds: 2));
+                    
+                    if (mounted) {
+                      _checkTrainerSharing();
+                    }
                   },
-                  style: AppStyles.primaryButtonStyle,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppStyles.primarySage,
+                    foregroundColor: Colors.white,
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
+                  ),
                   child: const Text('Check Again'),
                 ),
               ],
@@ -292,7 +342,7 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
         child: Text(
           'Trainer location not available',
           style: TextStyle(
-            color: AppStyles.textWhite,
+            color: AppStyles.textDark,
             fontSize: 16,
             fontWeight: FontWeight.w500,
           ),
@@ -302,7 +352,7 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
     
     return Stack(
       children: [
-        // Darkened map style
+        // Map with light style
         GoogleMap(
           initialCameraPosition: CameraPosition(
             target: _trainerPosition!,
@@ -323,215 +373,205 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
         Positioned(
           top: 16,
           left: 16,
-          child: AppAnimations.fadeIn(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppStyles.backgroundCharcoal.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: AppStyles.primaryBlue.withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AppWidgets.pulsatingDot(color: AppStyles.primaryBlue),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'LIVE',
-                    style: TextStyle(
-                      color: AppStyles.textWhite,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.5,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          child: _buildLiveIndicator(),
         ),
         
-        // Focus on trainer button (moved to top right)
+        // Focus on trainer button
         Positioned(
           top: 16,
           right: 16,
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppStyles.backgroundCharcoal.withOpacity(0.8),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: IconButton(
-              onPressed: _moveCamera,
-              icon: const Icon(Icons.my_location),
-              tooltip: 'Focus on trainer',
-              color: AppStyles.primaryBlue,
-              iconSize: 24,
-              splashRadius: 24,
-            ),
-          ),
+          child: _buildFocusButton(),
         ),
         
-        // Location info panel with glass effect
+        // Location info panel - positioned at the bottom
         Positioned(
-          bottom: 16,
+          bottom: 40,
           left: 16,
           right: 16,
-          child: AppAnimations.fadeSlide(
-            beginOffset: const Offset(0, 0.3),
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppStyles.backgroundCharcoal.withOpacity(0.85),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppStyles.primaryBlue.withOpacity(0.2),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+          child: _buildLocationInfoPanel(),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildLiveIndicator() {
+    return AppAnimations.fadeIn(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: AppStyles.primarySage,
+            width: 1,
+          ),
+          boxShadow: AppStyles.cardShadow,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppWidgets.pulsatingDot(color: AppStyles.primarySage),
+            const SizedBox(width: 8),
+            const Text(
+              'LIVE',
+              style: TextStyle(
+                color: AppStyles.textDark,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
+                fontSize: 12,
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: BackdropFilter(
-                  filter: const ColorFilter.mode(
-                    Colors.black,
-                    BlendMode.darken,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildFocusButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: AppStyles.cardShadow,
+      ),
+      child: IconButton(
+        onPressed: _moveCamera,
+        icon: const Icon(Icons.my_location),
+        tooltip: 'Focus on trainer',
+        color: AppStyles.primarySage,
+        iconSize: 24,
+        splashRadius: 24,
+      ),
+    );
+  }
+  
+  Widget _buildLocationInfoPanel() {
+    return AppAnimations.fadeSlide(
+      beginOffset: const Offset(0, 0.3),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: AppStyles.cardShadow,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: AppStyles.primarySage,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.fitness_center,
+                      color: Colors.white,
+                      size: 16,
+                    ),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
+                  const SizedBox(width: 10),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: const BoxDecoration(
-                                color: AppStyles.primaryBlue,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.fitness_center,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Training Session',
-                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                      color: AppStyles.textWhite,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    widget.session.formattedDate,
-                                    style: TextStyle(
-                                      color: AppStyles.textGrey,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            _buildInfoItem(
-                              icon: Icons.person,
-                              label: 'Trainer',
-                              value: widget.session.trainerName,
-                            ),
-                            _buildInfoItem(
-                              icon: Icons.access_time,
-                              label: 'Time',
-                              value: widget.session.formattedTimeRange,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppStyles.surfaceCharcoal.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.1),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.location_on,
-                                size: 20,
-                                color: AppStyles.textGrey,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  widget.session.location,
-                                  style: const TextStyle(
-                                    color: AppStyles.textWhite,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ],
+                        Text(
+                          'Training Session',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: AppStyles.textDark,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 20),
-                        const Divider(
-                          color: AppStyles.dividerGrey,
-                          height: 1,
-                          thickness: 1,
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildDistanceInfo(),
-                            ),
-                            Container(
-                              height: 40,
-                              width: 1,
-                              color: AppStyles.dividerGrey,
-                            ),
-                            Expanded(
-                              child: _buildTimeInfo(),
-                            ),
-                          ],
+                        Text(
+                          widget.session.formattedDate,
+                          style: const TextStyle(
+                            color: AppStyles.slateGray,
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  _buildInfoItem(
+                    icon: Icons.person,
+                    label: 'Trainer',
+                    value: widget.session.trainerName,
+                    isDark: false,
+                  ),
+                  _buildInfoItem(
+                    icon: Icons.access_time,
+                    label: 'Time',
+                    value: widget.session.formattedTimeRange,
+                    isDark: false,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: AppStyles.offWhite,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppStyles.dividerGrey,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on,
+                      size: 18,
+                      color: AppStyles.slateGray,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.session.location,
+                        style: const TextStyle(
+                          color: AppStyles.textDark,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
+              const SizedBox(height: 16),
+              const Divider(
+                color: AppStyles.dividerGrey,
+                height: 1,
+                thickness: 1,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildDistanceInfo(isDark: false),
+                  ),
+                  Container(
+                    height: 36,
+                    width: 1,
+                    color: AppStyles.dividerGrey,
+                  ),
+                  Expanded(
+                    child: _buildTimeInfo(isDark: false),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
   
@@ -540,24 +580,25 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
     required IconData icon,
     required String label,
     required String value,
+    bool isDark = true,
   }) {
     return Expanded(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: AppStyles.surfaceCharcoal,
+              color: isDark ? AppStyles.lightCharcoal : AppStyles.offWhite,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               icon,
-              size: 16,
-              color: AppStyles.primaryBlue,
+              size: 14,
+              color: AppStyles.primarySage,
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -565,17 +606,17 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
                 Text(
                   label,
                   style: TextStyle(
-                    color: AppStyles.textGrey,
-                    fontSize: 12,
+                    color: AppStyles.slateGray,
+                    fontSize: 11,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
-                    color: AppStyles.textWhite,
+                  style: TextStyle(
+                    color: isDark ? AppStyles.textLight : AppStyles.textDark,
                     fontWeight: FontWeight.w500,
-                    fontSize: 14,
+                    fontSize: 13,
                   ),
                 ),
               ],
@@ -587,9 +628,9 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
   }
   
   // Distance info card
-  Widget _buildDistanceInfo() {
+  Widget _buildDistanceInfo({bool isDark = true}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Column(
         children: [
           Row(
@@ -597,20 +638,20 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
             children: [
               const Icon(
                 Icons.directions,
-                size: 16,
-                color: AppStyles.primaryBlue,
+                size: 14,
+                color: AppStyles.primarySage,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Text(
                 'Distance',
                 style: TextStyle(
-                  fontSize: 14,
-                  color: AppStyles.textGrey,
+                  fontSize: 11,
+                  color: AppStyles.slateGray,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           if (_distanceToTrainer != null)
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -618,27 +659,27 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
                 Text(
                   '${_distanceToTrainer!.toStringAsFixed(1)}',
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: _getDistanceColor(_distanceToTrainer!),
                   ),
                 ),
-                const Text(
+                Text(
                   ' miles',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: AppStyles.textWhite,
+                    color: isDark ? AppStyles.textLight : AppStyles.textDark,
                   ),
                 ),
               ],
             )
           else
-            const Text(
+            Text(
               'Calculating...',
               style: TextStyle(
-                fontSize: 16,
-                color: AppStyles.textWhite,
+                fontSize: 14,
+                color: isDark ? AppStyles.textLight : AppStyles.textDark,
               ),
             ),
         ],
@@ -647,9 +688,9 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
   }
   
   // Time info card
-  Widget _buildTimeInfo() {
+  Widget _buildTimeInfo({bool isDark = true}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Column(
         children: [
           Row(
@@ -657,35 +698,35 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
             children: [
               const Icon(
                 Icons.timer,
-                size: 16,
+                size: 14,
                 color: AppStyles.softGold,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Text(
                 'Est. Arrival',
                 style: TextStyle(
-                  fontSize: 14,
-                  color: AppStyles.textGrey,
+                  fontSize: 11,
+                  color: AppStyles.slateGray,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           if (_travelTimeMinutes != null)
             Text(
               _formatArrivalTime(_travelTimeMinutes!),
               style: const TextStyle(
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: AppStyles.softGold,
               ),
             )
           else
-            const Text(
+            Text(
               'Calculating...',
               style: TextStyle(
-                fontSize: 16,
-                color: AppStyles.textWhite,
+                fontSize: 14,
+                color: isDark ? AppStyles.textLight : AppStyles.textDark,
               ),
             ),
         ],
@@ -711,17 +752,27 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
   
   // Set dark mode for Google Maps
   Future<void> _setMapStyle(GoogleMapController controller) async {
-    const String darkMapStyle = '''
+    const String lightMapStyle = '''
     [
       {
+        "featureType": "administrative",
         "elementType": "geometry",
         "stylers": [
           {
-            "color": "#212121"
+            "visibility": "off"
           }
         ]
       },
       {
+        "featureType": "poi",
+        "stylers": [
+          {
+            "visibility": "simplified"
+          }
+        ]
+      },
+      {
+        "featureType": "road",
         "elementType": "labels.icon",
         "stylers": [
           {
@@ -730,176 +781,16 @@ class _TrainerLocationScreenState extends State<TrainerLocationScreen> {
         ]
       },
       {
-        "elementType": "labels.text.fill",
-        "stylers": [
-          {
-            "color": "#757575"
-          }
-        ]
-      },
-      {
-        "elementType": "labels.text.stroke",
-        "stylers": [
-          {
-            "color": "#212121"
-          }
-        ]
-      },
-      {
-        "featureType": "administrative",
-        "elementType": "geometry",
-        "stylers": [
-          {
-            "color": "#757575"
-          }
-        ]
-      },
-      {
-        "featureType": "administrative.country",
-        "elementType": "labels.text.fill",
-        "stylers": [
-          {
-            "color": "#9e9e9e"
-          }
-        ]
-      },
-      {
-        "featureType": "administrative.land_parcel",
+        "featureType": "transit",
         "stylers": [
           {
             "visibility": "off"
-          }
-        ]
-      },
-      {
-        "featureType": "administrative.locality",
-        "elementType": "labels.text.fill",
-        "stylers": [
-          {
-            "color": "#bdbdbd"
-          }
-        ]
-      },
-      {
-        "featureType": "poi",
-        "elementType": "labels.text.fill",
-        "stylers": [
-          {
-            "color": "#757575"
-          }
-        ]
-      },
-      {
-        "featureType": "poi.park",
-        "elementType": "geometry",
-        "stylers": [
-          {
-            "color": "#181818"
-          }
-        ]
-      },
-      {
-        "featureType": "poi.park",
-        "elementType": "labels.text.fill",
-        "stylers": [
-          {
-            "color": "#616161"
-          }
-        ]
-      },
-      {
-        "featureType": "poi.park",
-        "elementType": "labels.text.stroke",
-        "stylers": [
-          {
-            "color": "#1b1b1b"
-          }
-        ]
-      },
-      {
-        "featureType": "road",
-        "elementType": "geometry.fill",
-        "stylers": [
-          {
-            "color": "#2c2c2c"
-          }
-        ]
-      },
-      {
-        "featureType": "road",
-        "elementType": "labels.text.fill",
-        "stylers": [
-          {
-            "color": "#8a8a8a"
-          }
-        ]
-      },
-      {
-        "featureType": "road.arterial",
-        "elementType": "geometry",
-        "stylers": [
-          {
-            "color": "#373737"
-          }
-        ]
-      },
-      {
-        "featureType": "road.highway",
-        "elementType": "geometry",
-        "stylers": [
-          {
-            "color": "#3c3c3c"
-          }
-        ]
-      },
-      {
-        "featureType": "road.highway.controlled_access",
-        "elementType": "geometry",
-        "stylers": [
-          {
-            "color": "#4e4e4e"
-          }
-        ]
-      },
-      {
-        "featureType": "road.local",
-        "elementType": "labels.text.fill",
-        "stylers": [
-          {
-            "color": "#616161"
-          }
-        ]
-      },
-      {
-        "featureType": "transit",
-        "elementType": "labels.text.fill",
-        "stylers": [
-          {
-            "color": "#757575"
-          }
-        ]
-      },
-      {
-        "featureType": "water",
-        "elementType": "geometry",
-        "stylers": [
-          {
-            "color": "#000000"
-          }
-        ]
-      },
-      {
-        "featureType": "water",
-        "elementType": "labels.text.fill",
-        "stylers": [
-          {
-            "color": "#3d3d3d"
           }
         ]
       }
     ]
     ''';
     
-    await controller.setMapStyle(darkMapStyle);
+    await controller.setMapStyle(lightMapStyle);
   }
 } 

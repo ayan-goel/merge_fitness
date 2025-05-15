@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'goal_model.dart';
 
 enum UserRole {
   client,
@@ -15,7 +16,7 @@ class UserModel {
   final double? height; // in cm
   final double? weight; // in kg
   final DateTime? dateOfBirth;
-  final List<String>? goals;
+  final List<Goal>? goals;
   final String? phoneNumber;
   final String? trainerId; // ID of the trainer associated with this client
 
@@ -64,6 +65,23 @@ class UserModel {
 
   // Create user from Firestore document
   factory UserModel.fromMap(Map<String, dynamic> map, {required String uid, required String email}) {
+    // Handle both new Goal objects and legacy string goals
+    List<Goal>? goalsData;
+    if (map['goals'] != null) {
+      // Check if the goals are already in the new format or still strings
+      if (map['goals'] is List<dynamic> && map['goals'].isNotEmpty) {
+        if (map['goals'].first is String) {
+          // Convert string goals to Goal objects for backward compatibility
+          goalsData = List<String>.from(map['goals']).map((g) => Goal.fromString(g)).toList();
+        } else {
+          // Goals are already in object format
+          goalsData = List<Map<String, dynamic>>.from(map['goals'])
+              .map((g) => Goal.fromMap(g))
+              .toList();
+        }
+      }
+    }
+    
     return UserModel(
       uid: uid,
       email: email,
@@ -74,7 +92,7 @@ class UserModel {
       weight: map['weight']?.toDouble(),
       dateOfBirth: map['dateOfBirth'] != null ? 
         (map['dateOfBirth'] as Timestamp).toDate() : null,
-      goals: map['goals'] != null ? List<String>.from(map['goals']) : null,
+      goals: goalsData,
       phoneNumber: map['phoneNumber'],
       trainerId: map['trainerId'],
     );
@@ -90,7 +108,7 @@ class UserModel {
       'height': height,
       'weight': weight,
       'dateOfBirth': dateOfBirth != null ? Timestamp.fromDate(dateOfBirth!) : null,
-      'goals': goals,
+      'goals': goals?.map((goal) => goal.toMap()).toList(),
       'phoneNumber': phoneNumber,
       'trainerId': trainerId,
     };
@@ -128,7 +146,7 @@ class UserModel {
     double? height,
     double? weight,
     DateTime? dateOfBirth,
-    List<String>? goals,
+    List<Goal>? goals,
     String? phoneNumber,
     UserRole? role,
     String? trainerId,

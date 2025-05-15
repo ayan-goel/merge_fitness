@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/user_model.dart';
+import '../models/goal_model.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 
@@ -103,12 +104,17 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
     _updateWeightFromPounds(_weightController.text);
     
     try {
+      // Convert string goals to Goal objects
+      List<Goal> goalObjects = _selectedGoals.map((goalStr) => 
+        Goal(value: goalStr, completed: false)
+      ).toList();
+      
       await _authService.updateUserProfile(
         displayName: _displayName,
         height: _height,
         weight: _weight,
         dateOfBirth: _dateOfBirth,
-        goals: _selectedGoals,
+        goals: goalObjects,
         phoneNumber: _phoneNumber,
       );
       
