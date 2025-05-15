@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/workout_template_model.dart';
 import '../../services/workout_template_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/video_service.dart';
 
 class CreateTemplateScreen extends StatefulWidget {
   final WorkoutTemplate? template;
@@ -426,6 +427,16 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
   final TextEditingController _repsController = TextEditingController();
   final TextEditingController _restController = TextEditingController();
   
+  final VideoService _videoService = VideoService();
+  final AuthService _authService = AuthService();
+  
+  String? _selectedVideoId;
+  String? _selectedVideoUrl;
+  String? _selectedVideoName;
+  String? _trainerId;
+  bool _isLoadingVideos = false;
+  List<TrainerVideo> _videos = [];
+  
   @override
   void initState() {
     super.initState();
@@ -437,6 +448,8 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
       _setsController.text = e.sets.toString();
       _repsController.text = e.reps.toString();
       _restController.text = e.restSeconds?.toString() ?? '';
+      _selectedVideoId = e.videoId;
+      _selectedVideoUrl = e.videoUrl;
       // Merge any existing notes into the description if both exist
       if (e.notes != null && e.notes!.isNotEmpty) {
         if (_descriptionController.text.isNotEmpty) {
@@ -450,6 +463,148 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
       _setsController.text = '3';
       _repsController.text = '10';
     }
+    
+    _loadTrainerData();
+  }
+  
+  Future<void> _loadTrainerData() async {
+    setState(() {
+      _isLoadingVideos = true;
+    });
+    
+    try {
+      final user = await _authService.getUserModel();
+      setState(() {
+        _trainerId = user.uid;
+      });
+      
+      await _loadVideos();
+    } catch (e) {
+      print('Error loading trainer data: $e');
+    } finally {
+      setState(() {
+        _isLoadingVideos = false;
+      });
+    }
+  }
+  
+  Future<void> _loadVideos() async {
+    if (_trainerId == null) return;
+    
+    try {
+      _videoService.getTrainerVideos(_trainerId!).listen((videos) {
+        if (mounted) {
+          setState(() {
+            _videos = videos;
+            
+            // If we have a selected video ID, update the URL and name
+            if (_selectedVideoId != null) {
+              final video = _videos.firstWhere(
+                (v) => v.id == _selectedVideoId, 
+                orElse: () => TrainerVideo(
+                  id: '', 
+                  trainerId: '',
+                  name: 'Unknown Video',
+                  videoUrl: '',
+                  createdAt: DateTime.now()
+                )
+              );
+              
+              if (video.id.isNotEmpty) {
+                _selectedVideoUrl = video.videoUrl;
+                _selectedVideoName = video.name;
+              }
+            }
+          });
+        }
+      });
+    } catch (e) {
+      print('Error loading videos: $e');
+    }
+  }
+  
+  void _selectVideo() async {
+    if (_videos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No videos available. Add videos in Video Gallery.')),
+      );
+      return;
+    }
+    
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Video'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Search',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (value) {
+                  // Implement search functionality if needed
+                },
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _videos.length,
+                  itemBuilder: (context, index) {
+                    final video = _videos[index];
+                    return ListTile(
+                      leading: const Icon(Icons.video_library),
+                      title: Text(video.name),
+                      selected: _selectedVideoId == video.id,
+                      onTap: () {
+                        Navigator.pop(context, video.id);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          if (_selectedVideoId != null)
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'clear'),
+              child: const Text('Clear Selection'),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+            ),
+        ],
+      ),
+    );
+    
+    if (result == null) {
+      return;
+    }
+    
+    if (result == 'clear') {
+      setState(() {
+        _selectedVideoId = null;
+        _selectedVideoUrl = null;
+        _selectedVideoName = null;
+      });
+      return;
+    }
+    
+    final selectedVideo = _videos.firstWhere((v) => v.id == result);
+    setState(() {
+      _selectedVideoId = selectedVideo.id;
+      _selectedVideoUrl = selectedVideo.videoUrl;
+      _selectedVideoName = selectedVideo.name;
+    });
   }
   
   @override
@@ -470,6 +625,8 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
       id: id,
       name: _nameController.text,
       description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
+      videoUrl: _selectedVideoUrl,
+      videoId: _selectedVideoId,
       sets: int.parse(_setsController.text),
       reps: int.parse(_repsController.text),
       restSeconds: _restController.text.isEmpty ? null : int.parse(_restController.text),
@@ -550,6 +707,46 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
                   fillColor: Theme.of(context).colorScheme.surface,
                 ),
                 maxLines: 3,
+              ),
+              const SizedBox(height: 16.0),
+              // Demo video selector
+              InkWell(
+                onTap: _selectVideo,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.video_library,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _isLoadingVideos
+                            ? const Text('Loading videos...')
+                            : Text(
+                                _selectedVideoName ?? 'Select Demo Video (Optional)',
+                                style: TextStyle(
+                                  color: _selectedVideoName != null
+                                      ? Theme.of(context).colorScheme.onSurface
+                                      : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                ),
+                              ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                      ),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 16.0),
               Row(

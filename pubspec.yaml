@@ -57,6 +57,9 @@ dependencies:
   
   # Utility packages
   crypto: ^3.0.3
+  uuid: ^4.3.3
+  video_player: ^2.8.2
+  chewie: ^1.7.5
   
   # Location and maps
   google_maps_flutter: ^2.6.0

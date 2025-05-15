@@ -25,6 +25,37 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
+    // Trainer Videos Collection Rules
+    match /trainerVideos/{videoId} {
+      // Trainers can create, read, update, and delete their own videos
+      // Clients can view videos from their assigned trainer
+      // Admins can do everything
+      
+      // Read access - trainers can read their own videos, clients can view all videos (will be filtered by app logic)
+      allow read: if isAuthenticated() && (
+                    resource.data.trainerId == request.auth.uid || 
+                    isTrainer() ||
+                    isAdmin() ||
+                    // Clients can view videos
+                    exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                  );
+      
+      // Create access - only trainers can upload videos
+      allow create: if isAuthenticated() && 
+                     isTrainer() && 
+                     request.resource.data.trainerId == request.auth.uid;
+      
+      // Update access - trainers can only update their own videos
+      allow update: if isAuthenticated() && 
+                     isTrainer() && 
+                     resource.data.trainerId == request.auth.uid;
+      
+      // Delete access - trainers can only delete their own videos
+      allow delete: if isAuthenticated() && 
+                     isTrainer() && 
+                     resource.data.trainerId == request.auth.uid;
+    }
+    
     // User Collection Rules
     match /users/{userId} {
       // Allow users to read their own document
@@ -40,7 +71,7 @@ service cloud.firestore {
       // Allow listing all trainers for anyone authenticated (for client scheduling)
       allow list: if isAuthenticated() && 
                   request.query.filters.fieldPaths.hasOnly(['role', 'calendlyConnected']) && 
-                  request.query.filters.fieldFilter('role', '==', 'trainer');
+                  (request.query.filters[0].fieldPath == 'role' && request.query.filters[0].op == '==' && request.query.filters[0].value == 'trainer');
       
       // More permissive rule to ensure clients can list trainers
       allow list: if isAuthenticated();

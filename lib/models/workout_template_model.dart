@@ -6,6 +6,7 @@ class ExerciseTemplate {
   final String name;
   final String? description;
   final String? videoUrl;
+  final String? videoId;
   final String? imageUrl;
   final int sets;
   final int reps;
@@ -17,6 +18,7 @@ class ExerciseTemplate {
     required this.name,
     this.description,
     this.videoUrl,
+    this.videoId,
     this.imageUrl,
     required this.sets,
     required this.reps,
@@ -30,6 +32,7 @@ class ExerciseTemplate {
       name: map['name'] ?? '',
       description: map['description'],
       videoUrl: map['videoUrl'],
+      videoId: map['videoId'],
       imageUrl: map['imageUrl'],
       sets: map['sets'] ?? 3,
       reps: map['reps'] ?? 10,
@@ -43,6 +46,7 @@ class ExerciseTemplate {
       'name': name,
       'description': description,
       'videoUrl': videoUrl,
+      'videoId': videoId,
       'imageUrl': imageUrl,
       'sets': sets,
       'reps': reps,
@@ -55,6 +59,7 @@ class ExerciseTemplate {
     String? name,
     String? description,
     String? videoUrl,
+    String? videoId,
     String? imageUrl,
     int? sets,
     int? reps,
@@ -66,6 +71,7 @@ class ExerciseTemplate {
       name: name ?? this.name,
       description: description ?? this.description,
       videoUrl: videoUrl ?? this.videoUrl,
+      videoId: videoId ?? this.videoId,
       imageUrl: imageUrl ?? this.imageUrl,
       sets: sets ?? this.sets,
       reps: reps ?? this.reps,

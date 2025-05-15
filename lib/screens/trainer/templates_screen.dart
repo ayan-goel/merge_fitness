@@ -3,6 +3,7 @@ import '../../models/workout_template_model.dart';
 import '../../services/workout_template_service.dart';
 import '../../services/auth_service.dart';
 import 'create_template_screen.dart';
+import 'video_gallery_screen.dart';
 
 class TemplatesScreen extends StatefulWidget {
   const TemplatesScreen({super.key});
@@ -62,6 +63,15 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     );
   }
   
+  void _openVideoGallery() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const VideoGalleryScreen(),
+      ),
+    );
+  }
+  
   void _deleteTemplate(WorkoutTemplate template) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -111,6 +121,13 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Workout Templates'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.video_library),
+            onPressed: _openVideoGallery,
+            tooltip: 'Video Gallery',
+          ),
+        ],
       ),
       body: StreamBuilder<List<WorkoutTemplate>>(
         stream: _workoutService.getTrainerTemplates(_trainerId!),
@@ -139,6 +156,12 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                     onPressed: _createTemplate,
                     icon: const Icon(Icons.add),
                     label: const Text('Create Template'),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _openVideoGallery,
+                    icon: const Icon(Icons.video_library),
+                    label: const Text('Video Gallery'),
                   ),
                 ],
               ),

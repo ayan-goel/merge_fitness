@@ -1,0 +1,29 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Basic authentication check
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // General path for user data
+    match /users/{userId}/{allPaths=**} {
+      // Allow users to read/write their own data
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Videos path for trainers
+    match /videos/{trainerId}/{videoId} {
+      // Allow trainers to upload and manage their own videos
+      allow read, write: if isAuthenticated() && request.auth.uid == trainerId;
+      
+      // Allow all authenticated users to read videos (clients need to view trainer videos)
+      allow read: if isAuthenticated();
+    }
+    
+    // Default rule - deny everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+} 
