@@ -528,9 +528,23 @@ class WorkoutCard extends StatelessWidget {
   }
   
   String _formatStatus(WorkoutStatus status) {
+    // Check if workout is in the past and not completed
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final workoutDate = DateTime(
+      workout.scheduledDate.year,
+      workout.scheduledDate.month,
+      workout.scheduledDate.day,
+    );
+    final isPast = workoutDate.isBefore(today);
+    
     switch (status) {
       case WorkoutStatus.assigned:
-        return 'Assigned';
+        if (isPast) {
+          return 'Missed';
+        } else {
+          return 'Assigned';
+        }
       case WorkoutStatus.inProgress:
         return 'In Progress';
       case WorkoutStatus.completed:
@@ -541,9 +555,23 @@ class WorkoutCard extends StatelessWidget {
   }
   
   IconData _getStatusIcon(WorkoutStatus status) {
+    // Check if workout is in the past and not completed
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final workoutDate = DateTime(
+      workout.scheduledDate.year,
+      workout.scheduledDate.month,
+      workout.scheduledDate.day,
+    );
+    final isPast = workoutDate.isBefore(today);
+    
     switch (status) {
       case WorkoutStatus.assigned:
-        return Icons.assignment;
+        if (isPast) {
+          return Icons.event_busy; // Use different icon for missed workouts
+        } else {
+          return Icons.assignment;
+        }
       case WorkoutStatus.inProgress:
         return Icons.play_circle_outline;
       case WorkoutStatus.completed:
@@ -554,9 +582,23 @@ class WorkoutCard extends StatelessWidget {
   }
   
   Color _getStatusColor(WorkoutStatus status, BuildContext context) {
+    // Check if workout is in the past and not completed
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final workoutDate = DateTime(
+      workout.scheduledDate.year,
+      workout.scheduledDate.month,
+      workout.scheduledDate.day,
+    );
+    final isPast = workoutDate.isBefore(today);
+    
     switch (status) {
       case WorkoutStatus.assigned:
-        return Theme.of(context).colorScheme.primary;
+        if (isPast) {
+          return Colors.red; // Use red for missed workouts
+        } else {
+          return Theme.of(context).colorScheme.primary;
+        }
       case WorkoutStatus.inProgress:
         return Colors.orange;
       case WorkoutStatus.completed:

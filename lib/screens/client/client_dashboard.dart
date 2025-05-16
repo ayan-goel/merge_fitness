@@ -1901,10 +1901,26 @@ class TodayWorkoutCard extends StatelessWidget {
     Color chipColor;
     String statusText;
     
+    // Check if workout is in the past and not completed
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final workoutDate = DateTime(
+      workout.scheduledDate.year,
+      workout.scheduledDate.month,
+      workout.scheduledDate.day,
+    );
+    final isPast = workoutDate.isBefore(today);
+    
     switch (status) {
       case WorkoutStatus.assigned:
-        chipColor = AppStyles.mutedBlue;
-        statusText = 'To Do';
+        if (isPast) {
+          // Past workouts with "assigned" status should show as "Missed"
+          chipColor = AppStyles.errorRed;
+          statusText = 'Missed';
+        } else {
+          chipColor = AppStyles.mutedBlue;
+          statusText = 'To Do';
+        }
         break;
       case WorkoutStatus.inProgress:
         chipColor = AppStyles.warningAmber;
