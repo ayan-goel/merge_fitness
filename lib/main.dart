@@ -238,28 +238,36 @@ class MergeFitnessApp extends StatelessWidget {
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
-        brightness: Brightness.dark,
+        brightness: Brightness.light,
         primaryColor: AppStyles.primarySage,
-        colorScheme: ColorScheme.dark(
-          primary: AppStyles.primarySage, // Soft sage green
-          secondary: AppStyles.taupeBrown, // Taupe brown
-          tertiary: AppStyles.mutedBlue, // Muted blue
-          background: AppStyles.darkCharcoal, // Dark charcoal
-          surface: AppStyles.lightCharcoal, // Slightly lighter charcoal
-          onBackground: AppStyles.textLight, // Light text for dark mode
-          onSurface: AppStyles.textLight, // Light text for dark mode
-          primaryContainer: AppStyles.primarySage.withOpacity(0.2), // Darker green
-          secondaryContainer: AppStyles.taupeBrown.withOpacity(0.2), // Darker brown
-          error: AppStyles.errorRed, // Muted red for errors
+        colorScheme: ColorScheme.light(
+          primary: AppStyles.primarySage,
+          secondary: AppStyles.taupeBrown,
+          tertiary: AppStyles.mutedBlue,
+          background: AppStyles.offWhite,
+          surface: Colors.white,
+          onBackground: AppStyles.textDark,
+          onSurface: AppStyles.textDark,
+          primaryContainer: AppStyles.subtleAccent,
+          secondaryContainer: AppStyles.taupeBrown.withOpacity(0.2),
+          error: AppStyles.errorRed,
         ),
-        scaffoldBackgroundColor: AppStyles.darkCharcoal,
-        cardColor: AppStyles.lightCharcoal,
+        scaffoldBackgroundColor: AppStyles.offWhite,
+        cardColor: Colors.white,
         fontFamily: 'Montserrat',
         appBarTheme: AppBarTheme(
-          backgroundColor: AppStyles.darkCharcoal,
-          foregroundColor: AppStyles.textLight,
+          backgroundColor: AppStyles.offWhite,
+          foregroundColor: AppStyles.slateGray,
           elevation: 0,
           centerTitle: true,
+          toolbarHeight: 56,
+          iconTheme: IconThemeData(color: AppStyles.slateGray),
+          titleTextStyle: TextStyle(
+            color: AppStyles.textDark,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'Montserrat',
+          ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: AppStyles.primaryButtonStyle,
@@ -269,7 +277,7 @@ class MergeFitnessApp extends StatelessWidget {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: AppStyles.lightCharcoal,
+          fillColor: Colors.grey.shade50,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
@@ -280,17 +288,17 @@ class MergeFitnessApp extends StatelessWidget {
             borderSide: BorderSide(color: AppStyles.primarySage, width: 1.5),
           ),
         ),
-        textTheme: TextTheme(
-          displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w500, letterSpacing: -0.5, color: AppStyles.textLight),
-          displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w500, letterSpacing: -0.5, color: AppStyles.textLight),
-          displaySmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w500, color: AppStyles.textLight),
-          headlineLarge: TextStyle(fontSize: 26, fontWeight: FontWeight.w500, letterSpacing: -0.5, color: AppStyles.textLight),
-          headlineMedium: TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: AppStyles.textLight),
-          headlineSmall: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: AppStyles.textLight),
-          titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, letterSpacing: 0.15, color: AppStyles.textLight),
+        textTheme: const TextTheme(
+          displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w500, letterSpacing: -0.5, color: Color(0xFF414141)),
+          displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w500, letterSpacing: -0.5, color: Color(0xFF414141)),
+          displaySmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w500, color: Color(0xFF414141)),
+          headlineLarge: TextStyle(fontSize: 26, fontWeight: FontWeight.w500, letterSpacing: -0.5, color: Color(0xFF414141)),
+          headlineMedium: TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: Color(0xFF414141)),
+          headlineSmall: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: Color(0xFF414141)),
+          titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, letterSpacing: 0.15, color: Color(0xFF414141)),
         ),
       ),
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.light,
       home: const AuthWrapper(),
       routes: {
         '/login': (context) => const LoginScreen(),
