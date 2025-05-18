@@ -150,9 +150,3 @@ sessions/{sessionId}
 ## License
 
 This project is proprietary and confidential.
-
-## Contact
-
-BJ - [@bjmergefitness](https://twitter.com/bjmergefitness)
-
-Project Link: [https://github.com/yourusername/merge_fitness](https://github.com/yourusername/merge_fitness)
