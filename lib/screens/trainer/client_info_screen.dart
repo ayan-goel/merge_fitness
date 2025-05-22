@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/workout_template_service.dart';
+import '../../services/onboarding_service.dart';
 import '../../widgets/profile_avatar.dart';
+import '../../theme/app_styles.dart';
+import 'client_onboarding_details_screen.dart';
 
 class ClientInfoScreen extends StatefulWidget {
   final String clientId;
@@ -20,6 +23,7 @@ class ClientInfoScreen extends StatefulWidget {
 
 class _ClientInfoScreenState extends State<ClientInfoScreen> {
   final WorkoutTemplateService _workoutService = WorkoutTemplateService();
+  final OnboardingService _onboardingService = OnboardingService();
   bool _isLoading = true;
   Map<String, dynamic>? _clientDetails;
   String? _errorMessage;
@@ -48,6 +52,24 @@ class _ClientInfoScreenState extends State<ClientInfoScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  String get _safeDisplayName {
+    final dn = _clientDetails?['displayName'];
+    if (dn is String) return dn;
+    if (dn is Map && dn['firstName'] is String && dn['lastName'] is String) {
+      return '${dn['firstName']} ${dn['lastName']}';
+    }
+    return widget.clientName;
+  }
+
+  String _safeString(dynamic value, {String fallback = 'Not provided'}) {
+    if (value == null) return fallback;
+    if (value is String) return value;
+    if (value is Map && value['firstName'] is String && value['lastName'] is String) {
+      return '${value['firstName']} ${value['lastName']}';
+    }
+    return value.toString();
   }
 
   @override
@@ -108,15 +130,27 @@ class _ClientInfoScreenState extends State<ClientInfoScreen> {
                         child: Column(
                           children: [
                             ProfileAvatar(
-                              name: _clientDetails?['displayName'] ?? widget.clientName,
+                              name: _safeDisplayName,
                               radius: 60,
                               fontSize: 30,
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              _clientDetails?['displayName'] ?? widget.clientName,
+                              _safeDisplayName,
                               style: theme.textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            
+                            // Onboarding Form Button
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: () => _viewClientOnboardingForm(),
+                              icon: const Icon(Icons.description),
+                              label: const Text('View Onboarding Form'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppStyles.primarySage,
+                                foregroundColor: Colors.white,
                               ),
                             ),
                           ],
@@ -132,15 +166,12 @@ class _ClientInfoScreenState extends State<ClientInfoScreen> {
                           InfoItem(
                             icon: Icons.email,
                             label: 'Email',
-                            value: _clientDetails?['email'] ?? 'Not provided',
+                            value: _safeString(_clientDetails?['email']),
                           ),
                           InfoItem(
                             icon: Icons.phone,
                             label: 'Phone',
-                            value: _clientDetails?['phoneNumber'] != null && 
-                                   _clientDetails!['phoneNumber'].isNotEmpty
-                                ? _clientDetails!['phoneNumber']
-                                : 'Not provided',
+                            value: _safeString(_clientDetails?['phoneNumber']),
                           ),
                           if (_clientDetails?['dateOfBirth'] != null)
                             InfoItem(
@@ -190,10 +221,11 @@ class _ClientInfoScreenState extends State<ClientInfoScreen> {
                           icon: Icons.flag,
                           children: [
                             for (final goal in _clientDetails!['goals'])
-                              InfoItem(
-                                icon: Icons.check_circle_outline,
-                                value: goal,
-                              ),
+                              if (goal is Map && goal['value'] is String)
+                                InfoItem(
+                                  icon: Icons.check_circle_outline,
+                                  value: goal['value'],
+                                ),
                           ],
                         ),
                       
@@ -238,6 +270,63 @@ class _ClientInfoScreenState extends State<ClientInfoScreen> {
       return Colors.orange;
     } else {
       return Colors.red;
+    }
+  }
+
+  void _viewClientOnboardingForm() async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+      
+      // Try to get onboarding form
+      final onboardingForm = await _onboardingService.getClientOnboardingForm(widget.clientId);
+      
+      // Dismiss loading dialog
+      if (mounted) {
+        Navigator.pop(context);
+      }
+      
+      if (onboardingForm != null) {
+        if (mounted) {
+          // Navigate to onboarding details screen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ClientOnboardingDetailsScreen(
+                onboardingForm: onboardingForm,
+                clientName: _safeDisplayName,
+              ),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No onboarding form found for this client.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Dismiss loading dialog if showing
+      if (mounted) {
+        Navigator.pop(context);
+        // Show error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading onboarding form: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }

@@ -19,7 +19,8 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final ProfileImageService _profileImageService = ProfileImageService();
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _heightFeetController = TextEditingController();
@@ -58,7 +59,8 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   
   @override
   void dispose() {
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _heightFeetController.dispose();
@@ -113,7 +115,10 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
       
       setState(() {
         _user = user;
-        _nameController.text = user.displayName ?? '';
+        final fullName = user.displayName ?? '';
+        final nameParts = fullName.split(' ');
+        _firstNameController.text = nameParts.isNotEmpty ? nameParts.first : '';
+        _lastNameController.text = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
         _emailController.text = user.email;
         _phoneController.text = user.phoneNumber ?? '';
         _heightFeetController.text = feet > 0 ? feet.toString() : '';
@@ -161,7 +166,8 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
       
       // Update user profile
       await _authService.updateUserProfile(
-        displayName: _nameController.text,
+        firstName: _firstNameController.text,
+        lastName: _lastNameController.text,
         height: heightCm,
         weight: weightKg,
         dateOfBirth: _dateOfBirth,
@@ -334,7 +340,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                 // Profile image - now just using initials avatar
                 Center(
                   child: _profileImageService.getProfileImage(
-                    name: _nameController.text,
+                    name: "${_firstNameController.text} ${_lastNameController.text}",
                     radius: 60,
                     fontSize: 32,
                   ),
@@ -351,25 +357,50 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Name
+                // First Name
                 _isEditing 
                   ? TextFormField(
-                      controller: _nameController,
+                      controller: _firstNameController,
                       decoration: _getInputDecoration(
-                        label: 'Full Name',
+                        label: 'First Name',
                         hint: '',
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Please enter your name';
+                          return 'Please enter your first name';
                         }
                         return null;
                       },
                     )
                   : TextFormField(
-                      controller: _nameController,
+                      controller: _firstNameController,
                       decoration: _getInputDecoration(
-                        label: 'Full Name',
+                        label: 'First Name',
+                        hint: '',
+                      ),
+                      enabled: false,
+                    ),
+                const SizedBox(height: 16),
+                
+                // Last Name
+                _isEditing 
+                  ? TextFormField(
+                      controller: _lastNameController,
+                      decoration: _getInputDecoration(
+                        label: 'Last Name',
+                        hint: '',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your last name';
+                        }
+                        return null;
+                      },
+                    )
+                  : TextFormField(
+                      controller: _lastNameController,
+                      decoration: _getInputDecoration(
+                        label: 'Last Name',
                         hint: '',
                       ),
                       enabled: false,

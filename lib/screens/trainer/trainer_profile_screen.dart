@@ -18,7 +18,8 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
   final CalendlyService _calendlyService = CalendlyService();
   final ProfileImageService _profileImageService = ProfileImageService();
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   
@@ -42,7 +43,8 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
   
   @override
   void dispose() {
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     super.dispose();
@@ -92,7 +94,10 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
       
       setState(() {
         _trainer = trainer;
-        _nameController.text = trainer.displayName ?? '';
+        final fullName = trainer.displayName ?? '';
+        final nameParts = fullName.split(' ');
+        _firstNameController.text = nameParts.isNotEmpty ? nameParts.first : '';
+        _lastNameController.text = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
         _emailController.text = trainer.email;
         _phoneController.text = trainer.phoneNumber ?? '';
         _isCalendlyConnected = isConnected;
@@ -116,7 +121,8 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
     try {
       // Update user profile
       await _authService.updateUserProfile(
-        displayName: _nameController.text,
+        firstName: _firstNameController.text,
+        lastName: _lastNameController.text,
         phoneNumber: _phoneController.text,
       );
       
@@ -393,7 +399,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                 // Profile image - now just using initials avatar
                 Center(
                   child: _profileImageService.getProfileImage(
-                    name: _nameController.text,
+                    name: _firstNameController.text + ' ' + _lastNameController.text,
                     radius: 60,
                     fontSize: 32,
                   ),
@@ -410,18 +416,36 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Name
+                // First Name
                 TextFormField(
-                  controller: _nameController,
+                  controller: _firstNameController,
                   decoration: _getInputDecoration(
-                    label: 'Full Name',
+                    label: 'First Name',
                     hint: '',
                     prefixIcon: Icons.person,
                   ),
                   enabled: _isEditing,
                   validator: (value) {
                     if (_isEditing && (value == null || value.isEmpty)) {
-                      return 'Please enter your name';
+                      return 'Please enter your first name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                
+                // Last Name
+                TextFormField(
+                  controller: _lastNameController,
+                  decoration: _getInputDecoration(
+                    label: 'Last Name',
+                    hint: '',
+                    prefixIcon: Icons.person,
+                  ),
+                  enabled: _isEditing,
+                  validator: (value) {
+                    if (_isEditing && (value == null || value.isEmpty)) {
+                      return 'Please enter your last name';
                     }
                     return null;
                   },

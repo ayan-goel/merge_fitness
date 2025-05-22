@@ -188,6 +188,7 @@ class _ClientEmailVerificationScreenState extends State<ClientEmailVerificationS
     return Scaffold(
       appBar: AppBar(
         title: const Text('Verify Your Email'),
+        centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -205,6 +206,7 @@ class _ClientEmailVerificationScreenState extends State<ClientEmailVerificationS
               isCheckingExpired 
                 ? 'Please Wait...'
                 : 'Check your email',
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,

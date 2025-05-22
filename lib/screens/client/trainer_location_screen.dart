@@ -6,6 +6,7 @@ import '../../services/location_service.dart';
 import '../../theme/app_styles.dart';
 import '../../theme/app_widgets.dart';
 import '../../theme/app_animations.dart';
+import 'package:intl/intl.dart';
 
 class TrainerLocationScreen extends StatefulWidget {
   final TrainingSession session;

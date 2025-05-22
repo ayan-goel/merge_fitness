@@ -33,6 +33,14 @@
       ]
     },
     {
+      "collectionGroup": "onboardingForms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientId", "order": "ASCENDING" },
+        { "fieldPath": "clientName", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "weightEntries",
       "queryScope": "COLLECTION",
       "fields": [

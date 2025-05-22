@@ -10,6 +10,24 @@ service firebase.storage {
     match /users/{userId}/{allPaths=**} {
       // Allow users to read/write their own data
       allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Allow trainers to read client data (using regex match to check if path is gym setup photos)
+      allow read: if isAuthenticated() && 
+                  request.auth != null && 
+                  request.path.matches('/users/' + userId + '/gymSetupPhotos/.*');
+    }
+    
+    // Specific path for gym setup photos
+    match /gymSetupPhotos/{clientId}/{photoId} {
+      // Allow clients to upload their own photos
+      allow write: if isAuthenticated() && request.auth.uid == clientId;
+      
+      // Allow clients to view their own photos
+      allow read: if isAuthenticated() && request.auth.uid == clientId;
+      
+      // Allow any authenticated user to view gym setup photos
+      // This ensures both clients and trainers can access the photos
+      allow read: if isAuthenticated();
     }
     
     // Videos path for trainers

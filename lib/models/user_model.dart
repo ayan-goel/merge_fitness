@@ -11,6 +11,8 @@ class UserModel {
   final String uid;
   final String email;
   final UserRole role;
+  final String? firstName;
+  final String? lastName;
   final String? displayName;
   final String? photoUrl;
   final double? height; // in cm
@@ -24,6 +26,8 @@ class UserModel {
     required this.uid,
     required this.email,
     required this.role,
+    this.firstName,
+    this.lastName,
     this.displayName,
     this.photoUrl,
     this.height,
@@ -86,6 +90,8 @@ class UserModel {
       uid: uid,
       email: email,
       role: _stringToUserRole(map['role'] ?? 'client'),
+      firstName: map['firstName'],
+      lastName: map['lastName'],
       displayName: map['displayName'],
       photoUrl: map['photoUrl'],
       height: map['height']?.toDouble(),
@@ -103,6 +109,8 @@ class UserModel {
     return {
       'email': email,
       'role': _userRoleToString(role),
+      'firstName': firstName,
+      'lastName': lastName,
       'displayName': displayName,
       'photoUrl': photoUrl,
       'height': height,
@@ -141,6 +149,8 @@ class UserModel {
 
   // Copy with method for immutability
   UserModel copyWith({
+    String? firstName,
+    String? lastName,
     String? displayName,
     String? photoUrl,
     double? height,
@@ -155,6 +165,8 @@ class UserModel {
       uid: this.uid,
       email: this.email,
       role: role ?? this.role,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
       displayName: displayName ?? this.displayName,
       photoUrl: photoUrl ?? this.photoUrl,
       height: height ?? this.height,

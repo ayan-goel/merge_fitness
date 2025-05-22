@@ -28,6 +28,7 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
   // Expanded state tracking
   bool _isPlanMicroExpanded = false;
   bool _isProgressMicroExpanded = false;
+  bool _isSampleMealsExpanded = false;
   Map<String, bool> _mealMicroExpanded = {};
 
   @override
@@ -204,9 +205,22 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
         foregroundColor: AppStyles.textDark,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
+      body: SafeArea(
+        child: _isLoading
+          ? Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(
+                  color: AppStyles.primarySage,
+                ),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: () async {
+                await _loadActivePlan();
+              },
+              child: SingleChildScrollView(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Date selector with arrows
             Container(
@@ -319,6 +333,160 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
                             ],
                           ),
                         ],
+
+                                // Sample meals section
+                                if (_activePlan!.sampleMeals.isNotEmpty) ...[
+                                  const SizedBox(height: 16),
+                                  const Divider(),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      const Text(
+                                        'Recommended Sample Meals',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppStyles.textDark,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      // Expand/collapse button
+                                      InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            _isSampleMealsExpanded = !_isSampleMealsExpanded;
+                                          });
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: AppStyles.primarySage.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Icon(
+                                            _isSampleMealsExpanded
+                                                ? Icons.keyboard_arrow_up
+                                                : Icons.keyboard_arrow_down,
+                                            color: AppStyles.primarySage,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  
+                                  if (_isSampleMealsExpanded) ...[
+                                    const SizedBox(height: 16),
+                                    ListView.builder(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      itemCount: _activePlan!.sampleMeals.length,
+                                      itemBuilder: (context, index) {
+                                        final meal = _activePlan!.sampleMeals[index];
+                                        return Card(
+                                          margin: const EdgeInsets.only(bottom: 12.0),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(16.0),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                // Meal name and calories
+                                                Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.restaurant_menu,
+                                                      color: AppStyles.primarySage,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Expanded(
+                                                      child: Text(
+                                                        meal.name,
+                                                        style: const TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: AppStyles.primarySage.withOpacity(0.1),
+                                                        borderRadius: BorderRadius.circular(12),
+                                                      ),
+                                                      child: Text(
+                                                        '${meal.calories} cal',
+                                                        style: const TextStyle(
+                                                          fontWeight: FontWeight.bold,
+                                                          color: AppStyles.primarySage,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 12),
+                                                
+                                                // Macronutrients
+                                                Row(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                                  children: [
+                                                    _buildMacronutrientPill(
+                                                      'Protein',
+                                                      '${meal.macronutrients['protein']?.toInt() ?? 0}g',
+                                                      AppStyles.errorRed,
+                                                    ),
+                                                    _buildMacronutrientPill(
+                                                      'Carbs',
+                                                      '${meal.macronutrients['carbs']?.toInt() ?? 0}g',
+                                                      AppStyles.successGreen,
+                                                    ),
+                                                    _buildMacronutrientPill(
+                                                      'Fat',
+                                                      '${meal.macronutrients['fat']?.toInt() ?? 0}g',
+                                                      AppStyles.mutedBlue,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ],
+                                
+                                // Legacy meal suggestions support
+                                if (_activePlan!.sampleMeals.isEmpty && 
+                                    _activePlan!.mealSuggestions.isNotEmpty) ...[
+                                  const SizedBox(height: 16),
+                                  const Divider(),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Meal Suggestions',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ...List.generate(
+                                    _activePlan!.mealSuggestions.length,
+                                    (index) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 4.0),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.restaurant_menu, size: 16),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(_activePlan!.mealSuggestions[index]),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                       ],
                     ),
                   ),
@@ -496,26 +664,34 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
                       padding: const EdgeInsets.all(32.0),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          const Icon(
+                                  const Center(
+                                    child: Icon(
                             Icons.no_food,
                             size: 64,
                             color: Colors.grey,
+                                    ),
                           ),
                           const SizedBox(height: 16),
-                          Text(
+                                  const Center(
+                                    child: Text(
                             'No meals recorded for this day',
-                            style: const TextStyle(
+                                      style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w500,
                               color: AppStyles.textDark,
+                                      ),
+                                      textAlign: TextAlign.center,
                             ),
                           ),
                           const SizedBox(height: 16),
-                          ElevatedButton.icon(
+                                  Center(
+                                    child: ElevatedButton.icon(
                             onPressed: _navigateToAddMeal,
                             icon: const Icon(Icons.add),
                             label: const Text('Add Meal'),
+                                    ),
                           ),
                         ],
                       ),
@@ -556,6 +732,8 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
               ),
             ),
           ],
+                ),
+              ),
         ),
       ),
     );
@@ -748,6 +926,37 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  // Helper method to build the macro pill display
+  Widget _buildMacronutrientPill(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: color.withOpacity(0.8),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 } 

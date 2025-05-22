@@ -1,5 +1,75 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+class SampleMeal {
+  final String name;
+  final int calories;
+  final Map<String, double> macronutrients; // protein, carbs, fat in grams
+  final Map<String, double> micronutrients; // sodium, potassium, etc. in mg
+
+  SampleMeal({
+    required this.name,
+    required this.calories,
+    required this.macronutrients,
+    required this.micronutrients,
+  });
+
+  // Convert to Map for Firestore
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'calories': calories,
+      'macronutrients': macronutrients,
+      'micronutrients': micronutrients,
+    };
+  }
+
+  // Create from Map
+  factory SampleMeal.fromMap(Map<String, dynamic> map) {
+    // Handle macronutrients
+    Map<String, double> macros = {};
+    if (map['macronutrients'] != null) {
+      final macroData = map['macronutrients'] as Map<String, dynamic>;
+      macroData.forEach((key, value) {
+        macros[key] = (value is int) ? value.toDouble() : value;
+      });
+    } else {
+      // Set defaults if not present
+      macros = {
+        'protein': 0.0,
+        'carbs': 0.0,
+        'fat': 0.0,
+      };
+    }
+    
+    // Handle micronutrients
+    Map<String, double> micros = {};
+    if (map['micronutrients'] != null) {
+      final microData = map['micronutrients'] as Map<String, dynamic>;
+      microData.forEach((key, value) {
+        micros[key] = (value is int) ? value.toDouble() : value;
+      });
+    } else {
+      // Set defaults if not present
+      micros = {
+        'sodium': 0.0,
+        'potassium': 0.0,
+        'calcium': 0.0,
+        'iron': 0.0,
+        'cholesterol': 0.0,
+        'fiber': 0.0,
+        'sugar': 0.0,
+      };
+    }
+
+    return SampleMeal(
+      name: map['name'] ?? '',
+      calories: map['calories'] ?? 0,
+      macronutrients: macros,
+      micronutrients: micros,
+    );
+  }
+}
+
 class NutritionPlan {
   final String id;
   final String clientId;
@@ -13,7 +83,8 @@ class NutritionPlan {
   final DateTime startDate;
   final DateTime? endDate;
   final String? notes;
-  final List<String> mealSuggestions; // Optional meal suggestions
+  final List<SampleMeal> sampleMeals;
+  final List<String> mealSuggestions;
 
   NutritionPlan({
     required this.id,
@@ -28,6 +99,7 @@ class NutritionPlan {
     required this.startDate,
     this.endDate,
     this.notes,
+    this.sampleMeals = const [],
     this.mealSuggestions = const [],
   });
 
@@ -71,10 +143,17 @@ class NutritionPlan {
       };
     }
     
-    // Handle meal suggestions
+    // Handle meal suggestions (legacy)
     List<String> suggestions = [];
     if (data['mealSuggestions'] != null) {
       suggestions = List<String>.from(data['mealSuggestions']);
+    }
+    
+    // Handle sample meals
+    List<SampleMeal> sampleMeals = [];
+    if (data['sampleMeals'] != null) {
+      final mealsData = data['sampleMeals'] as List<dynamic>;
+      sampleMeals = mealsData.map((mealData) => SampleMeal.fromMap(mealData as Map<String, dynamic>)).toList();
     }
     
     return NutritionPlan(
@@ -90,6 +169,7 @@ class NutritionPlan {
       startDate: (data['startDate'] as Timestamp).toDate(),
       endDate: data['endDate'] != null ? (data['endDate'] as Timestamp).toDate() : null,
       notes: data['notes'],
+      sampleMeals: sampleMeals,
       mealSuggestions: suggestions,
     );
   }
@@ -110,6 +190,7 @@ class NutritionPlan {
       'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
       'notes': notes,
       'mealSuggestions': mealSuggestions,
+      'sampleMeals': sampleMeals.map((meal) => meal.toMap()).toList(),
     };
   }
 
@@ -128,6 +209,7 @@ class NutritionPlan {
     DateTime? endDate,
     String? notes,
     List<String>? mealSuggestions,
+    List<SampleMeal>? sampleMeals,
   }) {
     return NutritionPlan(
       id: id ?? this.id,
@@ -143,6 +225,7 @@ class NutritionPlan {
       endDate: endDate ?? this.endDate,
       notes: notes ?? this.notes,
       mealSuggestions: mealSuggestions ?? List.from(this.mealSuggestions),
+      sampleMeals: sampleMeals ?? List.from(this.sampleMeals),
     );
   }
 } 

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../models/nutrition_plan_model.dart';
 import '../../services/nutrition_service.dart';
 import '../../services/auth_service.dart';
+import '../../theme/app_styles.dart';
 
 class AssignNutritionPlanScreen extends StatefulWidget {
   final String clientId;
@@ -42,7 +43,14 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
   final _fiberController = TextEditingController();
   final _sugarController = TextEditingController();
   
-  // Meal suggestion controller
+  // Sample meal controllers
+  final _mealNameController = TextEditingController();
+  final _mealCaloriesController = TextEditingController();
+  final _mealProteinController = TextEditingController();
+  final _mealCarbsController = TextEditingController();
+  final _mealFatController = TextEditingController();
+  
+  // Meal suggestion controller (legacy)
   final _mealSuggestionController = TextEditingController();
   
   DateTime _startDate = DateTime.now();
@@ -50,28 +58,25 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
   
   bool _isLoading = false;
   List<String> _mealSuggestions = [];
+  List<SampleMeal> _sampleMeals = [];
   
   @override
   void initState() {
     super.initState();
     
-    // Pre-fill form if editing an existing plan
+    // If editing an existing plan, populate fields
     if (widget.existingPlan != null) {
       _nameController.text = widget.existingPlan!.name;
-      if (widget.existingPlan!.description != null) {
-        _descriptionController.text = widget.existingPlan!.description!;
-      }
+      _descriptionController.text = widget.existingPlan!.description ?? '';
       _caloriesController.text = widget.existingPlan!.dailyCalories.toString();
-      if (widget.existingPlan!.notes != null) {
-        _notesController.text = widget.existingPlan!.notes!;
-      }
+      _notesController.text = widget.existingPlan!.notes ?? '';
       
-      // Set macronutrients
+      // Populate macronutrients
       _proteinController.text = widget.existingPlan!.macronutrients['protein']?.toString() ?? '0';
       _carbsController.text = widget.existingPlan!.macronutrients['carbs']?.toString() ?? '0';
       _fatController.text = widget.existingPlan!.macronutrients['fat']?.toString() ?? '0';
       
-      // Set micronutrients
+      // Populate micronutrients
       _sodiumController.text = widget.existingPlan!.micronutrients['sodium']?.toString() ?? '0';
       _cholesterolController.text = widget.existingPlan!.micronutrients['cholesterol']?.toString() ?? '0';
       _fiberController.text = widget.existingPlan!.micronutrients['fiber']?.toString() ?? '0';
@@ -81,8 +86,11 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
       _startDate = widget.existingPlan!.startDate;
       _endDate = widget.existingPlan!.endDate;
       
-      // Set meal suggestions
+      // Populate meal suggestions (legacy)
       _mealSuggestions = List.from(widget.existingPlan!.mealSuggestions);
+      
+      // Populate sample meals
+      _sampleMeals = List.from(widget.existingPlan!.sampleMeals);
     }
   }
 
@@ -100,6 +108,11 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
     _fiberController.dispose();
     _sugarController.dispose();
     _mealSuggestionController.dispose();
+    _mealNameController.dispose();
+    _mealCaloriesController.dispose();
+    _mealProteinController.dispose();
+    _mealCarbsController.dispose();
+    _mealFatController.dispose();
     super.dispose();
   }
 
@@ -137,6 +150,50 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
     }
   }
   
+  void _addSampleMeal() {
+    final name = _mealNameController.text.trim();
+    if (name.isEmpty) return;
+    
+    // Create macronutrients map
+    final macronutrients = <String, double>{
+      'protein': double.tryParse(_mealProteinController.text) ?? 0.0,
+      'carbs': double.tryParse(_mealCarbsController.text) ?? 0.0,
+      'fat': double.tryParse(_mealFatController.text) ?? 0.0,
+    };
+    
+    // Create micronutrients map (using zeros as defaults)
+    final micronutrients = <String, double>{
+      'sodium': 0.0,
+      'cholesterol': 0.0,
+      'fiber': 0.0,
+      'sugar': 0.0,
+    };
+    
+    // Create the sample meal
+    final sampleMeal = SampleMeal(
+      name: name,
+      calories: int.tryParse(_mealCaloriesController.text) ?? 0,
+      macronutrients: macronutrients,
+      micronutrients: micronutrients,
+    );
+    
+    setState(() {
+      _sampleMeals.add(sampleMeal);
+      _mealNameController.clear();
+      _mealCaloriesController.clear();
+      _mealProteinController.clear();
+      _mealCarbsController.clear();
+      _mealFatController.clear();
+    });
+  }
+
+  void _removeSampleMeal(int index) {
+    setState(() {
+      _sampleMeals.removeAt(index);
+    });
+  }
+
+  // Legacy method - keep for backward compatibility
   void _addMealSuggestion() {
     final suggestion = _mealSuggestionController.text.trim();
     if (suggestion.isEmpty) return;
@@ -193,6 +250,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
         endDate: _endDate,
         notes: _notesController.text.isEmpty ? null : _notesController.text,
         mealSuggestions: _mealSuggestions,
+        sampleMeals: _sampleMeals,
       );
       
       // Create new plan or update existing one
@@ -785,7 +843,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
             ),
             const SizedBox(height: 16),
             
-            // Meal Suggestions
+            // Sample Meals Card
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -793,87 +851,194 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Meal Suggestions (Optional)',
+                      'Sample Meals',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Add example meals with nutritional information',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     
-                    // Add meal suggestion
+                    // Add meal name
+                    TextFormField(
+                      controller: _mealNameController,
+                      decoration: InputDecoration(
+                        labelText: 'Meal Name',
+                        hintText: 'e.g., Greek Yogurt with Berries',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surface,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Meal nutrition details
                     Row(
                       children: [
+                        // Calories
                         Expanded(
                           child: TextFormField(
-                            controller: _mealSuggestionController,
-                            decoration: InputDecoration(
-                              labelText: 'Add Meal Suggestion',
-                              hintText: 'e.g., Grilled chicken with vegetables',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  width: 1.5,
-                                ),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                              filled: true,
-                              fillColor: Theme.of(context).colorScheme.surface,
+                            controller: _mealCaloriesController,
+                            decoration: const InputDecoration(
+                              labelText: 'Calories',
+                              hintText: '250',
+                              suffixText: 'kcal',
                             ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                           ),
                         ),
                         const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: _addMealSuggestion,
-                          icon: const Icon(Icons.add),
-                          tooltip: 'Add suggestion',
+                        // Protein
+                        Expanded(
+                          child: TextFormField(
+                            controller: _mealProteinController,
+                            decoration: const InputDecoration(
+                              labelText: 'Protein',
+                              hintText: '20',
+                              suffixText: 'g',
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     
-                    // Meal suggestions list
-                    if (_mealSuggestions.isNotEmpty) ...[
+                    Row(
+                      children: [
+                        // Carbs
+                        Expanded(
+                          child: TextFormField(
+                            controller: _mealCarbsController,
+                            decoration: const InputDecoration(
+                              labelText: 'Carbs',
+                              hintText: '30',
+                              suffixText: 'g',
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Fat
+                        Expanded(
+                          child: TextFormField(
+                            controller: _mealFatController,
+                            decoration: const InputDecoration(
+                              labelText: 'Fat',
+                              hintText: '8',
+                              suffixText: 'g',
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Add button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _addSampleMeal,
+                        icon: const Icon(Icons.restaurant),
+                        label: const Text('Add Sample Meal'),
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor: AppStyles.primarySage,
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Sample meals list
+                    if (_sampleMeals.isNotEmpty) ...[
                       const Text(
-                        'Added Suggestions:',
+                        'Added Sample Meals:',
                         style: TextStyle(fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 8),
                       ...List.generate(
-                        _mealSuggestions.length,
-                        (index) => Padding(
-                          padding: const EdgeInsets.only(bottom: 4.0),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.restaurant_menu, size: 16),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(_mealSuggestions[index]),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                                onPressed: () => _removeMealSuggestion(index),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                            ],
+                        _sampleMeals.length,
+                        (index) => Card(
+                          margin: const EdgeInsets.only(bottom: 8.0),
+                          color: Theme.of(context).colorScheme.surface,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        _sampleMeals[index].name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                                      onPressed: () => _removeSampleMeal(index),
+                                      constraints: const BoxConstraints(),
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Text('${_sampleMeals[index].calories} cal'),
+                                    const SizedBox(width: 16),
+                                    Text('P: ${_sampleMeals[index].macronutrients['protein']?.toInt() ?? 0}g'),
+                                    const SizedBox(width: 8),
+                                    Text('C: ${_sampleMeals[index].macronutrients['carbs']?.toInt() ?? 0}g'),
+                                    const SizedBox(width: 8),
+                                    Text('F: ${_sampleMeals[index].macronutrients['fat']?.toInt() ?? 0}g'),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ],
+                    
+                    if (_sampleMeals.isEmpty)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16.0),
+                          child: Text(
+                            'No sample meals added yet',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

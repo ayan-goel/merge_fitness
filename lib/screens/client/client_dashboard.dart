@@ -1170,14 +1170,24 @@ class _ClientDashboardState extends State<ClientDashboard> {
                       if (value == 'cancel') {
                         _showCancelSessionDialog(session);
                       } else if (value == 'track' && session.trainerLocationEnabled) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => TrainerLocationScreen(
-                              session: session,
+                        // Check if we're within 30 minutes of the session start time
+                        final now = DateTime.now();
+                        final thirtyMinutesBeforeStart = session.startTime.subtract(const Duration(minutes: 30));
+                        
+                        if (now.isAfter(thirtyMinutesBeforeStart)) {
+                          // Within 30 minutes of session, allowed to track
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => TrainerLocationScreen(
+                                session: session,
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        } else {
+                          // Too early, show restriction dialog
+                          _showTrackingRestrictionDialog(session);
+                        }
                       }
                     },
                   ),
@@ -1275,6 +1285,358 @@ class _ClientDashboardState extends State<ClientDashboard> {
       // Ensure controller is always disposed, even if the dialog is dismissed
       reasonController.dispose();
     }
+  }
+
+  // Show tracking restriction dialog
+  Future<void> _showTrackingRestrictionDialog(TrainingSession session) async {
+    // Calculate and format the time when tracking will be available
+    final trackingAvailableTime = session.startTime.subtract(const Duration(minutes: 30));
+    final formattedAvailableTime = DateFormat('h:mm a').format(trackingAvailableTime);
+    final formattedSessionTime = DateFormat('h:mm a').format(session.startTime);
+    
+    await showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.6),
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 12,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top Header with gradient
+                Container(
+                  height: 110,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppStyles.primarySage.withOpacity(0.8),
+                        AppStyles.primarySage.withOpacity(0.4),
+                      ],
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(24),
+                      topRight: Radius.circular(24),
+                    ),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.25),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.timer_off_outlined,
+                            color: Colors.white,
+                            size: 36,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Tracking Not Available Yet',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                // Content section
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+                  child: Column(
+                    children: [
+                      Text(
+                        'You can track your trainer\'s location starting 30 minutes before your session.',
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          color: AppStyles.textDark.withOpacity(0.8),
+                          height: 1.4,
+                          letterSpacing: 0.2,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      
+                      // Time remaining countdown
+                      Builder(builder: (context) {
+                        // Calculate time difference between now and when tracking becomes available
+                        final now = DateTime.now();
+                        final trackingAvailableTime = session.startTime.subtract(const Duration(minutes: 30));
+                        final difference = trackingAvailableTime.difference(now);
+                        
+                        // Format the remaining time
+                        String timeRemaining;
+                        if (difference.isNegative) {
+                          timeRemaining = "Tracking is now available";
+                        } else {
+                          final hours = difference.inHours;
+                          final minutes = difference.inMinutes % 60;
+                          
+                          if (hours > 0) {
+                            timeRemaining = "$hours hour${hours > 1 ? 's' : ''} and $minutes minute${minutes > 1 ? 's' : ''}";
+                          } else {
+                            timeRemaining = "$minutes minute${minutes > 1 ? 's' : ''}";
+                          }
+                        }
+                        
+                        return Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                          decoration: BoxDecoration(
+                            color: AppStyles.primarySage.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppStyles.primarySage.withOpacity(0.3),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.timer_outlined,
+                                color: AppStyles.primarySage,
+                                size: 28,
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      "Time until tracking is available:",
+                                      style: TextStyle(
+                                        color: AppStyles.slateGray,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      timeRemaining,
+                                      style: const TextStyle(
+                                        color: AppStyles.primarySage,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                      
+                      const SizedBox(height: 30),
+                      
+                      // Info section with more elegant styling
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppStyles.offWhite,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppStyles.slateGray.withOpacity(0.15),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildElegantInfoRow(
+                              icon: Icons.person_outline,
+                              iconColor: AppStyles.mutedBlue,
+                              label: 'Trainer',
+                              value: session.trainerName,
+                            ),
+                            const SizedBox(height: 14),
+                            _buildElegantInfoRow(
+                              icon: Icons.event_available_outlined,
+                              iconColor: AppStyles.softGold, 
+                              label: 'Session Time',
+                              value: formattedSessionTime,
+                            ),
+                            const SizedBox(height: 14),
+                            _buildElegantInfoRow(
+                              icon: Icons.location_on_outlined,
+                              iconColor: AppStyles.primarySage,
+                              label: 'Tracking Available',
+                              value: formattedAvailableTime,
+                              valueColor: AppStyles.primarySage,
+                              valueBold: true,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Bottom button area
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppStyles.primarySage,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      shadowColor: AppStyles.primarySage.withOpacity(0.3),
+                    ),
+                    child: const Text(
+                      'OK, I\'ll come back later',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildElegantInfoRow({
+    required IconData icon, 
+    required Color iconColor, 
+    required String label, 
+    required String value,
+    Color? valueColor,
+    bool valueBold = false,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: iconColor, size: 18),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: AppStyles.slateGray.withOpacity(0.8),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: valueColor ?? AppStyles.textDark,
+                  fontWeight: valueBold ? FontWeight.bold : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildTimelinePoint({
+    required String label, 
+    required IconData icon, 
+    required bool isActive,
+    bool isHighlighted = false,
+  }) {
+    final color = isHighlighted 
+        ? AppStyles.primarySage 
+        : isActive 
+            ? AppStyles.slateGray 
+            : AppStyles.slateGray.withOpacity(0.3);
+    
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: isHighlighted 
+                ? color.withOpacity(0.2) 
+                : Colors.transparent,
+            border: Border.all(
+              color: color,
+              width: isHighlighted ? 2 : 1,
+            ),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon, 
+            color: color,
+            size: 18,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: color,
+            fontWeight: isHighlighted ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildTimelineConnector({required bool isActive}) {
+    return Align(
+      alignment: Alignment.center,
+      child: Container(
+        width: 40,
+        height: 2,
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        color: isActive 
+            ? AppStyles.slateGray.withOpacity(0.6) 
+            : AppStyles.slateGray.withOpacity(0.2),
+      ),
+    );
   }
 
   // Format a date header

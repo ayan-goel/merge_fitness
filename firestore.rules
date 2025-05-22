@@ -357,5 +357,26 @@ service cloud.firestore {
       // Allow admins full access
       allow read, write: if isAdmin();
     }
+    
+    // Onboarding Forms Collection Rules
+    match /onboardingForms/{formId} {
+      // Clients can create and read their own onboarding form
+      allow create: if isAuthenticated();
+      
+      // Clients can read their own onboarding form
+      allow read: if isAuthenticated() && resource.data.clientId == request.auth.uid;
+      
+      // Trainers can read any onboarding form (simplified for troubleshooting)
+      allow read, list: if isAuthenticated() && isTrainer();
+      
+      // Allow admins full access
+      allow read, write: if isAdmin();
+      
+      // Allow uploading gym setup photos
+      allow update: if isAuthenticated() && 
+                    (resource.data.clientId == request.auth.uid || 
+                     isTrainer() || 
+                     isAdmin());
+    }
   }
 } 
