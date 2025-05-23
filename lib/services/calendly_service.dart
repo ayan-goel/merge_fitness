@@ -10,6 +10,7 @@ import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:intl/intl.dart';
 import '../models/session_model.dart';
+import '../services/notification_service.dart';
 
 class CalendlyService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -546,7 +547,8 @@ class CalendlyService {
       DateTime startTime = timeSlot['start_time'];
       DateTime endTime = timeSlot['end_time'];
       
-      return await createSession(
+      // Create the session
+      final session = await createSession(
         trainerId: trainerId,
         clientId: clientId,
         startTime: startTime,
@@ -555,6 +557,34 @@ class CalendlyService {
         notes: notes,
         sessionType: sessionType,
       );
+      
+      // Get client and trainer names for notifications
+      final clientName = clientData['displayName'] ?? 'Client';
+      final trainerDoc = await _firestore.collection('users').doc(trainerId).get();
+      final trainerName = trainerDoc.data()?['displayName'] ?? 'Trainer';
+      
+      // Send notification to trainer about the new booking
+      final notificationService = NotificationService();
+      notificationService.sendSessionBookedNotification(
+        trainerId,
+        clientName,
+        startTime,
+        location
+      );
+      
+      // Schedule 1-hour reminder for client
+      notificationService.scheduleOneHourSessionReminder(
+        trainerName,
+        startTime,
+      );
+      
+      // Schedule 15-minute reminder for client
+      notificationService.scheduleSessionReminder(
+        trainerName,
+        startTime,
+      );
+      
+      return session;
     } catch (e) {
       print('Error scheduling session: $e');
       throw Exception('Failed to schedule session: $e');
@@ -804,8 +834,27 @@ class CalendlyService {
       final isClientCancellation = _auth.currentUser?.uid == session.clientId;
       if (isClientCancellation) {
         activityMessage = '${cancelledByName ?? session.clientName} cancelled a session scheduled for ${_formatDateTime(session.startTime)}';
+        
+        // Send notification to trainer about client cancellation
+        final notificationService = NotificationService();
+        notificationService.sendClientCancelledSessionNotification(
+          session.trainerId,
+          session.clientName,
+          session.startTime,
+          cancellationReason,
+        );
       } else {
         activityMessage = 'You cancelled a session with ${session.clientName} scheduled for ${_formatDateTime(session.startTime)}';
+        
+        // Send notification to client about trainer cancellation
+        final notificationService = NotificationService();
+        notificationService.sendSessionCancellationNotification(
+          session.clientId,
+          session.trainerName,
+          session.startTime,
+          session.location,
+          cancellationReason,
+        );
       }
       
       // Add reason if provided

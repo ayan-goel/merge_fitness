@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../models/workout_template_model.dart';
 import '../../models/assigned_workout_model.dart';
 import '../../services/workout_template_service.dart';
+import '../../theme/app_styles.dart';
 import 'create_template_screen.dart';
 
 class AssignWorkoutScreen extends StatefulWidget {
@@ -111,19 +112,62 @@ class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
             InkWell(
               onTap: () => _selectDate(context),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(8.0),
+                  color: AppStyles.offWhite,
+                  borderRadius: AppStyles.defaultBorderRadius,
+                  border: Border.all(
+                    color: AppStyles.slateGray.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppStyles.slateGray.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      DateFormat('MM/dd/yyyy').format(_selectedDate),
-                      style: Theme.of(context).textTheme.titleMedium,
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppStyles.primarySage.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.calendar_today,
+                            size: 18,
+                            color: AppStyles.primarySage,
+                          ),
+                        ),
+                        const SizedBox(width: 12.0),
+                        Text(
+                          DateFormat('MM/dd/yyyy').format(_selectedDate),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: AppStyles.textDark,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
-                    const Icon(Icons.calendar_today),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppStyles.primarySage.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.edit_calendar,
+                        size: 18,
+                        color: AppStyles.primarySage,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -188,29 +232,128 @@ class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
                 
                 return Container(
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(8.0),
+                    color: AppStyles.offWhite,
+                    borderRadius: AppStyles.defaultBorderRadius,
+                    border: Border.all(
+                      color: AppStyles.slateGray.withOpacity(0.3),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppStyles.slateGray.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: DropdownButtonHideUnderline(
-                    child: DropdownButton<WorkoutTemplate>(
-                      value: _selectedTemplate,
-                      isExpanded: true,
-                      hint: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12.0),
-                        child: Text('Select a workout template'),
+                    child: ButtonTheme(
+                      alignedDropdown: true,
+                      child: DropdownButton<WorkoutTemplate>(
+                        value: _selectedTemplate,
+                        isExpanded: true,
+                        icon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppStyles.primarySage.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: AppStyles.primarySage,
+                            size: 20,
+                          ),
+                        ),
+                        borderRadius: AppStyles.defaultBorderRadius,
+                        hint: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.fitness_center,
+                                size: 20,
+                                color: AppStyles.slateGray.withOpacity(0.7),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Select a workout template',
+                                style: TextStyle(
+                                  color: AppStyles.slateGray,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        dropdownColor: AppStyles.offWhite,
+                        elevation: 3,
+                        items: templates.map((template) {
+                          return DropdownMenuItem<WorkoutTemplate>(
+                            value: template,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppStyles.primarySage.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.fitness_center,
+                                      size: 16,
+                                      color: AppStyles.primarySage,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          template.name,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 16,
+                                            color: AppStyles.textDark,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppStyles.mutedBlue.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '${template.exercises.length} ex',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppStyles.mutedBlue,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedTemplate = value;
+                          });
+                        },
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                      items: templates.map((template) {
-                        return DropdownMenuItem<WorkoutTemplate>(
-                          value: template,
-                          child: Text(template.name),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedTemplate = value;
-                        });
-                      },
                     ),
                   ),
                 );
@@ -228,12 +371,44 @@ class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
             TextField(
               controller: _notesController,
               decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
                 hintText: 'Add notes for the client',
+                filled: true,
+                fillColor: AppStyles.offWhite,
+                prefixIcon: Container(
+                  padding: const EdgeInsets.all(12),
+                  child: Icon(
+                    Icons.note_alt_outlined,
+                    color: AppStyles.slateGray.withOpacity(0.7),
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                border: OutlineInputBorder(
+                  borderRadius: AppStyles.defaultBorderRadius,
+                  borderSide: BorderSide(
+                    color: AppStyles.slateGray.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: AppStyles.defaultBorderRadius,
+                  borderSide: BorderSide(
+                    color: AppStyles.slateGray.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: AppStyles.defaultBorderRadius,
+                  borderSide: BorderSide(
+                    color: AppStyles.primarySage,
+                    width: 1.5,
+                  ),
+                ),
               ),
               maxLines: 3,
+              style: const TextStyle(
+                fontSize: 16,
+                color: AppStyles.textDark,
+              ),
             ),
             
             const SizedBox(height: 32.0),
@@ -293,11 +468,38 @@ class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
               child: ElevatedButton(
                 onPressed: _isAssigning ? null : _assignWorkout,
                 style: ElevatedButton.styleFrom(
+                  backgroundColor: AppStyles.primarySage,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: AppStyles.defaultBorderRadius,
+                  ),
+                  elevation: 1,
+                  shadowColor: AppStyles.primarySage.withOpacity(0.3),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                  disabledBackgroundColor: AppStyles.primarySage.withOpacity(0.5),
                 ),
                 child: _isAssigning
-                    ? const CircularProgressIndicator()
-                    : const Text('Assign Workout'),
+                    ? SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle_outline, size: 20),
+                          SizedBox(width: 8),
+                          Text('Assign Workout'),
+                        ],
+                      ),
               ),
             ),
           ],

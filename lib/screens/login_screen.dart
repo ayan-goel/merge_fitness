@@ -162,6 +162,134 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  // Show dialog for trainer access code
+  Future<void> _showTrainerAccessCodeDialog(bool value) async {
+    // Only show dialog when switching from client to trainer
+    if (!value) {
+      setState(() {
+        _isTrainer = false;
+      });
+      return;
+    }
+
+    final codeController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.security, color: AppStyles.primarySage, size: 24),
+            const SizedBox(width: 12),
+            const Text('Trainer Access Required'),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Please enter the trainer access code to continue. This helps us ensure only authorized trainers can register on our platform.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(context).brightness == Brightness.light
+                    ? AppStyles.textDark.withOpacity(0.8)
+                    : AppStyles.textLight.withOpacity(0.8),
+                ),
+              ),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: codeController,
+                decoration: InputDecoration(
+                  labelText: 'Access Code',
+                  hintText: 'Enter trainer access code',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: AppStyles.slateGray.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: AppStyles.slateGray.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: AppStyles.primarySage,
+                      width: 1.5,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).brightness == Brightness.light
+                    ? Colors.grey.shade50
+                    : AppStyles.lightCharcoal,
+                  prefixIcon: Icon(
+                    Icons.vpn_key,
+                    color: AppStyles.mutedBlue,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter the access code';
+                  }
+                  if (value != 'bj-and-dj') {
+                    return 'Invalid access code';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            style: TextButton.styleFrom(
+              foregroundColor: AppStyles.slateGray,
+            ),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.of(context).pop(true);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppStyles.primarySage,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: const Text('Verify'),
+          ),
+        ],
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      ),
+    );
+    
+    setState(() {
+      _isTrainer = result == true;
+    });
+  }
+
   // Handle forgot password
   Future<void> _handleForgotPassword() async {
     // Check if email is valid
@@ -515,11 +643,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               Switch(
                                 value: _isTrainer,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _isTrainer = value;
-                                  });
-                                },
+                                onChanged: _showTrainerAccessCodeDialog,
                                 activeColor: AppStyles.primarySage,
                                 activeTrackColor: AppStyles.primarySage.withOpacity(0.4),
                               ),

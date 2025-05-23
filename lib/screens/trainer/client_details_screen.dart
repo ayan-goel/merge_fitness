@@ -155,10 +155,13 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
         appBar: AppBar(
           title: Text(widget.clientName),
           actions: [
-            IconButton(
+            TextButton.icon(
               icon: const Icon(Icons.person),
-              tooltip: 'View client information',
+              label: const Text('Profile'),
               onPressed: _navigateToClientInfo,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              ),
             ),
           ],
           bottom: const TabBar(

@@ -1105,7 +1105,14 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _assignNutritionPlan,
                 child: _isLoading
-                    ? const CircularProgressIndicator()
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
                     : Text(isEditing ? 'Update Nutrition Plan' : 'Assign Nutrition Plan'),
               ),
             ),

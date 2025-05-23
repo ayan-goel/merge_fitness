@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/onboarding_form_model.dart';
 import '../../theme/app_styles.dart';
+import 'client_agreement_document_screen.dart';
 
 class ClientOnboardingDetailsScreen extends StatelessWidget {
   final OnboardingFormModel onboardingForm;
@@ -64,62 +65,94 @@ class ClientOnboardingDetailsScreen extends StatelessWidget {
 
   // Personal Info Tab
   Widget _buildPersonalInfoTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionCard(
-            'Personal Information',
-            [
-              _buildInfoRow('Name', onboardingForm.clientName),
-              _buildInfoRow('Email', onboardingForm.email ?? 'Not provided'),
-              _buildInfoRow('Phone', onboardingForm.phoneNumber ?? 'Not provided'),
-              _buildInfoRow('Address', onboardingForm.address ?? 'Not provided'),
-              _buildInfoRow(
-                'Date of Birth', 
-                onboardingForm.dateOfBirth != null 
-                  ? DateFormat.yMMMd().format(onboardingForm.dateOfBirth!) 
-                  : 'Not provided'
+    return Builder(
+      builder: (BuildContext context) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionCard(
+                'Personal Information',
+                [
+                  _buildInfoRow('Name', onboardingForm.clientName),
+                  _buildInfoRow('Email', onboardingForm.email ?? 'Not provided'),
+                  _buildInfoRow('Phone', onboardingForm.phoneNumber ?? 'Not provided'),
+                  _buildInfoRow('Address', onboardingForm.address ?? 'Not provided'),
+                  _buildInfoRow(
+                    'Date of Birth', 
+                    onboardingForm.dateOfBirth != null 
+                      ? DateFormat.yMMMd().format(onboardingForm.dateOfBirth!) 
+                      : 'Not provided'
+                  ),
+                  _buildInfoRow(
+                    'Height', 
+                    onboardingForm.height != null 
+                      ? '${_cmToFeetInches(onboardingForm.height!)} (${onboardingForm.height!.toStringAsFixed(1)} cm)' 
+                      : 'Not provided'
+                  ),
+                  _buildInfoRow(
+                    'Weight', 
+                    onboardingForm.weight != null 
+                      ? '${_kgToLbs(onboardingForm.weight!).toStringAsFixed(1)} lbs (${onboardingForm.weight!.toStringAsFixed(1)} kg)' 
+                      : 'Not provided'
+                  ),
+                ],
+                icon: Icons.person,
               ),
-              _buildInfoRow(
-                'Height', 
-                onboardingForm.height != null 
-                  ? '${_cmToFeetInches(onboardingForm.height!)} (${onboardingForm.height!.toStringAsFixed(1)} cm)' 
-                  : 'Not provided'
+              
+              const SizedBox(height: 16),
+              _buildSectionCard(
+                'Emergency Contact',
+                [
+                  _buildInfoRow('Name', onboardingForm.emergencyContact ?? 'Not provided'),
+                  _buildInfoRow('Phone', onboardingForm.emergencyPhone ?? 'Not provided'),
+                ],
+                icon: Icons.contact_phone,
               ),
-              _buildInfoRow(
-                'Weight', 
-                onboardingForm.weight != null 
-                  ? '${_kgToLbs(onboardingForm.weight!).toStringAsFixed(1)} lbs (${onboardingForm.weight!.toStringAsFixed(1)} kg)' 
-                  : 'Not provided'
-              ),
-            ],
-            icon: Icons.person,
-          ),
-          
-          const SizedBox(height: 16),
-          _buildSectionCard(
-            'Emergency Contact',
-            [
-              _buildInfoRow('Name', onboardingForm.emergencyContact ?? 'Not provided'),
-              _buildInfoRow('Phone', onboardingForm.emergencyPhone ?? 'Not provided'),
-            ],
-            icon: Icons.contact_phone,
-          ),
-          
-          if (onboardingForm.signatureTimestamp != null) ...[
-            const SizedBox(height: 16),
-            _buildSectionCard(
-              'Contract',
-              [
-                _buildInfoRow('Signed on', onboardingForm.signatureTimestamp!),
+              
+              if (onboardingForm.signatureTimestamp != null) ...[
+                const SizedBox(height: 16),
+                _buildSectionCard(
+                  'Contract',
+                  [
+                    _buildInfoRow('Signed on', onboardingForm.signatureTimestamp!),
+                    const SizedBox(height: 16),
+                    Center(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ClientAgreementDocumentScreen(
+                                onboardingForm: onboardingForm,
+                                clientName: clientName,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.description),
+                        label: const Text('View Full Agreement'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppStyles.primarySage,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12), // Add space at the bottom
+                  ],
+                  icon: Icons.assignment_turned_in,
+                ),
+                const SizedBox(height: 32), // Add extra space below the card
               ],
-              icon: Icons.assignment_turned_in,
-            ),
-          ],
-        ],
-      ),
+            ],
+          ),
+        );
+      }
     );
   }
   

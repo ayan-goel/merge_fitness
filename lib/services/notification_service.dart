@@ -333,6 +333,29 @@ class NotificationService {
     );
   }
   
+  // Schedule a reminder 1 hour before a session for clients
+  Future<void> scheduleOneHourSessionReminder(
+    String trainerName,
+    DateTime sessionTime,
+  ) async {
+    // Only available on mobile platforms
+    if (kIsWeb) return;
+    
+    // Schedule 1 hour before the session
+    DateTime reminderTime = sessionTime.subtract(const Duration(hours: 1));
+    
+    // Only schedule if the reminder time is in the future
+    if (reminderTime.isAfter(DateTime.now())) {
+      await scheduleNotification(
+        id: sessionTime.millisecondsSinceEpoch + 1, // Different ID from 15-min reminder
+        title: 'Upcoming Session',
+        body: 'You have a session with $trainerName in 1 hour',
+        scheduledTime: reminderTime,
+        payload: 'session_reminder_1hr',
+      );
+    }
+  }
+  
   // Workout check-in reminder at 7pm if not completed
   Future<void> scheduleWorkoutCheckInReminder(
     String workoutId,
@@ -517,6 +540,184 @@ class NotificationService {
   
   void dispose() {
     _workoutStreamController.close();
+  }
+  
+  // Send notification for session cancellation by trainer
+  Future<void> sendSessionCancellationNotification(
+    String clientId,
+    String trainerName,
+    DateTime scheduledTime,
+    String sessionLocation,
+    String? cancellationReason,
+  ) async {
+    // Skip for web platform
+    if (kIsWeb) return;
+    
+    try {
+      // Get client's FCM token(s)
+      final clientDoc = await _firestore.collection('users').doc(clientId).get();
+      final clientData = clientDoc.data();
+      if (clientData == null || !clientData.containsKey('fcmTokens')) {
+        print('No FCM tokens found for client: $clientId');
+        return;
+      }
+      
+      final List<dynamic> fcmTokens = clientData['fcmTokens'] ?? [];
+      if (fcmTokens.isEmpty) {
+        print('Empty FCM tokens list for client: $clientId');
+        return;
+      }
+      
+      // Format session time for display
+      final String sessionTime = _formatSessionTime(scheduledTime);
+      
+      // Create notification message
+      String notificationBody = 'Your session with $trainerName scheduled for $sessionTime has been cancelled';
+      if (cancellationReason != null && cancellationReason.isNotEmpty) {
+        notificationBody += '. Reason: $cancellationReason';
+      }
+      
+      // Show a local notification
+      await _showLocalNotification(
+        id: scheduledTime.millisecondsSinceEpoch,
+        title: 'Session Cancelled',
+        body: notificationBody,
+        payload: 'session_cancelled',
+      );
+    } catch (e) {
+      print('Error sending session cancellation notification: $e');
+    }
+  }
+  
+  // Send notification for workout completion to trainer
+  Future<void> sendWorkoutCompletedNotification(
+    String trainerId,
+    String clientName,
+    String workoutName,
+  ) async {
+    // Skip for web platform
+    if (kIsWeb) return;
+    
+    try {
+      // Get trainer's FCM token(s)
+      final trainerDoc = await _firestore.collection('users').doc(trainerId).get();
+      final trainerData = trainerDoc.data();
+      if (trainerData == null || !trainerData.containsKey('fcmTokens')) {
+        print('No FCM tokens found for trainer: $trainerId');
+        return;
+      }
+      
+      final List<dynamic> fcmTokens = trainerData['fcmTokens'] ?? [];
+      if (fcmTokens.isEmpty) {
+        print('Empty FCM tokens list for trainer: $trainerId');
+        return;
+      }
+      
+      // Show a local notification
+      await _showLocalNotification(
+        id: DateTime.now().millisecondsSinceEpoch,
+        title: 'Workout Completed',
+        body: '$clientName completed the workout "$workoutName"',
+        payload: 'workout_completed',
+      );
+    } catch (e) {
+      print('Error sending workout completion notification: $e');
+    }
+  }
+  
+  // Send notification for session booking to trainer
+  Future<void> sendSessionBookedNotification(
+    String trainerId,
+    String clientName,
+    DateTime sessionTime,
+    String sessionLocation,
+  ) async {
+    // Skip for web platform
+    if (kIsWeb) return;
+    
+    try {
+      // Get trainer's FCM token(s)
+      final trainerDoc = await _firestore.collection('users').doc(trainerId).get();
+      final trainerData = trainerDoc.data();
+      if (trainerData == null || !trainerData.containsKey('fcmTokens')) {
+        print('No FCM tokens found for trainer: $trainerId');
+        return;
+      }
+      
+      final List<dynamic> fcmTokens = trainerData['fcmTokens'] ?? [];
+      if (fcmTokens.isEmpty) {
+        print('Empty FCM tokens list for trainer: $trainerId');
+        return;
+      }
+      
+      // Format session time for display
+      final String formattedTime = _formatSessionTime(sessionTime);
+      
+      // Show a local notification
+      await _showLocalNotification(
+        id: sessionTime.millisecondsSinceEpoch,
+        title: 'New Session Booked',
+        body: '$clientName booked a session for $formattedTime at $sessionLocation',
+        payload: 'session_booked',
+      );
+    } catch (e) {
+      print('Error sending session booked notification: $e');
+    }
+  }
+  
+  // Send notification for session cancellation by client
+  Future<void> sendClientCancelledSessionNotification(
+    String trainerId,
+    String clientName,
+    DateTime scheduledTime,
+    String? cancellationReason,
+  ) async {
+    // Skip for web platform
+    if (kIsWeb) return;
+    
+    try {
+      // Get trainer's FCM token(s)
+      final trainerDoc = await _firestore.collection('users').doc(trainerId).get();
+      final trainerData = trainerDoc.data();
+      if (trainerData == null || !trainerData.containsKey('fcmTokens')) {
+        print('No FCM tokens found for trainer: $trainerId');
+        return;
+      }
+      
+      final List<dynamic> fcmTokens = trainerData['fcmTokens'] ?? [];
+      if (fcmTokens.isEmpty) {
+        print('Empty FCM tokens list for trainer: $trainerId');
+        return;
+      }
+      
+      // Format session time for display
+      final String sessionTime = _formatSessionTime(scheduledTime);
+      
+      // Create notification message
+      String notificationBody = '$clientName cancelled their session scheduled for $sessionTime';
+      if (cancellationReason != null && cancellationReason.isNotEmpty) {
+        notificationBody += '. Reason: $cancellationReason';
+      }
+      
+      // Show a local notification
+      await _showLocalNotification(
+        id: scheduledTime.millisecondsSinceEpoch,
+        title: 'Session Cancelled',
+        body: notificationBody,
+        payload: 'client_cancelled_session',
+      );
+    } catch (e) {
+      print('Error sending client session cancellation notification: $e');
+    }
+  }
+  
+  // Helper method to format session time for display
+  String _formatSessionTime(DateTime time) {
+    final hour = time.hour > 12 ? time.hour - 12 : (time.hour == 0 ? 12 : time.hour);
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.hour >= 12 ? 'PM' : 'AM';
+    final date = '${time.month}/${time.day}/${time.year}';
+    return '$date at $hour:$minute $period';
   }
 }
 

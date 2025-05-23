@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/workout_template_model.dart';
 import '../models/assigned_workout_model.dart';
+import '../services/notification_service.dart';
 
 class WorkoutTemplateService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -171,6 +172,14 @@ class WorkoutTemplateService {
           'relatedId': workoutId,
           'clientId': workout.clientId,
         });
+        
+        // Send notification to trainer
+        final notificationService = NotificationService();
+        notificationService.sendWorkoutCompletedNotification(
+          workout.trainerId,
+          clientName,
+          workout.workoutName,
+        );
       } catch (e) {
         print('Error adding workout completion to activity feed: $e');
         // Continue even if adding to activity feed fails
