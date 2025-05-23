@@ -1170,13 +1170,12 @@ class _ClientDashboardState extends State<ClientDashboard> {
                       if (value == 'cancel') {
                         _showCancelSessionDialog(session);
                       } else if (value == 'track' && session.trainerLocationEnabled) {
-                        // TEMPORARILY DISABLED FOR SCREENSHOT PURPOSES
                         // Check if we're within 30 minutes of the session start time
-                        // final now = DateTime.now();
-                        // final thirtyMinutesBeforeStart = session.startTime.subtract(const Duration(minutes: 30));
+                        final now = DateTime.now();
+                        final thirtyMinutesBeforeStart = session.startTime.subtract(const Duration(minutes: 30));
                         
-                        // if (now.isAfter(thirtyMinutesBeforeStart)) {
-                          // Within 30 minutes of session, allowed to track
+                        if (now.isAfter(thirtyMinutesBeforeStart)) {
+                          //Within 30 minutes of session, allowed to track
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -1185,10 +1184,10 @@ class _ClientDashboardState extends State<ClientDashboard> {
                               ),
                             ),
                           );
-                        // } else {
-                        //   // Too early, show restriction dialog
-                        //   _showTrackingRestrictionDialog(session);
-                        // }
+                         } else {
+                           // Too early, show restriction dialog
+                           _showTrackingRestrictionDialog(session);
+                         }
                       }
                     },
                   ),
