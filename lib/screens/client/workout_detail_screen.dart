@@ -33,6 +33,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   Future<void> _updateWorkoutStatus(WorkoutStatus status) async {
     if (_isUpdating) return;
     
+    // Don't allow status updates for session-based workouts
+    if (widget.workout.isSessionBased) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Training session status is managed automatically')),
+        );
+      }
+      return;
+    }
+    
     setState(() {
       _isUpdating = true;
     });
@@ -242,6 +252,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           ),
           
           // Bottom status control buttons
+          if (!widget.workout.isSessionBased)
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -342,6 +353,58 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 ],
               ],
             ),
+            )
+          else
+            // Session-based workout info
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, -1),
+                  ),
+                ],
+                border: Border(
+                  top: BorderSide(
+                    color: AppStyles.dividerGrey,
+                    width: 1,
+                  ),
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 30.0),
+              margin: const EdgeInsets.only(bottom: 16.0),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.person,
+                        color: AppStyles.primarySage,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Training Session',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppStyles.textDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'This is a training session with your trainer. Status is managed automatically.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppStyles.slateGray,
+                    ),
+                  ),
+                ],
+              ),
           ),
         ],
       ),

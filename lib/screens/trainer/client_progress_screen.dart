@@ -31,16 +31,22 @@ class WorkoutProgressData {
   });
 }
 
-class ClientProgressScreen extends StatefulWidget {
-  const ClientProgressScreen({super.key});
+class TrainerClientProgressScreen extends StatefulWidget {
+  final String clientId;
+  final String clientName;
+
+  const TrainerClientProgressScreen({
+    super.key,
+    required this.clientId,
+    required this.clientName,
+  });
 
   @override
-  State<ClientProgressScreen> createState() => _ClientProgressScreenState();
+  State<TrainerClientProgressScreen> createState() => _TrainerClientProgressScreenState();
 }
 
-class _ClientProgressScreenState extends State<ClientProgressScreen> {
+class _TrainerClientProgressScreenState extends State<TrainerClientProgressScreen> {
   final WorkoutTemplateService _workoutTemplateService = WorkoutTemplateService();
-  final AuthService _authService = AuthService();
   final WeightService _weightService = WeightService();
   
   CalendarFormat _calendarFormat = CalendarFormat.month;
@@ -49,7 +55,6 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
   
   Map<DateTime, List<WorkoutProgressData>> _completedWorkouts = {};
   bool _isLoading = true;
-  String? _clientId;
   UserModel? _client;
   
   // Stats
@@ -70,12 +75,22 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
   
   Future<void> _loadClientData() async {
     try {
-      final user = await _authService.getUserModel();
-      if (mounted) {
-        setState(() {
-          _clientId = user.uid;
-          _client = user;
-        });
+      // Load client user model from Firestore
+      final clientDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.clientId)
+          .get();
+      
+      if (clientDoc.exists) {
+        if (mounted) {
+          setState(() {
+            _client = UserModel.fromMap(
+              clientDoc.data() as Map<String, dynamic>,
+              uid: widget.clientId,
+              email: (clientDoc.data() as Map<String, dynamic>)['email'] ?? '',
+            );
+          });
+        }
       }
       
       await _loadCompletedWorkouts();
@@ -93,8 +108,8 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
   
   Future<void> _loadWeightEntries() async {
     try {
-      final entries = await _weightService.getWeightEntries();
-      print("Loaded ${entries.length} weight entries");
+      final entries = await _weightService.getWeightEntriesForClient(widget.clientId);
+      print("Loaded ${entries.length} weight entries for client ${widget.clientName}");
       
       if (entries.isNotEmpty) {
         // Debug information about weight entries
@@ -102,7 +117,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
           print("Weight entry: ${entry.weightInPounds.toStringAsFixed(1)} lbs, date: ${DateFormat('yyyy-MM-dd').format(entry.date)}");
         });
       } else {
-        print("No weight entries found");
+        print("No weight entries found for client ${widget.clientName}");
       }
       
       if (mounted) {
@@ -126,10 +141,10 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
       // Group workouts by date
       Map<DateTime, List<WorkoutProgressData>> workoutsByDate = {};
       
-      // Only load completed assigned workouts - skip the old WorkoutService approach
+      // Only load completed assigned workouts for this specific client
       await _loadCompletedAssignedWorkouts(workoutsByDate);
       
-      print("Grouped workouts by date: ${workoutsByDate.keys.length} days with workouts");
+      print("Grouped workouts by date for ${widget.clientName}: ${workoutsByDate.keys.length} days with workouts");
       // Print each date with workouts for debugging
       workoutsByDate.forEach((date, workouts) {
         print("${DateFormat('yyyy-MM-dd').format(date)}: ${workouts.length} workouts");
@@ -151,22 +166,21 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
     }
   }
   
-  // Load completed assigned workouts, convert them to WorkoutProgressData objects
+  // Load completed workouts using just the workout template service
   Future<void> _loadCompletedAssignedWorkouts(Map<DateTime, List<WorkoutProgressData>> workoutsByDate) async {
-    if (_clientId == null) return;
-    
     try {
-      // Get regular workouts only (sessions will be shown in the main workouts screen)
-      final regularWorkoutsStream = _workoutTemplateService.getClientWorkouts(_clientId!);
+      // Get regular workouts only (sessions will be shown in the main workouts tab)
+      final regularWorkoutsStream = _workoutTemplateService.getClientWorkouts(widget.clientId);
       final allWorkouts = await regularWorkoutsStream.first;
       
-      // Filter for completed workouts only
+      // Filter only completed workouts
       final completedWorkouts = allWorkouts.where((workout) => 
-          workout.status == WorkoutStatus.completed && workout.completedDate != null).toList();
+        workout.status == WorkoutStatus.completed).toList();
       
-      print("Found ${completedWorkouts.length} completed workouts");
-        
+      print("Found ${completedWorkouts.length} completed workouts for ${widget.clientName}");
+      
       for (var assignedWorkout in completedWorkouts) {
+        if (assignedWorkout.completedDate != null) {
           // Create a WorkoutProgressData from the AssignedWorkout
           final workoutProgressData = WorkoutProgressData(
             id: assignedWorkout.id,
@@ -189,6 +203,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
           
           workoutsByDate[workoutDate]!.add(workoutProgressData);
           print("Added workout to date ${DateFormat('yyyy-MM-dd').format(workoutDate)}: ${assignedWorkout.workoutName}");
+        }
       }
     } catch (e) {
       print("Error loading completed workouts: $e");
@@ -209,7 +224,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
     }
     
     // Print all dates for debugging
-    print("All workout dates:");
+    print("All workout dates for ${widget.clientName}:");
     _completedWorkouts.keys.forEach((date) {
       print("  ${DateFormat('yyyy-MM-dd').format(date)}: ${_completedWorkouts[date]!.length} workouts");
     });
@@ -241,7 +256,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
     for (var date in _completedWorkouts.keys) {
       if (date.year == today.year && date.month == today.month && date.day == today.day) {
         hasWorkoutToday = true;
-        print("FOUND TODAY'S WORKOUT: ${DateFormat('yyyy-MM-dd').format(date)}");
+        print("FOUND TODAY'S WORKOUT for ${widget.clientName}: ${DateFormat('yyyy-MM-dd').format(date)}");
         break;
       }
     }
@@ -331,12 +346,12 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
     
     // Log for debugging
     if (result.isNotEmpty) {
-      print("Found ${result.length} workouts for ${DateFormat('yyyy-MM-dd').format(normalizedDay)}");
+      print("Found ${result.length} workouts for ${widget.clientName} on ${DateFormat('yyyy-MM-dd').format(normalizedDay)}");
     }
     
     return result;
   }
-  
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -346,226 +361,218 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
         ),
       );
     }
-    
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Progress Tracking'),
-        backgroundColor: AppStyles.offWhite,
-        foregroundColor: AppStyles.textDark,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Calendar
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: TableCalendar(
-                    firstDay: DateTime.utc(2020, 1, 1),
-                    lastDay: DateTime.utc(2030, 12, 31),
-                    focusedDay: _focusedDay,
-                    calendarFormat: _calendarFormat,
-                    eventLoader: _getWorkoutsForDay,
-                    selectedDayPredicate: (day) {
-                      return isSameDay(_selectedDay, day);
-                    },
-                    onDaySelected: (selectedDay, focusedDay) {
-                      setState(() {
-                        _selectedDay = selectedDay;
-                        _focusedDay = focusedDay;
-                      });
-                    },
-                    onFormatChanged: (format) {
-                      setState(() {
-                        _calendarFormat = format;
-                      });
-                    },
-                    onPageChanged: (focusedDay) {
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Calendar
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TableCalendar(
+                  firstDay: DateTime.utc(2020, 1, 1),
+                  lastDay: DateTime.utc(2030, 12, 31),
+                  focusedDay: _focusedDay,
+                  calendarFormat: _calendarFormat,
+                  eventLoader: _getWorkoutsForDay,
+                  selectedDayPredicate: (day) {
+                    return isSameDay(_selectedDay, day);
+                  },
+                  onDaySelected: (selectedDay, focusedDay) {
+                    setState(() {
+                      _selectedDay = selectedDay;
                       _focusedDay = focusedDay;
-                    },
-                    calendarStyle: CalendarStyle(
-                      // Customize the calendar appearance
-                      markersMaxCount: 3,
-                      markerSize: 8,
-                      markerDecoration: const BoxDecoration(
-                        color: AppStyles.successGreen,
-                        shape: BoxShape.circle,
-                      ),
-                      todayDecoration: BoxDecoration(
-                        color: AppStyles.primarySage.withOpacity(0.5),
-                        shape: BoxShape.circle,
-                      ),
-                      selectedDecoration: BoxDecoration(
-                        color: AppStyles.primarySage,
-                        shape: BoxShape.circle,
-                      ),
-                      // Make sure markers are visible
-                      markersAnchor: 1.7,
-                      markersAutoAligned: true,
+                    });
+                  },
+                  onFormatChanged: (format) {
+                    setState(() {
+                      _calendarFormat = format;
+                    });
+                  },
+                  onPageChanged: (focusedDay) {
+                    _focusedDay = focusedDay;
+                  },
+                  calendarStyle: CalendarStyle(
+                    // Customize the calendar appearance
+                    markersMaxCount: 3,
+                    markerSize: 8,
+                    markerDecoration: const BoxDecoration(
+                      color: AppStyles.successGreen,
+                      shape: BoxShape.circle,
                     ),
-                    headerStyle: HeaderStyle(
-                      formatButtonTextStyle: const TextStyle(
-                        color: AppStyles.primarySage,
-                      ),
-                      formatButtonDecoration: BoxDecoration(
-                        border: Border.all(color: AppStyles.primarySage),
-                        borderRadius: BorderRadius.circular(16.0),
-                      ),
+                    todayDecoration: BoxDecoration(
+                      color: AppStyles.primarySage.withOpacity(0.5),
+                      shape: BoxShape.circle,
                     ),
-                    calendarBuilders: CalendarBuilders(
-                      // Add a custom marker builder to make the markers more visible
-                      markerBuilder: (context, day, events) {
-                        if (events.isEmpty) return const SizedBox.shrink();
-                        
-                        return Positioned(
-                          bottom: 1,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.green,
-                            ),
-                          ),
-                        );
-                      },
+                    selectedDecoration: BoxDecoration(
+                      color: AppStyles.primarySage,
+                      shape: BoxShape.circle,
+                    ),
+                    // Make sure markers are visible
+                    markersAnchor: 1.7,
+                    markersAutoAligned: true,
+                  ),
+                  headerStyle: HeaderStyle(
+                    formatButtonTextStyle: const TextStyle(
+                      color: AppStyles.primarySage,
+                    ),
+                    formatButtonDecoration: BoxDecoration(
+                      border: Border.all(color: AppStyles.primarySage),
+                      borderRadius: BorderRadius.circular(16.0),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 24),
-            
-              // Stats cards
-              Row(
-                children: [
-                  _buildStatCard(
-                    context,
-                    title: 'Current Streak',
-                    value: '$_currentStreak ${_currentStreak == 1 ? 'day' : 'days'}',
-                    icon: Icons.local_fire_department,
-                    color: AppStyles.warningAmber,
-                  ),
-                  const SizedBox(width: 16),
-                  _buildStatCard(
-                    context,
-                    title: 'Longest Streak',
-                    value: '$_longestStreak ${_longestStreak == 1 ? 'day' : 'days'}',
-                    icon: Icons.emoji_events,
-                    color: AppStyles.softGold,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  _buildStatCard(
-                    context,
-                    title: 'Days Completed',
-                    value: '$_completedWorkoutsCount',
-                    icon: Icons.fitness_center,
-                    color: AppStyles.successGreen,
-                  ),
-                  const SizedBox(width: 16),
-                  _buildStatCard(
-                    context,
-                    title: 'This Month',
-                    value: '${_getWorkoutsThisMonth()}',
-                    icon: Icons.calendar_month,
-                    color: AppStyles.mutedBlue,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-            
-              // Weight and BMI Chart Section - Always show to debug
-              Card(
-                color: AppStyles.offWhite,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _showBMI ? 'BMI Progress' : 'Weight Progress',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppStyles.textDark,
-                            ),
-                          ),
-                          Switch(
-                            value: _showBMI,
-                            onChanged: (value) {
-                              setState(() {
-                                _showBMI = value;
-                                print("Toggled to ${_showBMI ? 'BMI' : 'Weight'} display");
-                              });
-                            },
-                            activeColor: AppStyles.primarySage,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        height: 250,
-                        child: _weightEntries.isEmpty 
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.scale,
-                                      size: 64,
-                                      color: AppStyles.slateGray.withOpacity(0.5),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'No weight data available yet\nRecord your weight on the dashboard',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: AppStyles.slateGray,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                          : _buildProgressChart(),
-                      ),
-                      const SizedBox(height: 8),
-                      Center(
-                        child: Text(
-                          _showBMI ? 'BMI Over Time' : 'Weight (lbs) Over Time',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppStyles.slateGray,
+                  calendarBuilders: CalendarBuilders(
+                    // Add a custom marker builder to make the markers more visible
+                    markerBuilder: (context, day, events) {
+                      if (events.isEmpty) return const SizedBox.shrink();
+                      
+                      return Positioned(
+                        bottom: 1,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.green,
                           ),
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-            
-              // Workouts for selected day
-              if (_selectedDay != null)
-                Container(
-                  height: 300, // Fixed height for the workout list
-                  child: _buildSelectedDayWorkouts(),
+            ),
+            const SizedBox(height: 24),
+          
+            // Stats cards
+            Row(
+              children: [
+                _buildStatCard(
+                  context,
+                  title: 'Current Streak',
+                  value: '$_currentStreak ${_currentStreak == 1 ? 'day' : 'days'}',
+                  icon: Icons.local_fire_department,
+                  color: AppStyles.warningAmber,
                 ),
-            ],
-          ),
+                const SizedBox(width: 16),
+                _buildStatCard(
+                  context,
+                  title: 'Longest Streak',
+                  value: '$_longestStreak ${_longestStreak == 1 ? 'day' : 'days'}',
+                  icon: Icons.emoji_events,
+                  color: AppStyles.softGold,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                _buildStatCard(
+                  context,
+                  title: 'Days Completed',
+                  value: '$_completedWorkoutsCount',
+                  icon: Icons.fitness_center,
+                  color: AppStyles.successGreen,
+                ),
+                const SizedBox(width: 16),
+                _buildStatCard(
+                  context,
+                  title: 'This Month',
+                  value: '${_getWorkoutsThisMonth()}',
+                  icon: Icons.calendar_month,
+                  color: AppStyles.mutedBlue,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+          
+            // Weight and BMI Chart Section - Always show to debug
+            Card(
+              color: AppStyles.offWhite,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _showBMI ? 'BMI Progress' : 'Weight Progress',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppStyles.textDark,
+                          ),
+                        ),
+                        Switch(
+                          value: _showBMI,
+                          onChanged: (value) {
+                            setState(() {
+                              _showBMI = value;
+                              print("Toggled to ${_showBMI ? 'BMI' : 'Weight'} display for ${widget.clientName}");
+                            });
+                          },
+                          activeColor: AppStyles.primarySage,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 250,
+                      child: _weightEntries.isEmpty 
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.scale,
+                                    size: 64,
+                                    color: AppStyles.slateGray.withOpacity(0.5),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'No weight data available yet\nClient needs to record weight on dashboard',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: AppStyles.slateGray,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                        : _buildProgressChart(),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        _showBMI ? 'BMI Over Time' : 'Weight (lbs) Over Time',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppStyles.slateGray,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          
+            // Workouts for selected day
+            if (_selectedDay != null)
+              Container(
+                height: 300, // Fixed height for the workout list
+                child: _buildSelectedDayWorkouts(),
+              ),
+          ],
         ),
       ),
     );
@@ -590,72 +597,6 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
   Widget _buildSelectedDayWorkouts() {
     final workouts = _getWorkoutsForDay(_selectedDay!);
     
-    if (workouts.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.fitness_center,
-              size: 64,
-              color: AppStyles.slateGray.withOpacity(0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No workouts completed on this day',
-              style: TextStyle(
-                fontSize: 18,
-                color: AppStyles.slateGray,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    
-    return ListView.builder(
-      itemCount: workouts.length,
-      itemBuilder: (context, index) {
-        final workout = workouts[index];
-        return Card(
-          color: AppStyles.offWhite,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          margin: const EdgeInsets.only(bottom: 12.0),
-          child: ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: AppStyles.successGreen,
-              child: Icon(Icons.check, color: AppStyles.textDark),
-            ),
-            title: const Text(
-              'Workout Completed',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppStyles.textDark,
-              ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text(
-                  'Program: ${workout.workoutName}',
-                  style: const TextStyle(color: AppStyles.slateGray),
-                ),
-                Text(
-                  'Completed at: ${DateFormat.jm().format(workout.completedDate)}',
-                  style: const TextStyle(color: AppStyles.slateGray),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-  
-  Widget _buildWorkoutList(List<WorkoutProgressData> workouts) {
     if (workouts.isEmpty) {
       return Center(
         child: Column(
@@ -778,7 +719,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
       );
     }
 
-    print("Building progress chart with ${_weightEntries.length} weight entries");
+    print("Building progress chart with ${_weightEntries.length} weight entries for ${widget.clientName}");
 
     // Group weight entries by day to ensure only one data point per day
     Map<String, WeightEntry> entriesByDate = {};
@@ -796,7 +737,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
         ? uniqueDailyEntries.sublist(uniqueDailyEntries.length - 30) 
         : uniqueDailyEntries;
 
-    print("Showing ${entriesToShow.length} unique daily entries");
+    print("Showing ${entriesToShow.length} unique daily entries for ${widget.clientName}");
 
     // Find min and max values for scaling
     double minY = double.infinity;
@@ -815,7 +756,7 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
     minY = (minY == double.infinity) ? 0 : (minY * 0.9);
     maxY = maxY * 1.1;
     
-    print("Chart range: $minY to $maxY");
+    print("Chart range for ${widget.clientName}: $minY to $maxY");
 
     // Generate line chart data
     LineChartBarData lineData = LineChartBarData(

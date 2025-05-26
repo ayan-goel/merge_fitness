@@ -13,10 +13,12 @@ import '../../models/nutrition_plan_model.dart';
 // Services
 import '../../services/auth_service.dart';
 import '../../services/workout_template_service.dart';
+import '../../services/enhanced_workout_service.dart';
 import '../../services/weight_service.dart';
 import '../../services/calendly_service.dart';
 import '../../services/nutrition_service.dart';
 import '../../services/location_service.dart';
+import '../../services/session_monitoring_service.dart';
 
 // Themes
 import '../../theme/app_styles.dart';
@@ -41,10 +43,12 @@ class ClientDashboard extends StatefulWidget {
 class _ClientDashboardState extends State<ClientDashboard> {
   final AuthService _authService = AuthService();
   final WorkoutTemplateService _workoutService = WorkoutTemplateService();
+  final EnhancedWorkoutService _enhancedWorkoutService = EnhancedWorkoutService();
   final WeightService _weightService = WeightService();
   final CalendlyService _calendlyService = CalendlyService();
   final NutritionService _nutritionService = NutritionService();
   final LocationService _locationService = LocationService();
+  final SessionMonitoringService _sessionMonitoringService = SessionMonitoringService();
   
   UserModel? _client;
   UserModel? _trainer; // Client's assigned trainer
@@ -115,11 +119,14 @@ class _ClientDashboardState extends State<ClientDashboard> {
   void initState() {
     super.initState();
     _loadClientData();
+    // Start session monitoring
+    _sessionMonitoringService.startMonitoring();
   }
   
   @override
   void dispose() {
     _weightController.dispose();
+    _sessionMonitoringService.stopMonitoring();
     super.dispose();
   }
   
@@ -268,8 +275,8 @@ class _ClientDashboardState extends State<ClientDashboard> {
     if (_client == null) return;
     
     try {
-      // Get all workouts for the client
-      final workoutsStream = _workoutService.getClientWorkouts(_client!.uid);
+      // Get all workouts for the client (including sessions)
+      final workoutsStream = _enhancedWorkoutService.getClientWorkouts(_client!.uid);
       final workouts = await workoutsStream.first;
       
       // Calculate streak
@@ -524,7 +531,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
               
               // Workouts list with fixed height
               StreamBuilder<List<AssignedWorkout>>(
-                stream: _workoutService.getCurrentWorkouts(_client!.uid),
+                stream: _enhancedWorkoutService.getCurrentWorkouts(_client!.uid),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());

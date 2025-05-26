@@ -23,9 +23,16 @@ class AuthService {
         password: password,
       );
       
-      // After successful login, check for workout reminders
+      // After successful login, check for workout reminders and initialize FCM
       if (!kIsWeb) {
         _checkWorkoutReminders();
+      }
+      
+      // Initialize FCM token now that user is authenticated
+      try {
+        await notificationService.initializeFcmTokenAfterAuth();
+      } catch (e) {
+        print('Error initializing FCM after login: $e');
       }
       
       return userCredential;

@@ -325,10 +325,19 @@ class CalendlyService {
       final selectedEventTypeUri = data?['selectedCalendlyEventType'] as String?;
       
       String eventTypeUri;
+      int eventDurationMinutes = 60; // Default to 60 minutes
       
       if (selectedEventTypeUri != null) {
         print('CalendlyService: getTrainerAvailability - Using selected event type: $selectedEventTypeUri');
         eventTypeUri = selectedEventTypeUri;
+        
+        // Get the event type details to find the duration
+        final eventTypes = await getTrainerEventTypes(trainerId);
+        final selectedEventType = eventTypes.firstWhere(
+          (type) => type['uri'] == selectedEventTypeUri,
+          orElse: () => {'duration': 60}, // Default to 60 minutes if not found
+        );
+        eventDurationMinutes = selectedEventType['duration'] ?? 60;
       } else {
         // Fallback to getting first event type
         print('CalendlyService: getTrainerAvailability - No selected event type, fetching all event types');
@@ -348,9 +357,12 @@ class CalendlyService {
         
         // Use the first active event type
         eventTypeUri = activeEventTypes[0]['uri'];
+        eventDurationMinutes = activeEventTypes[0]['duration'] ?? 60;
         final eventName = activeEventTypes[0]['name'] ?? 'Unknown Event Type';
-      print('CalendlyService: getTrainerAvailability - Using event type: "$eventName" with URI: $eventTypeUri');
+      print('CalendlyService: getTrainerAvailability - Using event type: "$eventName" with URI: $eventTypeUri, duration: ${eventDurationMinutes}min');
       }
+      
+      print('CalendlyService: getTrainerAvailability - Event duration: ${eventDurationMinutes} minutes');
       
       // Set date range (default to current time + 1 hour for start, and 7 days after that for end)
       // This ensures start_time is always in the future as required by Calendly
@@ -413,9 +425,9 @@ class CalendlyService {
               if (slot.containsKey('end_time') && slot['end_time'] != null) {
                 endTimeUtc = DateTime.parse(slot['end_time']);
               } else {
-                // Default to 30-minute slots if no end_time is provided
-                // This is a common default in Calendly, but ideally we should get the duration from the event type
-                endTimeUtc = startTimeUtc.add(const Duration(minutes: 30));
+                // Use the actual event type duration instead of defaulting to 30 minutes
+                endTimeUtc = startTimeUtc.add(Duration(minutes: eventDurationMinutes));
+                print('CalendlyService: getTrainerAvailability - Calculated end time using ${eventDurationMinutes}min duration: ${endTimeUtc.toIso8601String()}');
               }
               
               // Convert end time to EST

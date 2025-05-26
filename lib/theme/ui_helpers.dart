@@ -88,7 +88,7 @@ class UIHelpers {
   }
   
   /// Create a premium gradient button
-  static ElevatedButtonStyle premiumButton({
+  static ButtonStyle premiumButton({
     Gradient? gradient,
     double elevation = 4,
     double borderRadius = 12,
@@ -100,7 +100,7 @@ class UIHelpers {
       ),
       elevation: elevation,
     ).copyWith(
-      backgroundColor: MaterialStateProperty.all(Colors.transparent),
+      backgroundColor: WidgetStateProperty.all(Colors.transparent),
     );
   }
   

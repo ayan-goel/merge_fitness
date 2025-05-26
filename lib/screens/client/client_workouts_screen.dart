@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../models/assigned_workout_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_template_service.dart';
+import '../../services/enhanced_workout_service.dart';
 import '../../theme/app_styles.dart';
 import 'workout_detail_screen.dart';
 
@@ -63,6 +64,7 @@ class ClientWorkoutsScreen extends StatefulWidget {
 class _ClientWorkoutsScreenState extends State<ClientWorkoutsScreen> {
   final AuthService _authService = AuthService();
   final WorkoutTemplateService _workoutService = WorkoutTemplateService();
+  final EnhancedWorkoutService _enhancedWorkoutService = EnhancedWorkoutService();
   
   String? _clientId;
   String _selectedFilter = 'All';
@@ -90,8 +92,8 @@ class _ClientWorkoutsScreenState extends State<ClientWorkoutsScreen> {
     if (_clientId == null) return;
     
     try {
-      // Find the workout in the stream
-      final workouts = await _workoutService.getClientWorkouts(_clientId!).first;
+      // Find the workout in the stream using enhanced service
+      final workouts = await _enhancedWorkoutService.getClientWorkouts(_clientId!).first;
       final workout = workouts.firstWhere(
         (w) => w.id == workoutId,
         orElse: () => throw Exception('Workout not found'),
@@ -174,7 +176,7 @@ class _ClientWorkoutsScreenState extends State<ClientWorkoutsScreen> {
           // Workout list
           Expanded(
             child: StreamBuilder<List<AssignedWorkout>>(
-              stream: _workoutService.getClientWorkouts(_clientId!),
+              stream: _enhancedWorkoutService.getClientWorkouts(_clientId!),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(
@@ -302,10 +304,16 @@ class WorkoutCard extends StatelessWidget {
     final isPast = workoutDate.isBefore(today);
     final isToday = workoutDate.isAtSameMomentAs(today);
     
+    // Different styling for training sessions vs regular workouts
+    final isTrainingSession = workout.isSessionBased;
+    
     return Card(
       color: AppStyles.offWhite,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
+        side: isTrainingSession 
+            ? BorderSide(color: AppStyles.primarySage.withOpacity(0.2), width: 1.5)
+            : BorderSide.none,
       ),
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -318,6 +326,34 @@ class WorkoutCard extends StatelessWidget {
             children: [
               Row(
                 children: [
+                  // Session type icon
+                  if (isTrainingSession)
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppStyles.primarySage.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.person,
+                        size: 20,
+                        color: AppStyles.primarySage,
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppStyles.mutedBlue.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.fitness_center,
+                        size: 20,
+                        color: AppStyles.mutedBlue,
+                      ),
+                    ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -325,7 +361,7 @@ class WorkoutCard extends StatelessWidget {
                         Text(
                           workout.workoutName,
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: isTrainingSession ? 15 : 16,
                             fontWeight: FontWeight.bold,
                             color: AppStyles.textDark,
                           ),
@@ -334,7 +370,7 @@ class WorkoutCard extends StatelessWidget {
                         Row(
                           children: [
                             Icon(
-                              Icons.calendar_today,
+                              isTrainingSession ? Icons.access_time : Icons.calendar_today,
                               size: 16,
                               color: isToday 
                                   ? AppStyles.successGreen 
@@ -342,9 +378,11 @@ class WorkoutCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4.0),
                             Text(
-                              isToday 
-                                  ? 'Today' 
-                                  : DateFormat('EEEE, MMM d').format(workout.scheduledDate),
+                              isTrainingSession
+                                  ? _formatSessionTime(workout.scheduledDate)
+                                  : (isToday 
+                                      ? 'Today' 
+                                      : DateFormat('EEEE, MMM d').format(workout.scheduledDate)),
                               style: TextStyle(
                                 fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
                                 color: isToday 
@@ -361,31 +399,25 @@ class WorkoutCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12.0),
-              Text(
-                '${workout.exercises.length} exercise${workout.exercises.length > 1 ? 's' : ''}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppStyles.slateGray,
-                ),
-              ),
-              const SizedBox(height: 16.0),
-              LinearProgressIndicator(
-                value: _getWorkoutProgressValue(workout),
-                backgroundColor: AppStyles.offWhite.withOpacity(0.3),
-                valueColor: AlwaysStoppedAnimation<Color>(_getProgressColor(workout, context)),
-              ),
-              if (workout.notes != null && workout.notes!.isNotEmpty)
+              
+              // Different content for sessions vs workouts
+              if (!isTrainingSession)
+                _buildWorkoutInfo(),
+                              if (workout.notes != null && workout.notes!.isNotEmpty)
                 Container(
+                  margin: const EdgeInsets.only(top: 12),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppStyles.offWhite.withOpacity(0.8),
+                    color: isTrainingSession 
+                        ? AppStyles.primarySage.withOpacity(0.08)
+                        : Colors.grey.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(
-                        Icons.notes,
+                        isTrainingSession ? Icons.location_on : Icons.notes,
                         color: AppStyles.slateGray,
                         size: 18,
                       ),
@@ -407,6 +439,55 @@ class WorkoutCard extends StatelessWidget {
         ),
       ),
     );
+  }
+  
+  Widget _buildSessionInfo() {
+    return Row(
+      children: [
+        Icon(
+          Icons.schedule,
+          size: 16,
+          color: AppStyles.primarySage,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          'Personal Training Session',
+          style: TextStyle(
+            fontSize: 14,
+            color: AppStyles.primarySage,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildWorkoutInfo() {
+    return Text(
+      '${workout.exercises.length} exercise${workout.exercises.length > 1 ? 's' : ''}',
+      style: const TextStyle(
+        fontSize: 14,
+        color: AppStyles.slateGray,
+      ),
+    );
+  }
+  
+  String _formatSessionTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final sessionDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
+    
+    String dateStr;
+    if (sessionDate.isAtSameMomentAs(today)) {
+      dateStr = 'Today';
+    } else if (sessionDate.isAtSameMomentAs(today.add(const Duration(days: 1)))) {
+      dateStr = 'Tomorrow';
+    } else {
+      dateStr = DateFormat('MMM d').format(dateTime);
+    }
+    
+    final timeStr = DateFormat('h:mm a').format(dateTime);
+    return '$dateStr at $timeStr';
   }
   
   // Helper function to calculate progress value

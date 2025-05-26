@@ -76,15 +76,17 @@ class WorkoutTemplateService {
       id: docRef.id,
       clientId: workout.clientId,
       trainerId: workout.trainerId,
+      workoutTemplateId: workout.workoutTemplateId,
       workoutName: workout.workoutName,
       workoutDescription: workout.workoutDescription,
       exercises: workout.exercises,
-      assignedDate: workout.assignedDate,
       scheduledDate: workout.scheduledDate,
       completedDate: workout.completedDate,
       status: workout.status,
       notes: workout.notes,
       feedback: workout.feedback,
+      isSessionBased: workout.isSessionBased,
+      sessionId: workout.sessionId,
     );
     
     // Update the document with the correct ID

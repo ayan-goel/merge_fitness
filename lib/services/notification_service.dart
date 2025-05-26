@@ -91,32 +91,54 @@ class NotificationService {
               String? token = await _messaging.getToken();
               if (token != null) {
                 await _saveFcmToken(token);
+                print('Web FCM token retrieved successfully');
+              } else {
+                print('No FCM token available for web');
               }
             } catch (e) {
               // Specifically catch and handle service worker errors
               if (e.toString().contains('no active Service Worker')) {
                 print('Web push notifications require a production HTTPS environment.');
+              } else if (e.toString().contains('permission')) {
+                print('Notification permission not granted for web');
               } else {
-                print('Error getting FCM token: $e');
+                print('Error getting web FCM token: $e');
               }
             }
           } else {
             print('Web push notifications are only available in HTTPS or localhost environments');
           }
         } else {
-          // Mobile platforms
+          // Mobile platforms - add more robust error handling
+          try {
           String? token = await _messaging.getToken();
           if (token != null) {
             await _saveFcmToken(token);
+              print('Mobile FCM token retrieved successfully');
+            } else {
+              print('No FCM token available for mobile');
+            }
+          } catch (e) {
+            if (e.toString().contains('MISSING_INSTANCEID_SERVICE')) {
+              print('Google Play Services not available - FCM not supported');
+            } else if (e.toString().contains('SERVICE_NOT_AVAILABLE')) {
+              print('FCM service not available on this device');
+            } else {
+              print('Error getting mobile FCM token: $e');
+            }
           }
         }
       } catch (e) {
-        print('Error getting FCM token: $e');
-        // Continue even if token retrieval fails
+        print('General error in FCM token setup: $e');
+        // Continue even if token retrieval fails completely
       }
       
-      // Listen for token refresh
-      _messaging.onTokenRefresh.listen(_saveFcmToken);
+      // Listen for token refresh with error handling
+      _messaging.onTokenRefresh.listen((token) {
+        _saveFcmToken(token).catchError((error) {
+          print('Error handling token refresh: $error');
+        });
+      });
       
       // Check for any initial notification if app was launched from a notification
       if (!kIsWeb) {
@@ -152,14 +174,62 @@ class NotificationService {
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
   }
   
+  // Initialize FCM token after user authentication
+  Future<void> initializeFcmTokenAfterAuth() async {
+    try {
+      User? user = _auth.currentUser;
+      if (user != null) {
+        if (kIsWeb) {
+          // Web platform
+          if (Uri.base.scheme == 'https' || Uri.base.host == 'localhost') {
+            String? token = await _messaging.getToken();
+            if (token != null) {
+              await _saveFcmToken(token);
+              print('FCM token initialized after auth for web');
+            }
+          }
+        } else {
+          // Mobile platforms
+          String? token = await _messaging.getToken();
+          if (token != null) {
+            await _saveFcmToken(token);
+            print('FCM token initialized after auth for mobile');
+          }
+        }
+      }
+    } catch (e) {
+      print('Error initializing FCM token after auth: $e');
+    }
+  }
+  
   // Save FCM token to Firestore for the current user
   Future<void> _saveFcmToken(String token) async {
+    try {
     User? user = _auth.currentUser;
     if (user != null) {
+        // Check if user document exists first
+        DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
+        
+        if (userDoc.exists) {
+          // Update existing document
       await _firestore.collection('users').doc(user.uid).update({
         'fcmTokens': FieldValue.arrayUnion([token]),
         'lastActive': FieldValue.serverTimestamp(),
       });
+          print('FCM token saved successfully for user: ${user.uid}');
+        } else {
+          // Create document if it doesn't exist
+          await _firestore.collection('users').doc(user.uid).set({
+            'fcmTokens': [token],
+            'lastActive': FieldValue.serverTimestamp(),
+            'email': user.email,
+          }, SetOptions(merge: true));
+          print('FCM token saved with new document for user: ${user.uid}');
+        }
+      }
+    } catch (e) {
+      print('Error saving FCM token: $e');
+      // Don't throw the error - continue app execution
     }
   }
   

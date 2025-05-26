@@ -102,6 +102,16 @@ class WeightService {
     return snapshot.docs.map((doc) => WeightEntry.fromFirestore(doc)).toList();
   }
 
+  // Get all weight entries for a specific client (for trainers)
+  Future<List<WeightEntry>> getWeightEntriesForClient(String clientId) async {
+    final snapshot = await _weightCollection
+        .where('userId', isEqualTo: clientId)
+        .orderBy('date', descending: true)
+        .get();
+
+    return snapshot.docs.map((doc) => WeightEntry.fromFirestore(doc)).toList();
+  }
+
   // Get weight entries for a specific date range
   Future<List<WeightEntry>> getWeightEntriesInRange(DateTime startDate, DateTime endDate) async {
     if (currentUserId == null) {

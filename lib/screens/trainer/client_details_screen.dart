@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import '../../models/assigned_workout_model.dart';
 import '../../models/nutrition_plan_model.dart';
 import '../../services/workout_template_service.dart';
+import '../../services/enhanced_workout_service.dart';
 import '../../services/nutrition_service.dart';
 import '../../theme/app_styles.dart';
 import 'assign_workout_screen.dart';
 import 'assign_nutrition_plan_screen.dart';
 import 'client_info_screen.dart';
 import 'client_meal_history_screen.dart';
+import 'client_progress_screen.dart';
 
 class ClientDetailsScreen extends StatefulWidget {
   final String clientId;
@@ -25,6 +27,7 @@ class ClientDetailsScreen extends StatefulWidget {
 
 class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
   final WorkoutTemplateService _workoutService = WorkoutTemplateService();
+  final EnhancedWorkoutService _enhancedWorkoutService = EnhancedWorkoutService();
   final NutritionService _nutritionService = NutritionService();
   
   void _navigateToAssignWorkout() {
@@ -150,7 +153,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.clientName),
@@ -168,6 +171,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
             tabs: [
               Tab(text: 'Workouts', icon: Icon(Icons.fitness_center)),
               Tab(text: 'Nutrition', icon: Icon(Icons.restaurant_menu)),
+              Tab(text: 'Progress', icon: Icon(Icons.analytics)),
             ],
           ),
         ),
@@ -202,7 +206,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                 
                 Expanded(
                   child: StreamBuilder<List<AssignedWorkout>>(
-                    stream: _workoutService.getClientWorkouts(widget.clientId),
+                    stream: _enhancedWorkoutService.getClientWorkouts(widget.clientId),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
@@ -444,6 +448,12 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                 ),
               ],
             ),
+            
+            // PROGRESS TAB
+            TrainerClientProgressScreen(
+              clientId: widget.clientId,
+              clientName: widget.clientName,
+            ),
           ],
         ),
       ),
@@ -463,6 +473,15 @@ class WorkoutCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16.0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: workout.isSessionBased
+            ? BorderSide(
+                color: const Color(0xFF8FAD88).withOpacity(0.3),
+                width: 1.5,
+              )
+            : BorderSide.none,
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -506,7 +525,25 @@ class WorkoutCard extends StatelessWidget {
                 ),
               ],
             ),
-            if (workout.exercises.isNotEmpty) ...[
+            if (workout.isSessionBased) ...[
+              const SizedBox(height: 8.0),
+              Row(
+                children: [
+                  Icon(
+                    Icons.person,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 4.0),
+                  Text(
+                    'Personal Training Session',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ] else if (workout.exercises.isNotEmpty) ...[
               const SizedBox(height: 8.0),
               Text(
                 '${workout.exercises.length} exercise${workout.exercises.length > 1 ? 's' : ''}',

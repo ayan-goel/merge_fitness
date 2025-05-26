@@ -27,6 +27,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
   List<TrainingSession> _allSessions = [];
   List<TrainingSession> _upcomingSessions = [];
   List<TrainingSession> _cancelledSessions = [];
+  List<TrainingSession> _completedSessions = [];
   bool _isCalendlyConnected = false;
   
   @override
@@ -51,7 +52,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
       // Load all sessions
       final allSessions = await _calendlyService.getTrainerSessions(trainer.uid);
       
-      // Separate sessions into upcoming (not cancelled) and cancelled
+      // Separate sessions into upcoming, cancelled, and completed
       final now = DateTime.now();
       final upcomingSessions = allSessions
           .where((session) => 
@@ -66,15 +67,24 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
               session.status == 'cancelled')
           .toList();
       
+      // Get completed sessions (past sessions or sessions marked as completed)
+      final completedSessions = allSessions
+          .where((session) => 
+              session.startTime.isBefore(now) || 
+              session.status == 'completed')
+          .toList();
+      
       // Sort by date
       upcomingSessions.sort((a, b) => a.startTime.compareTo(b.startTime));
       cancelledSessions.sort((a, b) => a.startTime.compareTo(b.startTime));
+      completedSessions.sort((a, b) => b.startTime.compareTo(a.startTime)); // Most recent first
       
       setState(() {
         _trainer = trainer;
         _allSessions = allSessions;
         _upcomingSessions = upcomingSessions;
         _cancelledSessions = cancelledSessions;
+        _completedSessions = completedSessions;
         _isCalendlyConnected = isConnected;
         _isLoading = false;
       });
@@ -95,7 +105,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
     }
     
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Training Sessions'),
@@ -109,6 +119,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Upcoming'),
+              Tab(text: 'Completed'),
               Tab(text: 'Cancelled'),
             ],
           ),
@@ -126,6 +137,11 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                   _upcomingSessions.isEmpty
                       ? _buildNoSessionsMessage('No upcoming sessions')
                       : _buildSessionsList(_upcomingSessions),
+                  
+                  // Completed Sessions Tab
+                  _completedSessions.isEmpty
+                      ? _buildNoSessionsMessage('No completed sessions')
+                      : _buildSessionsList(_completedSessions),
                   
                   // Cancelled Sessions Tab
                   _cancelledSessions.isEmpty
@@ -327,17 +343,20 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
   
   Widget _buildSessionRow(TrainingSession session) {
     final bool isCancelled = session.status == 'cancelled';
+    final bool isCompleted = session.status == 'completed' || session.startTime.isBefore(DateTime.now());
     
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: AppStyles.cardShadow,
-        border: isCancelled 
-            ? Border.all(color: Colors.grey.withOpacity(0.3), width: 1)
-            : null,
-      ),
+          return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: AppStyles.cardShadow,
+          border: isCancelled 
+              ? Border.all(color: Colors.grey.withOpacity(0.3), width: 1)
+              : isCompleted 
+                  ? Border.all(color: AppStyles.primarySage.withOpacity(0.3), width: 1)
+                  : null,
+        ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -353,15 +372,23 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                     decoration: BoxDecoration(
                       color: isCancelled
                           ? AppStyles.slateGray.withOpacity(0.2)
-                          : AppStyles.offWhite,
+                          : isCompleted
+                              ? AppStyles.primarySage.withOpacity(0.2)
+                              : AppStyles.offWhite,
                       borderRadius: BorderRadius.circular(12),
                       border: isCancelled 
                           ? Border.all(color: Colors.grey.withOpacity(0.5), width: 1)
-                          : null,
+                          : isCompleted
+                              ? Border.all(color: AppStyles.primarySage.withOpacity(0.5), width: 1)
+                              : null,
                     ),
                     child: Icon(
-                      Icons.fitness_center,
-                      color: isCancelled ? Colors.grey : AppStyles.primarySage,
+                      isCompleted ? Icons.check_circle : Icons.fitness_center,
+                      color: isCancelled 
+                          ? Colors.grey 
+                          : isCompleted 
+                              ? AppStyles.primarySage 
+                              : AppStyles.primarySage,
                       size: 24,
                     ),
                   ),
@@ -378,27 +405,35 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            size: 14,
-                            color: isCancelled ? Colors.grey : AppStyles.primarySage,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              '${DateFormat('h:mm a').format(session.startTime)} - ${DateFormat('h:mm a').format(session.endTime)}',
-                              style: TextStyle(
-                                decoration: isCancelled ? TextDecoration.lineThrough : null,
-                                color: isCancelled ? AppStyles.slateGray : AppStyles.slateGray,
-                                fontSize: 13,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                                              Row(
+                          children: [
+                            Icon(
+                              Icons.access_time,
+                              size: 14,
+                              color: isCancelled 
+                                  ? Colors.grey 
+                                  : isCompleted 
+                                      ? AppStyles.primarySage 
+                                      : AppStyles.primarySage,
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                '${DateFormat('h:mm a').format(session.startTime)} - ${DateFormat('h:mm a').format(session.endTime)}',
+                                style: TextStyle(
+                                  decoration: isCancelled ? TextDecoration.lineThrough : null,
+                                  color: isCancelled 
+                                      ? AppStyles.slateGray 
+                                      : isCompleted 
+                                          ? AppStyles.slateGray.withOpacity(0.8) 
+                                          : AppStyles.slateGray,
+                                  fontSize: 13,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
@@ -439,6 +474,24 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                           ),
                         ),
                       ],
+                      if (isCompleted && !isCancelled) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppStyles.primarySage.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'COMPLETED',
+                            style: TextStyle(
+                              color: AppStyles.primarySage,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   trailing: Wrap(
@@ -461,7 +514,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                             }
                           },
                         ),
-                      if (!isCancelled)
+                      if (!isCancelled && !isCompleted)
                         IconButton(
                           icon: const Icon(
                             Icons.location_on,
@@ -473,7 +526,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                           constraints: const BoxConstraints(),
                           onPressed: () => _navigateToLocationSharing(session),
                         ),
-                      if (!isCancelled)
+                      if (!isCancelled && !isCompleted)
                         IconButton(
                           icon: const Icon(
                             Icons.cancel_outlined,

@@ -11,6 +11,7 @@ import '../widgets/photo_capture_widget.dart';
 import '../widgets/signature_capture_widget.dart';
 import '../theme/app_styles.dart';
 import 'home_screen.dart';
+import 'login_screen.dart';
 
 class OnboardingQuizScreen extends StatefulWidget {
   const OnboardingQuizScreen({super.key});
@@ -232,8 +233,87 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
         curve: Curves.easeInOut,
       );
     } else {
+      // Check if ready to finish before completing onboarding
+      if (_canFinishOnboarding()) {
       _completeOnboarding();
+      } else {
+        _showCompletionRequiredDialog();
+      }
     }
+  }
+  
+  // Check if user can finish onboarding
+  bool _canFinishOnboarding() {
+    // Must have signed the agreement
+    if (_signatureTimestamp == null) {
+      return false;
+    }
+    
+    // Must have uploaded at least one gym photo
+    if (_pendingPhotos.isEmpty && _gymSetupPhotos.isEmpty) {
+      return false;
+    }
+    
+    return true;
+  }
+  
+  // Show dialog explaining what's required to finish
+  void _showCompletionRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Complete Your Onboarding'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('To finish your onboarding, you need to:'),
+              const SizedBox(height: 12),
+              
+              // Agreement requirement
+              Row(
+                children: [
+                  Icon(
+                    _signatureTimestamp != null ? Icons.check_circle : Icons.radio_button_unchecked,
+                    color: _signatureTimestamp != null ? Colors.green : Colors.grey,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text('Sign the consent agreement'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              
+              // Photos requirement
+              Row(
+                children: [
+                  Icon(
+                    (_pendingPhotos.isNotEmpty || _gymSetupPhotos.isNotEmpty) ? Icons.check_circle : Icons.radio_button_unchecked,
+                    color: (_pendingPhotos.isNotEmpty || _gymSetupPhotos.isNotEmpty) ? Colors.green : Colors.grey,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text('Upload at least one photo of your gym setup'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
   
   // Navigate to previous page
@@ -412,6 +492,26 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
       const SnackBar(content: Text('Photo added successfully')),
     );
   }
+
+  // Return to login screen
+  Future<void> _returnToLogin() async {
+    // Sign out the user and return to login
+    try {
+      await _authService.signOut();
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (Route<dynamic> route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error signing out: $e')),
+        );
+      }
+    }
+  }
   
   @override
   Widget build(BuildContext context) {
@@ -497,7 +597,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Back button
+                  // Back button or Back to Login button
                   if (_currentPage > 0)
                     SizedBox(
                       width: 100,
@@ -511,7 +611,17 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
                       ),
                     )
                   else
-                    const SizedBox(width: 100),
+                    SizedBox(
+                      width: 120,
+                      child: OutlinedButton(
+                        onPressed: _returnToLogin,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey[600],
+                          side: BorderSide(color: Colors.grey[400]!),
+                        ),
+                        child: const Text('Back'),
+                      ),
+                    ),
                   
                   // Next/Finish button
                   SizedBox(
@@ -519,7 +629,9 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _nextPage,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppStyles.primarySage,
+                        backgroundColor: (_currentPage < _totalPages - 1 || _canFinishOnboarding()) 
+                            ? AppStyles.primarySage 
+                            : Colors.grey[400],
                       ),
                       child: _isLoading
                           ? const SizedBox(
@@ -1617,62 +1729,91 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
           
           const SizedBox(height: 24),
           
-          // Final confirmation and warning
+          // Final confirmation and requirements status
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.green[50],
+              color: _canFinishOnboarding() ? Colors.green[50] : Colors.orange[50],
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.green[200]!),
+              border: Border.all(
+                color: _canFinishOnboarding() ? Colors.green[200]! : Colors.orange[200]!,
+              ),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.check_circle, color: Colors.green[700]),
+                    Icon(
+                      _canFinishOnboarding() ? Icons.check_circle : Icons.info_outline,
+                      color: _canFinishOnboarding() ? Colors.green[700] : Colors.orange[700],
+                    ),
                     const SizedBox(width: 8),
                     Text(
-                      'Ready to Complete',
+                      _canFinishOnboarding() ? 'Ready to Complete!' : 'Complete Required Steps',
                       style: TextStyle(
                         fontWeight: FontWeight.bold, 
-                        color: Colors.green[700],
+                        color: _canFinishOnboarding() ? Colors.green[700] : Colors.orange[700],
                         fontSize: 16,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
+                
+                if (_canFinishOnboarding()) ...[
                 Text(
                   'You\'re ready to complete your onboarding process. Click "Finish" to submit your information and begin your fitness journey with Merge Fitness.',
                   style: TextStyle(color: Colors.green[700]),
                 ),
-                if (_signatureTimestamp == null) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.red[50],
-                      borderRadius: BorderRadius.circular(4),
+                ] else ...[
+                  Text(
+                    'Please complete the following requirements before finishing:',
+                    style: TextStyle(color: Colors.orange[700], fontWeight: FontWeight.w500),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.warning, color: Colors.red[700], size: 18),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Please sign the agreement before continuing',
-                            style: TextStyle(color: Colors.red[700], fontSize: 14),
+                  const SizedBox(height: 12),
+                  
+                  // Agreement requirement
+                  _buildRequirementRow(
+                    'Sign the consent agreement',
+                    _signatureTimestamp != null,
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Photos requirement
+                  _buildRequirementRow(
+                    'Upload at least one gym setup photo',
+                    _pendingPhotos.isNotEmpty || _gymSetupPhotos.isNotEmpty,
                           ),
-                        ),
+                ],
                       ],
                     ),
                   ),
                 ],
-              ],
+      ),
+    );
+  }
+  
+  // Helper method to build requirement status rows
+  Widget _buildRequirementRow(String requirement, bool isCompleted) {
+    return Row(
+      children: [
+        Icon(
+          isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+          color: isCompleted ? Colors.green : Colors.grey,
+          size: 20,
+          ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            requirement,
+            style: TextStyle(
+              color: isCompleted ? Colors.green[700] : Colors.grey[700],
+              fontWeight: isCompleted ? FontWeight.w500 : FontWeight.normal,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 } 

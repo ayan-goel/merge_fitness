@@ -47,10 +47,12 @@ void main() async {
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
   }
 
-  // Initialize notification service
+  // Initialize notification service with delay for auth
   try {
     // Only initialize notifications on mobile platforms
     if (!kIsWeb) {
+      // Add a small delay to allow auth to initialize
+      await Future.delayed(const Duration(seconds: 1));
       await notificationService.init();
       await notificationService.setupDailyWorkoutReminderCheck();
     } else {
@@ -82,7 +84,22 @@ class AuthWrapper extends StatelessWidget {
           User user = snapshot.data as User;
           if (!user.emailVerified) {
             // If not verified, redirect to appropriate verification screen
-            final String role = user.displayName?.startsWith('trainer_') == true ? 'trainer' : 'client';
+            // Need to check Firestore for actual role instead of displayName
+            return FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+              builder: (context, roleSnapshot) {
+                if (roleSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                
+                String role = 'client'; // default
+                if (roleSnapshot.hasData && roleSnapshot.data!.exists) {
+                  final userData = roleSnapshot.data!.data() as Map<String, dynamic>?;
+                  role = userData?['role'] ?? 'client';
+                }
+                
             if (role == 'trainer') {
               print("Trainer needs to verify email");
               return TrainerEmailVerificationScreen(user: user);
@@ -90,6 +107,8 @@ class AuthWrapper extends StatelessWidget {
               print("Client needs to verify email");
               return ClientEmailVerificationScreen(user: user);
             }
+              },
+            );
           }
           
           // Check if user has completed onboarding by checking their profile data

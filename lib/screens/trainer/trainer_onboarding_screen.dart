@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/auth_service.dart';
+import '../../theme/app_styles.dart';
 import '../home_screen.dart';
+import '../login_screen.dart';
 
 class TrainerOnboardingScreen extends StatefulWidget {
   const TrainerOnboardingScreen({super.key});
@@ -65,6 +67,25 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
     }
   }
 
+  Future<void> _returnToLogin() async {
+    // Sign out the user and return to login
+    try {
+      await _authService.signOut();
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (Route<dynamic> route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error signing out: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -104,11 +125,42 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _firstNameController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'First Name',
                         hintText: 'Enter your first name',
-                        prefixIcon: Icon(Icons.person),
-                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(
+                          Icons.person,
+                          color: AppStyles.mutedBlue,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: AppStyles.slateGray.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: AppStyles.slateGray.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: AppStyles.primarySage,
+                            width: 1.5,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: Theme.of(context).brightness == Brightness.light
+                            ? Colors.grey.shade50
+                            : AppStyles.lightCharcoal,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 18,
+                        ),
                       ),
                       textCapitalization: TextCapitalization.words,
                       keyboardType: TextInputType.name,
@@ -126,11 +178,42 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _lastNameController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Last Name',
                         hintText: 'Enter your last name',
-                        prefixIcon: Icon(Icons.person),
-                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(
+                          Icons.person,
+                          color: AppStyles.mutedBlue,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: AppStyles.slateGray.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: AppStyles.slateGray.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: AppStyles.primarySage,
+                            width: 1.5,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: Theme.of(context).brightness == Brightness.light
+                            ? Colors.grey.shade50
+                            : AppStyles.lightCharcoal,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 18,
+                        ),
                       ),
                       textCapitalization: TextCapitalization.words,
                       keyboardType: TextInputType.name,
@@ -150,11 +233,42 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
               // Phone field
               TextFormField(
                 controller: _phoneController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Phone Number',
                   hintText: 'Enter your phone number',
-                  prefixIcon: Icon(Icons.phone),
-                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(
+                    Icons.phone,
+                    color: AppStyles.mutedBlue,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: AppStyles.slateGray.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: AppStyles.slateGray.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: AppStyles.primarySage,
+                      width: 1.5,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).brightness == Brightness.light
+                      ? Colors.grey.shade50
+                      : AppStyles.lightCharcoal,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 18,
+                  ),
                 ),
                 keyboardType: TextInputType.phone,
                 inputFormatters: [
@@ -172,8 +286,25 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Save button
-              ElevatedButton(
+              // Buttons row
+              Row(
+                children: [
+                  // Back to Login button
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _returnToLogin,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        foregroundColor: Colors.grey[600],
+                        side: BorderSide(color: Colors.grey[400]!),
+                      ),
+                      child: const Text('Back to Login'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Complete Setup button
+                  Expanded(
+                    child: ElevatedButton(
                 onPressed: _isLoading ? null : _saveTrainerProfile,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -188,6 +319,9 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
                         ),
                       )
                     : const Text('Complete Setup'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

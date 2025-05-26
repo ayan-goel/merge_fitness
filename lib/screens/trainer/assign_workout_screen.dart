@@ -309,23 +309,15 @@ class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          template.name,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 16,
-                                            color: AppStyles.textDark,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 1,
-                                        ),
-                                      ],
+                                  Text(
+                                    template.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                      color: AppStyles.textDark,
                                     ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
                                   ),
                                   const SizedBox(width: 8),
                                   Container(
@@ -343,6 +335,7 @@ class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
                                       ),
                                     ),
                                   ),
+                                  const Spacer(),
                                 ],
                               ),
                             ),
@@ -374,13 +367,6 @@ class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
                 hintText: 'Add notes for the client',
                 filled: true,
                 fillColor: AppStyles.offWhite,
-                prefixIcon: Container(
-                  padding: const EdgeInsets.all(12),
-                  child: Icon(
-                    Icons.note_alt_outlined,
-                    color: AppStyles.slateGray.withOpacity(0.7),
-                  ),
-                ),
                 contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                 border: OutlineInputBorder(
                   borderRadius: AppStyles.defaultBorderRadius,

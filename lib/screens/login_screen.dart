@@ -127,6 +127,8 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         if (e.code == 'email-already-in-use') {
           _errorMessage = 'Email is already in use. Please use a different email or try logging in.';
+        } else if (_isLogin && (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential' || e.code == 'invalid-email')) {
+          _errorMessage = 'Incorrect login information. Please check your email and password.';
         } else {
           _errorMessage = e.message ?? 'An authentication error occurred';
         }
@@ -621,6 +623,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ? Colors.grey.shade50 
                                 : AppStyles.lightCharcoal,
                             borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppStyles.slateGray.withOpacity(0.3),
+                              width: 1,
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -669,8 +675,19 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       const SizedBox(height: 8),
                       
-                      // Error message
-                      if (_errorMessage != null)
+                      // Login/Signup button
+                      MergeButton(
+                        text: _isLogin ? 'Log In' : 'Sign Up',
+                        onPressed: _isLoading ? null : _handleAuth,
+                        isLoading: _isLoading,
+                        fullWidth: true,
+                        type: MergeButtonType.primary,
+                        size: MergeButtonSize.medium,
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Error message (moved after login button)
+                      if (_errorMessage != null) ...[
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -700,22 +717,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ],
                           ),
-                        ),
-                      if (_errorMessage != null)
-                        const SizedBox(height: 20),
-                      
-                      // Login/Signup button
-                      MergeButton(
-                        text: _isLogin ? 'Log In' : 'Sign Up',
-                        onPressed: _isLoading ? null : _handleAuth,
-                        isLoading: _isLoading,
-                        fullWidth: true,
-                        type: MergeButtonType.primary,
-                        size: MergeButtonSize.medium,
                       ),
                       const SizedBox(height: 16),
+                      ],
                       
-                      // Toggle auth mode
+                      // Toggle auth mode (always visible)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

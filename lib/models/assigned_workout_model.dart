@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'workout_template_model.dart';
+import 'session_model.dart';
 
 /// Status of an assigned workout
 enum WorkoutStatus {
@@ -12,78 +13,129 @@ enum WorkoutStatus {
 /// Model representing a workout assigned to a client
 class AssignedWorkout {
   final String id;
-  final String clientId;
   final String trainerId;
+  final String clientId;
+  final String workoutTemplateId;
   final String workoutName;
   final String? workoutDescription;
-  final List<ExerciseTemplate> exercises;
-  final DateTime assignedDate;
   final DateTime scheduledDate;
-  final DateTime? completedDate;
   final WorkoutStatus status;
-  final String? notes;
+  final DateTime? completedDate;
   final String? feedback;
+  final List<ExerciseTemplate> exercises;
+  final String? notes;
+  final bool isSessionBased; // New field to track if this is from a training session
+  final String? sessionId; // Reference to the session if this is session-based
 
   AssignedWorkout({
     required this.id,
-    required this.clientId,
     required this.trainerId,
+    required this.clientId,
+    required this.workoutTemplateId,
     required this.workoutName,
     this.workoutDescription,
-    required this.exercises,
-    required this.assignedDate,
     required this.scheduledDate,
-    this.completedDate,
     required this.status,
-    this.notes,
+    this.completedDate,
     this.feedback,
+    required this.exercises,
+    this.notes,
+    this.isSessionBased = false, // Default to false for backwards compatibility
+    this.sessionId,
   });
 
   factory AssignedWorkout.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    
-    // Parse exercises
-    List<ExerciseTemplate> exercises = [];
-    if (data['exercises'] != null) {
-      for (var exercise in data['exercises']) {
-        exercises.add(ExerciseTemplate.fromMap(
-          exercise, 
-          exercise['id'] ?? DateTime.now().millisecondsSinceEpoch.toString()
-        ));
-      }
-    }
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     
     return AssignedWorkout(
       id: doc.id,
-      clientId: data['clientId'] ?? '',
       trainerId: data['trainerId'] ?? '',
+      clientId: data['clientId'] ?? '',
+      workoutTemplateId: data['workoutTemplateId'] ?? '',
       workoutName: data['workoutName'] ?? '',
       workoutDescription: data['workoutDescription'],
-      exercises: exercises,
-      assignedDate: (data['assignedDate'] as Timestamp).toDate(),
       scheduledDate: (data['scheduledDate'] as Timestamp).toDate(),
+      status: AssignedWorkout.workoutStatusFromString(data['status'] ?? 'assigned'),
       completedDate: data['completedDate'] != null 
         ? (data['completedDate'] as Timestamp).toDate() 
         : null,
-      status: _stringToWorkoutStatus(data['status'] ?? 'assigned'),
-      notes: data['notes'],
       feedback: data['feedback'],
+      exercises: (data['exercises'] as List<dynamic>?)
+              ?.map((exerciseData) {
+                final exerciseMap = exerciseData as Map<String, dynamic>;
+                return ExerciseTemplate.fromMap(
+                  exerciseMap, 
+                  exerciseMap['id'] ?? DateTime.now().millisecondsSinceEpoch.toString()
+                );
+              })
+              .toList() ?? [],
+      notes: data['notes'],
+      isSessionBased: data['isSessionBased'] ?? false,
+      sessionId: data['sessionId'],
+    );
+  }
+
+  // Create an AssignedWorkout from a TrainingSession
+  factory AssignedWorkout.fromSession(TrainingSession session) {
+    WorkoutStatus status;
+    DateTime? completedDate;
+    
+    switch (session.status) {
+      case 'scheduled':
+        // Check if session should be marked as completed (30 minutes after start)
+        final now = DateTime.now();
+        final completionTime = session.startTime.add(const Duration(minutes: 30));
+        if (now.isAfter(completionTime)) {
+          status = WorkoutStatus.completed;
+          completedDate = completionTime;
+        } else {
+          status = WorkoutStatus.assigned;
+        }
+        break;
+      case 'completed':
+        status = WorkoutStatus.completed;
+        completedDate = session.endTime;
+        break;
+      case 'cancelled':
+        status = WorkoutStatus.skipped;
+        break;
+      default:
+        status = WorkoutStatus.assigned;
+    }
+    
+    return AssignedWorkout(
+      id: 'session_${session.id}', // Prefix to distinguish from regular workouts
+      trainerId: session.trainerId,
+      clientId: session.clientId,
+      workoutTemplateId: 'session_template',
+      workoutName: 'Session with ${session.trainerName}',
+      workoutDescription: 'Personal training session',
+      scheduledDate: session.startTime,
+      status: status,
+      completedDate: completedDate,
+      feedback: null,
+      exercises: [], // Sessions don't have predefined exercises
+      notes: 'Training session at ${session.location}${session.notes != null ? '\n\nNotes: ${session.notes}' : ''}',
+      isSessionBased: true,
+      sessionId: session.id,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'clientId': clientId,
       'trainerId': trainerId,
+      'clientId': clientId,
+      'workoutTemplateId': workoutTemplateId,
       'workoutName': workoutName,
       'workoutDescription': workoutDescription,
-      'exercises': exercises.map((e) => e.toMap()).toList(),
-      'assignedDate': Timestamp.fromDate(assignedDate),
       'scheduledDate': Timestamp.fromDate(scheduledDate),
+      'status': AssignedWorkout.workoutStatusToString(status),
       'completedDate': completedDate != null ? Timestamp.fromDate(completedDate!) : null,
-      'status': _workoutStatusToString(status),
-      'notes': notes,
       'feedback': feedback,
+      'exercises': exercises.map((exercise) => exercise.toMap()).toList(),
+      'notes': notes,
+      'isSessionBased': isSessionBased,
+      'sessionId': sessionId,
     };
   }
 
@@ -100,12 +152,12 @@ class AssignedWorkout {
       id: 'temp_${now.millisecondsSinceEpoch}',
       clientId: clientId,
       trainerId: template.trainerId,
+      workoutTemplateId: workoutTemplateId,
       workoutName: template.name,
       workoutDescription: template.description,
-      exercises: template.exercises,
-      assignedDate: now,
       scheduledDate: scheduledDate,
       status: WorkoutStatus.assigned,
+      exercises: template.exercises,
       notes: notes,
     );
   }
@@ -124,15 +176,17 @@ class AssignedWorkout {
       id: this.id,
       clientId: this.clientId,
       trainerId: this.trainerId,
+      workoutTemplateId: this.workoutTemplateId,
       workoutName: workoutName ?? this.workoutName,
       workoutDescription: workoutDescription ?? this.workoutDescription,
-      exercises: exercises ?? this.exercises,
-      assignedDate: this.assignedDate,
       scheduledDate: scheduledDate ?? this.scheduledDate,
-      completedDate: completedDate ?? this.completedDate,
       status: status ?? this.status,
-      notes: notes ?? this.notes,
+      completedDate: completedDate ?? this.completedDate,
       feedback: feedback ?? this.feedback,
+      exercises: exercises ?? this.exercises,
+      notes: notes ?? this.notes,
+      isSessionBased: this.isSessionBased,
+      sessionId: this.sessionId,
     );
   }
   
@@ -168,5 +222,10 @@ class AssignedWorkout {
   // Public method to convert WorkoutStatus enum to string for external use
   static String workoutStatusToString(WorkoutStatus status) {
     return _workoutStatusToString(status);
+  }
+  
+  // Public method to convert string to WorkoutStatus enum for external use
+  static WorkoutStatus workoutStatusFromString(String statusStr) {
+    return _stringToWorkoutStatus(statusStr);
   }
 } 
