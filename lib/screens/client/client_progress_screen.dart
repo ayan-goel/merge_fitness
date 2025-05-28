@@ -6,6 +6,7 @@ import 'dart:math' show max;
 import '../../services/auth_service.dart';
 import '../../models/assigned_workout_model.dart';
 import '../../services/workout_template_service.dart';
+import '../../services/enhanced_workout_service.dart';
 
 import '../../services/weight_service.dart';
 import '../../models/weight_entry_model.dart';
@@ -40,6 +41,7 @@ class ClientProgressScreen extends StatefulWidget {
 
 class _ClientProgressScreenState extends State<ClientProgressScreen> {
   final WorkoutTemplateService _workoutTemplateService = WorkoutTemplateService();
+  final EnhancedWorkoutService _enhancedWorkoutService = EnhancedWorkoutService();
   final AuthService _authService = AuthService();
   final WeightService _weightService = WeightService();
   
@@ -156,15 +158,15 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
     if (_clientId == null) return;
     
     try {
-      // Get regular workouts only (sessions will be shown in the main workouts screen)
-      final regularWorkoutsStream = _workoutTemplateService.getClientWorkouts(_clientId!);
-      final allWorkouts = await regularWorkoutsStream.first;
+      // Get all workouts including sessions using the enhanced service
+      final allWorkoutsStream = _enhancedWorkoutService.getClientWorkouts(_clientId!);
+      final allWorkouts = await allWorkoutsStream.first;
       
       // Filter for completed workouts only
       final completedWorkouts = allWorkouts.where((workout) => 
           workout.status == WorkoutStatus.completed && workout.completedDate != null).toList();
       
-      print("Found ${completedWorkouts.length} completed workouts");
+      print("Found ${completedWorkouts.length} completed workouts (including sessions)");
         
       for (var assignedWorkout in completedWorkouts) {
           // Create a WorkoutProgressData from the AssignedWorkout

@@ -686,6 +686,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
                     hintText: 'Enter your first name',
                     prefixIcon: const Icon(Icons.person_outline),
                   ),
+                  textInputAction: TextInputAction.done,
                   onChanged: (value) {
                     setState(() {
                       _firstName = value;
@@ -703,6 +704,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
                     hintText: 'Enter your last name',
                     prefixIcon: const Icon(Icons.person_outline),
                   ),
+                  textInputAction: TextInputAction.done,
                   onChanged: (value) {
                     setState(() {
                       _lastName = value;
@@ -722,6 +724,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               hintText: 'Enter your email address',
               prefixIcon: const Icon(Icons.email_outlined),
             ),
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _email = value;
@@ -739,6 +742,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               prefixIcon: const Icon(Icons.phone_outlined),
             ),
             keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _phoneNumber = value;
@@ -756,6 +760,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               prefixIcon: const Icon(Icons.home_outlined),
             ),
             keyboardType: TextInputType.streetAddress,
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _address = value;
@@ -819,6 +824,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               hintText: 'Who should we contact in an emergency?',
               prefixIcon: const Icon(Icons.person_outline),
             ),
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _emergencyContact = value;
@@ -836,6 +842,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               prefixIcon: const Icon(Icons.phone_outlined),
             ),
             keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _emergencyPhone = value;
@@ -941,6 +948,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               prefixIcon: const Icon(Icons.monitor_weight_outlined),
             ),
             keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               _updateWeightFromPounds(value);
             },
@@ -1025,6 +1033,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               hintText: 'E.g., Normal, Good, etc.',
               prefixIcon: const Icon(Icons.check_circle_outline),
             ),
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _lastPhysicalResult = value;
@@ -1227,6 +1236,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               prefixIcon: const Icon(Icons.medical_information_outlined),
             ),
             maxLines: 3,
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _additionalMedicalInfo = value;
@@ -1309,6 +1319,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               hintText: 'E.g., 3 times per week, moderate intensity',
               prefixIcon: const Icon(Icons.fitness_center_outlined),
             ),
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _exerciseFrequency = value;
@@ -1325,6 +1336,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               hintText: 'List any medications including herbal supplements',
               prefixIcon: const Icon(Icons.medication_outlined),
             ),
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _medications = value;
@@ -1342,6 +1354,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               prefixIcon: const Icon(Icons.emoji_events_outlined),
             ),
             maxLines: 3,
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _healthGoals = value;
@@ -1358,6 +1371,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               hintText: 'Describe your general stress level',
               prefixIcon: const Icon(Icons.psychology_outlined),
             ),
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _stressLevel = value;
@@ -1375,6 +1389,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               prefixIcon: const Icon(Icons.timeline_outlined),
             ),
             maxLines: 2,
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _bestLifePoint = value;
@@ -1463,6 +1478,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               prefixIcon: const Icon(Icons.restaurant_outlined),
             ),
             maxLines: 2,
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _eatingHabits = value;
@@ -1486,6 +1502,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               hintText: 'Describe a typical breakfast',
               prefixIcon: const Icon(Icons.wb_sunny_outlined),
             ),
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _typicalBreakfast = value;
@@ -1502,6 +1519,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               hintText: 'Describe a typical lunch',
               prefixIcon: const Icon(Icons.lunch_dining_outlined),
             ),
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _typicalLunch = value;
@@ -1518,6 +1536,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               hintText: 'Describe a typical dinner',
               prefixIcon: const Icon(Icons.dinner_dining_outlined),
             ),
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _typicalDinner = value;
@@ -1534,6 +1553,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               hintText: 'Describe your typical snacks',
               prefixIcon: const Icon(Icons.cookie_outlined),
             ),
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _typicalSnacks = value;
@@ -1660,6 +1680,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               prefixIcon: const Icon(Icons.note_outlined),
             ),
             maxLines: 3,
+            textInputAction: TextInputAction.done,
             onChanged: (value) {
               setState(() {
                 _additionalNotes = value;

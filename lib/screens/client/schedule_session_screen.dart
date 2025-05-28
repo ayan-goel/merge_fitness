@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../services/calendly_service.dart';
+import '../../services/payment_service.dart';
 import '../../models/session_model.dart';
 import '../../widgets/session_time_slot.dart';
 import '../../theme/app_styles.dart';
@@ -24,6 +25,7 @@ class ScheduleSessionScreen extends StatefulWidget {
 class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> 
     with TickerProviderStateMixin {
   final CalendlyService _calendlyService = CalendlyService();
+  final PaymentService _paymentService = PaymentService();
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   
@@ -187,6 +189,55 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
     });
     
     try {
+      // Check if client has available sessions before booking
+      final canBook = await _paymentService.canBookSession(
+        widget.clientId,
+        widget.trainerId,
+      );
+      
+      if (!canBook) {
+        setState(() {
+          _isSubmitting = false;
+        });
+        
+        // Show dialog asking if they want to purchase sessions
+        final shouldPurchase = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('No Sessions Remaining'),
+            content: const Text(
+              'You don\'t have any sessions remaining. Would you like to purchase more sessions to book this appointment?'
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Purchase Sessions'),
+              ),
+            ],
+          ),
+        );
+        
+        if (shouldPurchase == true && mounted) {
+          // Navigate to payment screen
+          Navigator.pushNamed(context, '/payment');
+        }
+        return;
+      }
+      
+      // Consume a session before booking
+      final sessionConsumed = await _paymentService.consumeSession(
+        widget.clientId,
+        widget.trainerId,
+      );
+      
+      if (!sessionConsumed) {
+        throw Exception('Failed to consume session. Please try again.');
+      }
+      
       // Use the scheduleSession method which handles Calendly API integration
       await _calendlyService.scheduleSession(
         trainerId: widget.trainerId, 
@@ -205,6 +256,14 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
       }
     } catch (e) {
       print('Error scheduling session: $e');
+      
+      // If session was consumed but scheduling failed, refund the session
+      try {
+        await _paymentService.refundSession(widget.clientId, widget.trainerId);
+      } catch (refundError) {
+        print('Error refunding session: $refundError');
+      }
+      
       setState(() {
         _isSubmitting = false;
       });

@@ -51,44 +51,299 @@ class _AllSessionsScreenState extends State<AllSessionsScreen> {
   Future<void> _showCancelSessionDialog(TrainingSession session) async {
     final TextEditingController reasonController = TextEditingController();
     
+    // Calculate if session is within 24 hours
+    final now = DateTime.now();
+    final timeDifference = session.startTime.difference(now);
+    final isWithin24Hours = timeDifference.inHours < 24;
+    
     try {
       bool? result = await showDialog<bool>(
         context: context,
+        barrierColor: Colors.black.withOpacity(0.6),
         builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Cancel Training Session'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Are you sure you want to cancel this session?',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                Text('Date: ${session.formattedDate}'),
-                Text('Time: ${session.formattedTimeRange}'),
-                const SizedBox(height: 16),
-                const Text('Reason for cancellation (optional):'),
-                TextField(
-                  controller: reasonController,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter reason here',
-                  ),
-                  maxLines: 2,
-                ),
-              ],
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('No, Keep It'),
+            elevation: 12,
+            backgroundColor: Colors.transparent,
+            child: Container(
+              constraints: const BoxConstraints(
+                maxWidth: 400,
+                maxHeight: 650, // Add max height constraint
               ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Yes, Cancel', style: TextStyle(color: AppStyles.errorRed)),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-            ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with icon
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: AppStyles.errorRed.withOpacity(0.1),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: AppStyles.errorRed.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.cancel_outlined,
+                            color: AppStyles.errorRed,
+                            size: 32,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Cancel Training Session',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppStyles.textDark,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Content - Make scrollable
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                        // Session details card
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppStyles.offWhite,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppStyles.slateGray.withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.event,
+                                    size: 18,
+                                    color: AppStyles.primarySage,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    session.formattedDate,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppStyles.textDark,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time,
+                                    size: 18,
+                                    color: AppStyles.primarySage,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    session.formattedTimeRange,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppStyles.textDark,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_on,
+                                    size: 18,
+                                    color: AppStyles.primarySage,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      session.location,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: AppStyles.textDark,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
+                        // Refund policy information
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isWithin24Hours 
+                                ? AppStyles.errorRed.withOpacity(0.1)
+                                : AppStyles.successGreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isWithin24Hours 
+                                  ? AppStyles.errorRed.withOpacity(0.3)
+                                  : AppStyles.successGreen.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    isWithin24Hours ? Icons.warning_amber : Icons.check_circle,
+                                    color: isWithin24Hours ? AppStyles.errorRed : AppStyles.successGreen,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Refund Policy',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: isWithin24Hours ? AppStyles.errorRed : AppStyles.successGreen,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                isWithin24Hours
+                                    ? 'This session is within 24 hours. Your session will NOT be refunded unless you have discussed with your trainer beforehand with a valid reason. If you have, your trainer will manually restore your session.'
+                                    : 'This session is more than 24 hours away. Your session will be automatically refunded to your account.',
+                                style: TextStyle(
+                                  color: isWithin24Hours ? AppStyles.errorRed : AppStyles.successGreen,
+                                  fontSize: 14,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
+                        // Reason field
+                        const Text(
+                          'Reason for cancellation (optional):',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppStyles.textDark,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: reasonController,
+                          decoration: AppStyles.inputDecoration(
+                            labelText: '',
+                            hintText: 'Enter your reason here...',
+                          ),
+                          style: const TextStyle(color: AppStyles.textDark),
+                          maxLines: 3,
+                          textInputAction: TextInputAction.done,
+                        ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  // Actions
+                  Padding(
+                    padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(
+                                  color: AppStyles.slateGray.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            child: const Text(
+                              'Keep Session',
+                              style: TextStyle(
+                                color: AppStyles.textDark,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppStyles.errorRed,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              'Cancel Session',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           );
         },
       );

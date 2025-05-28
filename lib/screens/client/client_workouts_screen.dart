@@ -252,9 +252,11 @@ class _ClientWorkoutsScreenState extends State<ClientWorkoutsScreen> {
     String filter, 
     DateTime today
   ) {
+    List<AssignedWorkout> filtered;
+    
     switch (filter) {
       case 'Upcoming':
-        return workouts.where((w) => 
+        filtered = workouts.where((w) => 
           (w.scheduledDate.isAfter(today) || 
           (w.scheduledDate.year == today.year && 
            w.scheduledDate.month == today.month && 
@@ -263,10 +265,26 @@ class _ClientWorkoutsScreenState extends State<ClientWorkoutsScreen> {
           w.status != WorkoutStatus.completed &&
           w.status != WorkoutStatus.skipped
         ).toList();
+        // Sort upcoming workouts chronologically (earliest first)
+        filtered.sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+        break;
       case 'Completed':
-        return workouts.where((w) => w.status == WorkoutStatus.completed).toList();
+        filtered = workouts.where((w) => w.status == WorkoutStatus.completed).toList();
+        // Sort completed workouts by completion date (most recent first)
+        filtered.sort((a, b) {
+          if (a.completedDate != null && b.completedDate != null) {
+            return b.completedDate!.compareTo(a.completedDate!);
+          } else if (a.completedDate != null) {
+            return -1;
+          } else if (b.completedDate != null) {
+            return 1;
+          } else {
+            return b.scheduledDate.compareTo(a.scheduledDate);
+          }
+        });
+        break;
       case 'Missed':
-        return workouts.where((w) => 
+        filtered = workouts.where((w) => 
           // Include workouts from the past that are not completed
           (w.scheduledDate.isBefore(today) && 
            w.status != WorkoutStatus.completed && 
@@ -274,10 +292,18 @@ class _ClientWorkoutsScreenState extends State<ClientWorkoutsScreen> {
           // Also include any skipped workouts regardless of date
           w.status == WorkoutStatus.skipped
         ).toList();
+        // Sort missed workouts chronologically (most recent first)
+        filtered.sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
+        break;
       case 'All':
       default:
-        return workouts;
+        filtered = workouts;
+        // Sort all workouts chronologically (most recent first)
+        filtered.sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
+        break;
     }
+    
+    return filtered;
   }
 }
 

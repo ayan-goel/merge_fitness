@@ -271,6 +271,7 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
                   ),
                 ),
                 keyboardType: TextInputType.phone,
+                textInputAction: TextInputAction.done,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
                 ],

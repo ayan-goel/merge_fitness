@@ -200,9 +200,35 @@ class _SelectTrainerScreenState extends State<SelectTrainerScreen> {
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          trainer['specialty'] ?? 'General Fitness',
-                          style: Theme.of(context).textTheme.bodyMedium,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (trainer['email'] != null && trainer['email'].isNotEmpty)
+                              Row(
+                                children: [
+                                  const Icon(Icons.email, size: 16, color: Colors.grey),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      trainer['email'],
+                                      style: Theme.of(context).textTheme.bodyMedium,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            if (trainer['phoneNumber'] != null && trainer['phoneNumber'].isNotEmpty)
+                              Row(
+                                children: [
+                                  const Icon(Icons.phone, size: 16, color: Colors.grey),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    trainer['phoneNumber'],
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                ],
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 8),
                         ElevatedButton(

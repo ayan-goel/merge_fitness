@@ -11,6 +11,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:intl/intl.dart';
 import '../models/session_model.dart';
 import '../services/notification_service.dart';
+import '../services/payment_service.dart';
 
 class CalendlyService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -804,6 +805,13 @@ class CalendlyService {
       final currentUserId = _auth.currentUser?.uid;
       final isClientCancelling = currentUserId == session.clientId;
       
+      // Handle payment refund logic
+      final paymentService = PaymentService();
+      await paymentService.handleSessionCancellation(
+        session: session,
+        isTrainerCancelling: !isClientCancelling,
+      );
+      
       if (isClientCancelling) {
         // Client cancellation - restricted to only status and notes
         final updatedNotes = cancellationReason != null
@@ -925,7 +933,8 @@ class CalendlyService {
               'displayName': data['displayName'] ?? 'Trainer',
               'calendlyUrl': data['calendlySchedulingUrl'] ?? '',
               'photoUrl': data['photoUrl'],
-              'specialty': data['specialty'] ?? 'General Fitness',
+              'email': data['email'] ?? '',
+              'phoneNumber': data['phoneNumber'] ?? '',
             };
           }).toList();
       

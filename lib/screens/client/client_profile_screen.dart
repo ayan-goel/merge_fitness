@@ -3,9 +3,12 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
 import '../../services/profile_image_service.dart';
+import '../../services/payment_service.dart';
 import '../../models/user_model.dart';
 import '../../models/goal_model.dart';
+import '../../models/session_package_model.dart';
 import '../../theme/app_styles.dart';
+import 'client_payment_screen.dart';
 
 class ClientProfileScreen extends StatefulWidget {
   const ClientProfileScreen({super.key});
@@ -18,6 +21,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   final AuthService _authService = AuthService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final ProfileImageService _profileImageService = ProfileImageService();
+  final PaymentService _paymentService = PaymentService();
   final _formKey = GlobalKey<FormState>();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
@@ -50,6 +54,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   bool _isEditing = false;
   bool _isSaving = false;
   List<Goal> _goals = [];
+  SessionPackage? _sessionPackage;
   
   @override
   void initState() {
@@ -128,12 +133,35 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         _goals = user.goals ?? [];
         _isLoading = false;
       });
+      
+      // Load session package if user has a trainer
+      if (user.trainerId != null) {
+        _loadSessionPackage(user.uid, user.trainerId!);
+      }
     } catch (e) {
       print('Error loading user data: $e');
       setState(() {
         _isLoading = false;
       });
     }
+  }
+  
+  Future<void> _loadSessionPackage(String clientId, String trainerId) async {
+    try {
+      final package = await _paymentService.getSessionPackage(clientId, trainerId);
+      setState(() => _sessionPackage = package);
+    } catch (e) {
+      print('Error loading session package: $e');
+    }
+  }
+  
+  void _navigateToPayment() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ClientPaymentScreen(),
+      ),
+    );
   }
   
   Future<void> _saveChanges() async {
@@ -346,6 +374,248 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+                
+                // Training Sessions Card (only show if user has a trainer)
+                if (_user?.trainerId != null) ...[
+                  Container(
+                    decoration: AppStyles.cardDecoration.copyWith(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppStyles.offWhite,
+                          AppStyles.primarySage.withOpacity(0.02),
+                        ],
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header Section
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    AppStyles.primarySage.withOpacity(0.15),
+                                    AppStyles.primarySage.withOpacity(0.08),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: AppStyles.primarySage.withOpacity(0.2),
+                                  width: 1,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.fitness_center,
+                                color: AppStyles.primarySage,
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Training Sessions',
+                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppStyles.textDark,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Manage your session package',
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: AppStyles.slateGray,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        // Sessions Info Section
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: AppStyles.primarySage.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppStyles.primarySage.withOpacity(0.15),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              // Sessions Remaining
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Sessions Left',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: AppStyles.slateGray,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.5,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppStyles.primarySage,
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: AppStyles.primarySage.withOpacity(0.3),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Text(
+                                        '${_sessionPackage?.sessionsRemaining ?? 0}',
+                                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              
+                              // Divider
+                              Container(
+                                height: 60,
+                                width: 1,
+                                margin: const EdgeInsets.symmetric(horizontal: 20),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      AppStyles.slateGray.withOpacity(0.2),
+                                      AppStyles.slateGray.withOpacity(0.5),
+                                      AppStyles.slateGray.withOpacity(0.2),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              
+                                                             // Package Cost
+                               Expanded(
+                                 child: Column(
+                                   crossAxisAlignment: CrossAxisAlignment.center,
+                                   children: [
+                                     Text(
+                                       'Package Cost',
+                                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                         color: AppStyles.slateGray,
+                                         fontWeight: FontWeight.w600,
+                                         letterSpacing: 0.5,
+                                       ),
+                                       textAlign: TextAlign.center,
+                                     ),
+                                     const SizedBox(height: 8),
+                                     Container(
+                                       padding: const EdgeInsets.symmetric(
+                                         horizontal: 16,
+                                         vertical: 8,
+                                       ),
+                                       decoration: BoxDecoration(
+                                         color: AppStyles.mutedBlue,
+                                         borderRadius: BorderRadius.circular(12),
+                                         boxShadow: [
+                                           BoxShadow(
+                                             color: AppStyles.mutedBlue.withOpacity(0.3),
+                                             blurRadius: 8,
+                                             offset: const Offset(0, 2),
+                                           ),
+                                         ],
+                                       ),
+                                       child: Text(
+                                         _sessionPackage != null 
+                                             ? '\$${_sessionPackage!.costPerTenSessions.toStringAsFixed(0)}'
+                                             : '\$0',
+                                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                           color: Colors.white,
+                                           fontWeight: FontWeight.bold,
+                                         ),
+                                         textAlign: TextAlign.center,
+                                       ),
+                                     ),
+                                   ],
+                                 ),
+                               ),
+                            ],
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        // Payment Button
+                        SizedBox(
+                          width: double.infinity,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: AppStyles.primaryGradient,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: AppStyles.buttonShadow,
+                            ),
+                            child: ElevatedButton.icon(
+                              onPressed: _navigateToPayment,
+                              icon: const Icon(
+                                Icons.account_balance_wallet,
+                                size: 20,
+                              ),
+                              label: const Text(
+                                'Manage Payments & Sessions',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                foregroundColor: Colors.white,
+                                shadowColor: Colors.transparent,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                ],
                 
                 // Personal Information Section
                 Text(

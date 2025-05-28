@@ -55,3 +55,6 @@ ios/Runner/AppDelegate.swift
 ios/Runner/Info.plist
 
 
+services/payment_service.dart
+# Environment variables
+.env

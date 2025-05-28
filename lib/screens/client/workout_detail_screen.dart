@@ -224,26 +224,111 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   
                   const SizedBox(height: 24.0),
                   
-                  // Exercises section
-                  Text(
-                    'Exercises',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppStyles.textDark,
+                  // Exercises section or Session info
+                  if (widget.workout.isSessionBased) ...[
+                    Text(
+                      'Session Details',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppStyles.textDark,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16.0),
-                  
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: widget.workout.exercises.length,
-                    itemBuilder: (context, index) {
-                      final exercise = widget.workout.exercises[index];
-                      return ExerciseCard(exercise: exercise);
-                    },
-                  ),
+                    const SizedBox(height: 16.0),
+                    Card(
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.schedule,
+                                  color: AppStyles.primarySage,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Personal Training Session',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppStyles.textDark,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'This is a one-on-one training session with your trainer. The specific exercises and activities will be determined during the session based on your goals and progress.',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppStyles.slateGray,
+                                height: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppStyles.primarySage.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppStyles.primarySage.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: AppStyles.primarySage,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Session status is automatically managed based on the scheduled time.',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: AppStyles.primarySage,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    Text(
+                      'Exercises',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppStyles.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 16.0),
+                    
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: widget.workout.exercises.length,
+                      itemBuilder: (context, index) {
+                        final exercise = widget.workout.exercises[index];
+                        return ExerciseCard(exercise: exercise);
+                      },
+                    ),
+                  ],
                   
                   const SizedBox(height: 40.0),
                 ],

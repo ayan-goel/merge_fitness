@@ -8,15 +8,18 @@ import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'firebase_options.dart';
 import 'services/notification_service.dart';
 import 'services/auth_service.dart';
 import 'theme/app_styles.dart';
+import 'config/env_config.dart';
 
 // Import screens
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/client/client_profile_screen.dart';
+import 'screens/client/client_payment_screen.dart';
 import 'screens/trainer/trainer_profile_screen.dart';
 import 'screens/onboarding_quiz_screen.dart';
 import 'screens/client/client_email_verification_screen.dart';
@@ -29,10 +32,17 @@ final NotificationService notificationService = NotificationService();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Initialize environment variables
+  await EnvConfig.initialize();
+  
   // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Initialize Stripe with environment variable
+  Stripe.publishableKey = EnvConfig.stripePublishableKey;
+  await Stripe.instance.applySettings();
   
   // Initialize timezone data
   tz_data.initializeTimeZones();
@@ -323,6 +333,7 @@ class MergeFitnessApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
         '/client/profile': (context) => const ClientProfileScreen(),
+        '/payment': (context) => const ClientPaymentScreen(),
         '/trainer/profile': (context) => const TrainerProfileScreen(),
       },
     );

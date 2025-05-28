@@ -245,6 +245,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     vertical: 16,
                   ),
                 ),
+                textInputAction: TextInputAction.done,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter the access code';

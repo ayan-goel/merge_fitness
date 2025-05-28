@@ -4,12 +4,14 @@ import '../../models/nutrition_plan_model.dart';
 import '../../services/workout_template_service.dart';
 import '../../services/enhanced_workout_service.dart';
 import '../../services/nutrition_service.dart';
+import '../../services/auth_service.dart';
 import '../../theme/app_styles.dart';
 import 'assign_workout_screen.dart';
 import 'assign_nutrition_plan_screen.dart';
 import 'client_info_screen.dart';
 import 'client_meal_history_screen.dart';
 import 'client_progress_screen.dart';
+import 'client_payment_tab.dart';
 
 class ClientDetailsScreen extends StatefulWidget {
   final String clientId;
@@ -29,6 +31,8 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
   final WorkoutTemplateService _workoutService = WorkoutTemplateService();
   final EnhancedWorkoutService _enhancedWorkoutService = EnhancedWorkoutService();
   final NutritionService _nutritionService = NutritionService();
+  final AuthService _authService = AuthService();
+  String? _trainerId;
   
   void _navigateToAssignWorkout() {
     Navigator.push(
@@ -151,9 +155,26 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
   }
   
   @override
+  void initState() {
+    super.initState();
+    _loadTrainerId();
+  }
+
+  Future<void> _loadTrainerId() async {
+    try {
+      final user = await _authService.getUserModel();
+      setState(() {
+        _trainerId = user.uid;
+      });
+    } catch (e) {
+      print('Error loading trainer ID: $e');
+    }
+  }
+  
+  @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.clientName),
@@ -172,6 +193,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
               Tab(text: 'Workouts', icon: Icon(Icons.fitness_center)),
               Tab(text: 'Nutrition', icon: Icon(Icons.restaurant_menu)),
               Tab(text: 'Progress', icon: Icon(Icons.analytics)),
+              Tab(text: 'Payment', icon: Icon(Icons.payment)),
             ],
           ),
         ),
@@ -219,6 +241,9 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                       }
                       
                       final workouts = snapshot.data ?? [];
+                      
+                      // Sort workouts chronologically (most recent first)
+                      workouts.sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
                       
                       if (workouts.isEmpty) {
                         return Center(
@@ -454,6 +479,15 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
               clientId: widget.clientId,
               clientName: widget.clientName,
             ),
+            
+            // PAYMENT TAB
+            _trainerId != null
+                ? ClientPaymentTab(
+                    clientId: widget.clientId,
+                    clientName: widget.clientName,
+                    trainerId: _trainerId!,
+                  )
+                : const Center(child: CircularProgressIndicator()),
           ],
         ),
       ),

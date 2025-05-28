@@ -566,7 +566,6 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
               child: Text(
                 messageParts.sublist(1).join('\n'),
                 style: const TextStyle(
-                  fontStyle: FontStyle.italic,
                   color: AppStyles.errorRed,
                   fontSize: 12,
                 ),

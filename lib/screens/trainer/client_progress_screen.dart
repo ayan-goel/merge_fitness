@@ -6,6 +6,7 @@ import 'dart:math' show max;
 import '../../services/auth_service.dart';
 import '../../models/assigned_workout_model.dart';
 import '../../services/workout_template_service.dart';
+import '../../services/enhanced_workout_service.dart';
 
 import '../../services/weight_service.dart';
 import '../../models/weight_entry_model.dart';
@@ -47,6 +48,7 @@ class TrainerClientProgressScreen extends StatefulWidget {
 
 class _TrainerClientProgressScreenState extends State<TrainerClientProgressScreen> {
   final WorkoutTemplateService _workoutTemplateService = WorkoutTemplateService();
+  final EnhancedWorkoutService _enhancedWorkoutService = EnhancedWorkoutService();
   final WeightService _weightService = WeightService();
   
   CalendarFormat _calendarFormat = CalendarFormat.month;
@@ -166,18 +168,18 @@ class _TrainerClientProgressScreenState extends State<TrainerClientProgressScree
     }
   }
   
-  // Load completed workouts using just the workout template service
+  // Load completed workouts using the enhanced service to include sessions
   Future<void> _loadCompletedAssignedWorkouts(Map<DateTime, List<WorkoutProgressData>> workoutsByDate) async {
     try {
-      // Get regular workouts only (sessions will be shown in the main workouts tab)
-      final regularWorkoutsStream = _workoutTemplateService.getClientWorkouts(widget.clientId);
-      final allWorkouts = await regularWorkoutsStream.first;
+      // Get all workouts including sessions using the enhanced service
+      final allWorkoutsStream = _enhancedWorkoutService.getClientWorkouts(widget.clientId);
+      final allWorkouts = await allWorkoutsStream.first;
       
       // Filter only completed workouts
       final completedWorkouts = allWorkouts.where((workout) => 
         workout.status == WorkoutStatus.completed).toList();
       
-      print("Found ${completedWorkouts.length} completed workouts for ${widget.clientName}");
+      print("Found ${completedWorkouts.length} completed workouts (including sessions) for ${widget.clientName}");
       
       for (var assignedWorkout in completedWorkouts) {
         if (assignedWorkout.completedDate != null) {

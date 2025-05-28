@@ -378,5 +378,53 @@ service cloud.firestore {
                      isTrainer() || 
                      isAdmin());
     }
+    
+    // Session Packages Collection Rules
+    match /sessionPackages/{packageId} {
+      // Clients can read their own session packages
+      allow read: if isAuthenticated() && resource.data.clientId == request.auth.uid;
+      
+      // Trainers can read and write session packages for their clients
+      allow read, write: if isAuthenticated() && 
+                         isTrainer() && 
+                         resource.data.trainerId == request.auth.uid;
+      
+      // Allow trainers to list/query session packages (for finding client packages)
+      allow list: if isAuthenticated() && isTrainer();
+      
+      // Allow creating session packages for client-trainer relationships
+      allow create: if isAuthenticated() && 
+                    isTrainer() && 
+                    request.resource.data.trainerId == request.auth.uid;
+      
+      // Allow updating session packages (for payments and adjustments)
+      allow update: if isAuthenticated() && 
+                    (resource.data.trainerId == request.auth.uid || 
+                     resource.data.clientId == request.auth.uid);
+      
+      // Admins can do everything
+      allow read, write: if isAdmin();
+    }
+    
+    // Payment History Collection Rules
+    match /paymentHistory/{paymentId} {
+      // Clients can read their own payment history
+      allow read: if isAuthenticated() && resource.data.clientId == request.auth.uid;
+      
+      // Trainers can read payment history for their clients
+      allow read: if isAuthenticated() && 
+                  isTrainer() && 
+                  resource.data.trainerId == request.auth.uid;
+      
+      // Allow trainers to list/query payment history (for client payment tabs)
+      allow list: if isAuthenticated() && isTrainer();
+      
+      // Only system (via Cloud Functions) can create payment history
+      // But we need to allow authenticated users for the webhook
+      allow create: if isAuthenticated();
+      
+      // Admins can do everything
+      allow read, write: if isAdmin();
+    }
   }
 } 

@@ -522,11 +522,47 @@ class _ClientDashboardState extends State<ClientDashboard> {
               
               const SizedBox(height: 24),
               
-              // Today's Workout Section
-              AppWidgets.sectionHeader(
-                title: "Today's Workout",
-                onActionPressed: null,
-                actionLabel: '',
+              // Today's Workout Section with enhanced styling
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppStyles.primarySage.withOpacity(0.8),
+                            AppStyles.primarySage.withOpacity(0.6),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppStyles.primarySage.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.fitness_center,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      "Today's Workout",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppStyles.textDark,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               
               // Workouts list with fixed height
@@ -546,43 +582,73 @@ class _ClientDashboardState extends State<ClientDashboard> {
                   final workouts = snapshot.data ?? [];
                   
                   if (workouts.isEmpty) {
-                    return Card(
+                    return Container(
                       margin: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      color: AppStyles.offWhite,
-                      elevation: 0,
-                      shadowColor: Colors.transparent,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          color: AppStyles.offWhite,
-                          boxShadow: AppStyles.cardShadow,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppStyles.offWhite,
+                            AppStyles.primarySage.withOpacity(0.05),
+                          ],
                         ),
-                        width: double.infinity,
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
+                        border: Border.all(
+                          color: AppStyles.primarySage.withOpacity(0.1),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppStyles.slateGray.withOpacity(0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      width: double.infinity,
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppStyles.primarySage.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppStyles.primarySage.withOpacity(0.2),
+                                  width: 2,
+                                ),
+                              ),
+                              child: Icon(
                                 Icons.fitness_center,
-                                size: 48,
+                                size: 32,
+                                color: AppStyles.primarySage,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'No workouts scheduled for today',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: AppStyles.textDark,
+                                letterSpacing: -0.3,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Take a rest day or check back tomorrow',
+                              style: TextStyle(
+                                fontSize: 14,
                                 color: AppStyles.slateGray,
                               ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No workouts scheduled for today',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppStyles.textDark,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -618,11 +684,64 @@ class _ClientDashboardState extends State<ClientDashboard> {
               
               const SizedBox(height: 24),
               
-              // Upcoming Sessions Section with glass-morphism header
-              AppWidgets.sectionHeader(
-                title: 'Training Sessions',
-                onActionPressed: _upcomingSessions.isNotEmpty ? _viewAllSessions : null,
-                actionLabel: _upcomingSessions.isNotEmpty ? 'View All' : '',
+              // Training Sessions Section with enhanced styling
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppStyles.mutedBlue.withOpacity(0.8),
+                            AppStyles.mutedBlue.withOpacity(0.6),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppStyles.mutedBlue.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.schedule,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Training Sessions',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppStyles.textDark,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (_upcomingSessions.isNotEmpty)
+                      TextButton.icon(
+                        onPressed: _viewAllSessions,
+                        icon: const Icon(
+                          Icons.arrow_forward,
+                          size: 16,
+                        ),
+                        label: const Text('View All'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppStyles.mutedBlue,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
               
               // Show upcoming sessions if available
@@ -788,77 +907,115 @@ class _ClientDashboardState extends State<ClientDashboard> {
                   },
                 ),
               ] else ...[
-                Card(
+                Container(
                   margin: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  color: AppStyles.offWhite,
-                  elevation: 0,
-                  shadowColor: Colors.transparent,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: AppStyles.offWhite,
-                      boxShadow: AppStyles.cardShadow,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppStyles.offWhite,
+                        AppStyles.mutedBlue.withOpacity(0.05),
+                      ],
                     ),
-                    width: double.infinity,
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.event_busy,
-                            size: 48,
+                    border: Border.all(
+                      color: AppStyles.mutedBlue.withOpacity(0.1),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppStyles.slateGray.withOpacity(0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  width: double.infinity,
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppStyles.mutedBlue.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppStyles.mutedBlue.withOpacity(0.2),
+                              width: 2,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.event_available,
+                            size: 32,
+                            color: AppStyles.mutedBlue,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'No upcoming sessions',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: AppStyles.textDark,
+                            letterSpacing: -0.3,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Schedule a session with a trainer below',
+                          style: TextStyle(
+                            fontSize: 14,
                             color: AppStyles.slateGray,
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Schedule a session with a trainer below',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppStyles.textDark,
-                            ),
-                            textAlign: TextAlign.center,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 28),
+                        // Schedule session button with enhanced styling
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppStyles.mutedBlue.withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 24),
-                          // Schedule session button
-                          SizedBox(
-                            width: 240,
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => SelectTrainerScreen(
-                                      clientId: _client!.uid,
-                                    ),
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => SelectTrainerScreen(
+                                    clientId: _client!.uid,
                                   ),
-                                ).then((_) => _loadUpcomingSessions());
-                              },
-                              icon: const Icon(Icons.add_circle_outline, size: 20),
-                              label: const Text('Schedule Session'),
-                              style: OutlinedButton.styleFrom(
-                                backgroundColor: AppStyles.offWhite,
-                                foregroundColor: AppStyles.primarySage,
-                                side: const BorderSide(color: AppStyles.primarySage, width: 1.5),
-                                elevation: 1,
-                                shadowColor: AppStyles.primarySage.withOpacity(0.2),
-                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
                                 ),
-                                textStyle: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
+                              ).then((_) => _loadUpcomingSessions());
+                            },
+                            icon: const Icon(Icons.add_circle_outline, size: 20),
+                            label: const Text('Schedule Session'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppStyles.mutedBlue,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              textStyle: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                letterSpacing: 0.2,
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -975,7 +1132,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
     );
   }
   
-  // Build upcoming session card
+    // Build upcoming session card
   Widget _buildUpcomingSessionCard(TrainingSession session) {
     // Determine if the session is happening very soon (within 30 minutes)
     final bool isImminent = session.startTime.difference(DateTime.now()).inMinutes < 30;
@@ -983,226 +1140,273 @@ class _ClientDashboardState extends State<ClientDashboard> {
     // Format time to display
     final String formattedTime = DateFormat('h:mm a').format(session.startTime);
     
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12.0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+      decoration: BoxDecoration(
+        color: AppStyles.offWhite,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: AppStyles.cardShadow,
       ),
-      color: isImminent 
-          ? AppStyles.primarySage.withOpacity(0.15) 
-          : AppStyles.offWhite,
-      elevation: 0,
-      shadowColor: Colors.transparent,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isImminent 
-            ? AppStyles.primarySage.withOpacity(0.15) 
-            : AppStyles.offWhite,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: AppStyles.cardShadow,
-        ),
-        child: Column(
-          children: [
-            // Date header inside the card
-            Padding(
-              padding: const EdgeInsets.only(top: 12.0, left: 16.0, bottom: 4.0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  _formatDateHeader(session.startTime),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: AppStyles.textDark,
+      child: Column(
+        children: [
+          // Date header inside the card
+          Container(
+            padding: const EdgeInsets.only(top: 16.0, left: 20.0, right: 20.0, bottom: 8.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppStyles.mutedBlue.withOpacity(0.15),
+                        AppStyles.mutedBlue.withOpacity(0.1),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppStyles.mutedBlue.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    _formatDateHeader(session.startTime),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: AppStyles.mutedBlue,
+                      letterSpacing: 0.2,
+                    ),
                   ),
                 ),
+              ],
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            height: 1,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  AppStyles.slateGray.withOpacity(0.15),
+                  Colors.transparent,
+                ],
               ),
             ),
-            Divider(
-              color: AppStyles.slateGray.withOpacity(0.2),
-              height: 1,
-              indent: 16,
-              endIndent: 16,
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Time column
-                  Container(
-                    width: 80,
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: isImminent 
-                          ? AppStyles.primarySage.withOpacity(0.2)
-                          : AppStyles.slateGray.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Time column
+                Container(
+                  width: 85,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isImminent 
+                          ? [
+                              AppStyles.primarySage.withOpacity(0.2),
+                              AppStyles.primarySage.withOpacity(0.15),
+                            ]
+                          : [
+                              AppStyles.mutedBlue.withOpacity(0.1),
+                              AppStyles.mutedBlue.withOpacity(0.05),
+                            ],
                     ),
-                    child: Column(
-                      children: [
-                        Text(
-                          formattedTime,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: isImminent 
-                                ? AppStyles.primarySage 
-                                : AppStyles.textDark,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isImminent 
+                          ? AppStyles.primarySage.withOpacity(0.3)
+                          : AppStyles.mutedBlue.withOpacity(0.2),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isImminent 
+                            ? AppStyles.primarySage 
+                            : AppStyles.mutedBlue).withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        formattedTime,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: isImminent 
+                              ? AppStyles.primarySage 
+                              : AppStyles.textDark,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      if (isImminent) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppStyles.primarySage.withOpacity(0.3),
+                                AppStyles.primarySage.withOpacity(0.2),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: AppStyles.primarySage.withOpacity(0.4),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Text(
+                            'Soon',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppStyles.primarySage,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.3,
+                            ),
                           ),
                         ),
-                        if (isImminent) ...[
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppStyles.primarySage.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              'Soon',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppStyles.primarySage,
-                                fontWeight: FontWeight.bold,
-                              ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 18),
+                
+                // Session details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        session.sessionType ?? "Training Session",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppStyles.textDark,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.person,
+                            size: 16,
+                            color: AppStyles.slateGray,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'with ${session.trainerName}',
+                            style: const TextStyle(
+                              color: AppStyles.slateGray,
+                              fontSize: 14,
                             ),
                           ),
                         ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  
-                  // Session details
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          session.sessionType ?? "Training Session",
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: AppStyles.textDark,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                      ),
+                      if (session.location != null && session.location!.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Row(
                           children: [
                             const Icon(
-                              Icons.person,
+                              Icons.location_on,
                               size: 16,
                               color: AppStyles.slateGray,
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              'with ${session.trainerName}',
-                              style: const TextStyle(
-                                color: AppStyles.slateGray,
-                                fontSize: 14,
+                            Expanded(
+                              child: Text(
+                                session.location!,
+                                style: const TextStyle(
+                                  color: AppStyles.slateGray,
+                                  fontSize: 14,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
-                        if (session.location != null && session.location!.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.location_on,
-                                size: 16,
-                                color: AppStyles.slateGray,
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  session.location!,
-                                  style: const TextStyle(
-                                    color: AppStyles.slateGray,
-                                    fontSize: 14,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
                       ],
-                    ),
+                    ],
                   ),
-                  
-                  // Action menu
-                  PopupMenuButton<String>(
-                    icon: const Icon(
-                      Icons.more_vert,
-                      color: AppStyles.slateGray,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    itemBuilder: (context) => [
-                      if (session.trainerLocationEnabled)
-                        const PopupMenuItem(
-                          value: 'track',
-                          child: Row(
-                            children: [
-                              Icon(Icons.location_on, color: AppStyles.primarySage),
-                              SizedBox(width: 8),
-                              Text(
-                                'Track Trainer',
-                                style: TextStyle(color: AppStyles.textDark),
-                              ),
-                            ],
-                          ),
-                        ),
+                ),
+                
+                // Action menu
+                PopupMenuButton<String>(
+                  icon: const Icon(
+                    Icons.more_vert,
+                    color: AppStyles.slateGray,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  itemBuilder: (context) => [
+                    if (session.trainerLocationEnabled)
                       const PopupMenuItem(
-                        value: 'cancel',
+                        value: 'track',
                         child: Row(
                           children: [
-                            Icon(Icons.cancel_outlined, color: AppStyles.errorRed),
+                            Icon(Icons.location_on, color: AppStyles.primarySage),
                             SizedBox(width: 8),
                             Text(
-                              'Cancel Session',
+                              'Track Trainer',
                               style: TextStyle(color: AppStyles.textDark),
                             ),
                           ],
                         ),
                       ),
-                    ],
-                    onSelected: (value) async {
-                      if (value == 'cancel') {
-                        _showCancelSessionDialog(session);
-                      } else if (value == 'track' && session.trainerLocationEnabled) {
-                        // Check if we're within 30 minutes of the session start time
-                        final now = DateTime.now();
-                        final thirtyMinutesBeforeStart = session.startTime.subtract(const Duration(minutes: 30));
-                        
-                        if (now.isAfter(thirtyMinutesBeforeStart)) {
-                          //Within 30 minutes of session, allowed to track
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => TrainerLocationScreen(
-                                session: session,
-                              ),
+                    const PopupMenuItem(
+                      value: 'cancel',
+                      child: Row(
+                        children: [
+                          Icon(Icons.cancel_outlined, color: AppStyles.errorRed),
+                          SizedBox(width: 8),
+                          Text(
+                            'Cancel Session',
+                            style: TextStyle(color: AppStyles.textDark),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  onSelected: (value) async {
+                    if (value == 'cancel') {
+                      _showCancelSessionDialog(session);
+                    } else if (value == 'track' && session.trainerLocationEnabled) {
+                      // Check if we're within 30 minutes of the session start time
+                      final now = DateTime.now();
+                      final thirtyMinutesBeforeStart = session.startTime.subtract(const Duration(minutes: 30));
+                      
+                      if (now.isAfter(thirtyMinutesBeforeStart)) {
+                        //Within 30 minutes of session, allowed to track
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => TrainerLocationScreen(
+                              session: session,
                             ),
-                          );
-                         } else {
-                           // Too early, show restriction dialog
-                           _showTrackingRestrictionDialog(session);
-                         }
-                      }
-                    },
-                  ),
-                ],
-              ),
+                          ),
+                        );
+                       } else {
+                         // Too early, show restriction dialog
+                         _showTrackingRestrictionDialog(session);
+                       }
+                    }
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1211,44 +1415,299 @@ class _ClientDashboardState extends State<ClientDashboard> {
   Future<void> _showCancelSessionDialog(TrainingSession session) async {
     final TextEditingController reasonController = TextEditingController();
     
+    // Calculate if session is within 24 hours
+    final now = DateTime.now();
+    final timeDifference = session.startTime.difference(now);
+    final isWithin24Hours = timeDifference.inHours < 24;
+    
     try {
       bool? result = await showDialog<bool>(
         context: context,
+        barrierColor: Colors.black.withOpacity(0.6),
         builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Cancel Training Session'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Are you sure you want to cancel this session?',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                Text('Date: ${session.formattedDate}'),
-                Text('Time: ${session.formattedTimeRange}'),
-                const SizedBox(height: 16),
-                const Text('Reason for cancellation (optional):'),
-                TextField(
-                  controller: reasonController,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter reason here',
-                  ),
-                  maxLines: 2,
-                ),
-              ],
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('No, Keep It'),
+            elevation: 12,
+            backgroundColor: Colors.transparent,
+            child: Container(
+              constraints: const BoxConstraints(
+                maxWidth: 400,
+                maxHeight: 650, // Add max height constraint
               ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Yes, Cancel', style: TextStyle(color: AppStyles.errorRed)),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-            ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with icon
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: AppStyles.errorRed.withOpacity(0.1),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: AppStyles.errorRed.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.cancel_outlined,
+                            color: AppStyles.errorRed,
+                            size: 32,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Cancel Training Session',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppStyles.textDark,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Content - Make scrollable
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                        // Session details card
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppStyles.offWhite,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppStyles.slateGray.withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.event,
+                                    size: 18,
+                                    color: AppStyles.primarySage,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    session.formattedDate,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppStyles.textDark,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time,
+                                    size: 18,
+                                    color: AppStyles.primarySage,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    session.formattedTimeRange,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppStyles.textDark,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_on,
+                                    size: 18,
+                                    color: AppStyles.primarySage,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      session.location,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: AppStyles.textDark,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
+                        // Refund policy information
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isWithin24Hours 
+                                ? AppStyles.errorRed.withOpacity(0.1)
+                                : AppStyles.successGreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isWithin24Hours 
+                                  ? AppStyles.errorRed.withOpacity(0.3)
+                                  : AppStyles.successGreen.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    isWithin24Hours ? Icons.warning_amber : Icons.check_circle,
+                                    color: isWithin24Hours ? AppStyles.errorRed : AppStyles.successGreen,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Refund Policy',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: isWithin24Hours ? AppStyles.errorRed : AppStyles.successGreen,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                isWithin24Hours
+                                    ? 'This session is within 24 hours. Your session will NOT be refunded unless you have discussed with your trainer beforehand with a valid reason. If you have, your trainer will manually restore your session.'
+                                    : 'This session is more than 24 hours away. Your session will be automatically refunded to your account.',
+                                style: TextStyle(
+                                  color: isWithin24Hours ? AppStyles.errorRed : AppStyles.successGreen,
+                                  fontSize: 14,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
+                        // Reason field
+                        const Text(
+                          'Reason for cancellation (optional):',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppStyles.textDark,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: reasonController,
+                          decoration: AppStyles.inputDecoration(
+                            labelText: '',
+                            hintText: 'Enter your reason here...',
+                          ),
+                          style: const TextStyle(color: AppStyles.textDark),
+                          maxLines: 3,
+                          textInputAction: TextInputAction.done,
+                        ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  // Actions
+                  Padding(
+                    padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(
+                                  color: AppStyles.slateGray.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            child: const Text(
+                              'Keep Session',
+                              style: TextStyle(
+                                color: AppStyles.textDark,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppStyles.errorRed,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           );
         },
       );
@@ -2187,79 +2646,133 @@ class TodayWorkoutCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16.0),
       decoration: BoxDecoration(
         color: AppStyles.offWhite,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: AppStyles.cardShadow,
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        workout.workoutName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppStyles.textDark,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                    _buildStatusChip(context, workout.status),
+                  ],
+                ),
+                if (workout.workoutDescription != null && workout.workoutDescription!.isNotEmpty && !workout.isSessionBased) ...[
+                  const SizedBox(height: 16.0),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppStyles.slateGray.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppStyles.slateGray.withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
                     child: Text(
-                      workout.workoutName,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppStyles.textDark,
+                      workout.workoutDescription!,
+                      style: TextStyle(
+                        color: AppStyles.slateGray,
+                        fontSize: 14,
+                        height: 1.5,
                       ),
                     ),
                   ),
-                  _buildStatusChip(context, workout.status),
                 ],
-              ),
-              if (workout.workoutDescription != null && workout.workoutDescription!.isNotEmpty) ...[
-                const SizedBox(height: 12.0),
-                Text(
-                  workout.workoutDescription!,
-                  style: TextStyle(
-                    color: AppStyles.slateGray,
-                    fontSize: 14,
-                    height: 1.4,
+                const SizedBox(height: 20.0),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: workout.isSessionBased 
+                          ? [
+                              AppStyles.mutedBlue.withOpacity(0.1),
+                              AppStyles.mutedBlue.withOpacity(0.05),
+                            ]
+                          : [
+                              AppStyles.primarySage.withOpacity(0.1),
+                              AppStyles.primarySage.withOpacity(0.05),
+                            ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: workout.isSessionBased 
+                          ? AppStyles.mutedBlue.withOpacity(0.2)
+                          : AppStyles.primarySage.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: workout.isSessionBased 
+                              ? AppStyles.mutedBlue.withOpacity(0.15)
+                              : AppStyles.primarySage.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          workout.isSessionBased ? Icons.schedule : Icons.fitness_center,
+                          size: 16,
+                          color: workout.isSessionBased 
+                              ? AppStyles.mutedBlue
+                              : AppStyles.primarySage,
+                        ),
+                      ),
+                      const SizedBox(width: 12.0),
+                      Expanded(
+                        child: Text(
+                          workout.isSessionBased 
+                              ? 'Personal Training Session'
+                              : '${workout.exercises.length} exercise${workout.exercises.length > 1 ? 's' : ''}',
+                          style: TextStyle(
+                            color: AppStyles.textDark,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: workout.isSessionBased 
+                              ? AppStyles.mutedBlue.withOpacity(0.15)
+                              : AppStyles.primarySage.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Icon(
+                          Icons.arrow_forward_ios,
+                          size: 12,
+                          color: workout.isSessionBased 
+                              ? AppStyles.mutedBlue
+                              : AppStyles.primarySage,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
-              const SizedBox(height: 20.0),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppStyles.slateGray.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppStyles.slateGray.withOpacity(0.2),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.fitness_center,
-                      size: 16,
-                      color: AppStyles.primarySage,
-                    ),
-                    const SizedBox(width: 8.0),
-                    Text(
-                      '${workout.exercises.length} exercise${workout.exercises.length > 1 ? 's' : ''}',
-                      style: TextStyle(
-                        color: AppStyles.textDark,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      size: 14,
-                      color: AppStyles.primarySage,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

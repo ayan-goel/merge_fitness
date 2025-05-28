@@ -103,6 +103,32 @@ class AssignedWorkout {
         status = WorkoutStatus.assigned;
     }
     
+    // Format notes properly to avoid duplicate "Notes:" labels
+    String formattedNotes = 'Training session at ${session.location}';
+    
+    if (session.notes != null && session.notes!.isNotEmpty) {
+      // Check if the notes contain a cancellation reason
+      if (session.notes!.contains('Cancellation reason:')) {
+        // Split the notes to separate original notes from cancellation reason
+        final parts = session.notes!.split('\n\nCancellation reason:');
+        final originalNotes = parts[0].trim();
+        final cancellationReason = parts.length > 1 ? parts[1].trim() : '';
+        
+        // Add original notes if they exist and are not just location info
+        if (originalNotes.isNotEmpty && originalNotes != session.location) {
+          formattedNotes += '\n\nNotes: $originalNotes';
+        }
+        
+        // Add cancellation reason without extra "Notes:" prefix
+        if (cancellationReason.isNotEmpty) {
+          formattedNotes += '\n\nCancellation Reason: $cancellationReason';
+        }
+      } else {
+        // No cancellation reason, just add regular notes
+        formattedNotes += '\n\nNotes: ${session.notes}';
+      }
+    }
+
     return AssignedWorkout(
       id: 'session_${session.id}', // Prefix to distinguish from regular workouts
       trainerId: session.trainerId,
@@ -115,7 +141,7 @@ class AssignedWorkout {
       completedDate: completedDate,
       feedback: null,
       exercises: [], // Sessions don't have predefined exercises
-      notes: 'Training session at ${session.location}${session.notes != null ? '\n\nNotes: ${session.notes}' : ''}',
+      notes: formattedNotes,
       isSessionBased: true,
       sessionId: session.id,
     );
