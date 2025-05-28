@@ -226,15 +226,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   
                   // Exercises section or Session info
                   if (widget.workout.isSessionBased) ...[
-                    Text(
-                      'Session Details',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppStyles.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 16.0),
                     Card(
                       color: Colors.white,
                       shape: RoundedRectangleBorder(
