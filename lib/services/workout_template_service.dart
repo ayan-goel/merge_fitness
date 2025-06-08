@@ -197,9 +197,19 @@ class WorkoutTemplateService {
 
   // Get all clients for a trainer
   Future<List<Map<String, dynamic>>> getTrainerClients(String trainerId) async {
-    final snapshot = await _usersCollection
-        .where('role', isEqualTo: 'client')
-        .get();
+    // First, check if the current user is a super trainer
+    final trainerDoc = await _usersCollection.doc(trainerId).get();
+    final trainerData = trainerDoc.data() as Map<String, dynamic>?;
+    final isSuperTrainer = trainerData?['role'] == 'superTrainer';
+    
+    Query query = _usersCollection.where('role', isEqualTo: 'client');
+    
+    // If not a super trainer, only show clients assigned to this trainer
+    if (!isSuperTrainer) {
+      query = query.where('trainerId', isEqualTo: trainerId);
+    }
+    
+    final snapshot = await query.get();
     
     return snapshot.docs.map((doc) {
       final data = doc.data() as Map<String, dynamic>;
@@ -208,6 +218,7 @@ class WorkoutTemplateService {
         'displayName': data['displayName'] ?? 'Unknown',
         'email': data['email'] ?? '',
         'photoUrl': data['photoUrl'],
+        'trainerId': data['trainerId'], // Include trainerId for reference
       };
     }).toList();
   }
@@ -305,6 +316,7 @@ class WorkoutTemplateService {
         'displayName': data['displayName'] ?? 'Unknown',
         'email': data['email'] ?? '',
         'phoneNumber': data['phoneNumber'] ?? '',
+        'trainerId': data['trainerId'], // Include trainerId field
         'height': data['height'], // in cm
         'heightImperial': heightImperial,
         'weight': data['weight'], // in kg

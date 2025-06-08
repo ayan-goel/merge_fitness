@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/assigned_workout_model.dart';
 import '../../models/nutrition_plan_model.dart';
+import '../../models/user_model.dart';
 import '../../services/workout_template_service.dart';
 import '../../services/enhanced_workout_service.dart';
 import '../../services/nutrition_service.dart';
@@ -33,6 +34,8 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
   final NutritionService _nutritionService = NutritionService();
   final AuthService _authService = AuthService();
   String? _trainerId;
+  UserModel? _currentUser;
+  bool _isLoading = true;
   
   void _navigateToAssignWorkout() {
     Navigator.push(
@@ -165,16 +168,30 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
       final user = await _authService.getUserModel();
       setState(() {
         _trainerId = user.uid;
+        _currentUser = user;
+        _isLoading = false;
       });
     } catch (e) {
       print('Error loading trainer ID: $e');
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
   
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final isSuperTrainer = _currentUser?.isSuperTrainer ?? false;
+    final tabCount = isSuperTrainer ? 4 : 3;
+    
     return DefaultTabController(
-      length: 4,
+      length: tabCount,
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.clientName),
@@ -188,12 +205,13 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
               ),
             ),
           ],
-          bottom: const TabBar(
+          bottom: TabBar(
             tabs: [
-              Tab(text: 'Workouts', icon: Icon(Icons.fitness_center)),
-              Tab(text: 'Nutrition', icon: Icon(Icons.restaurant_menu)),
-              Tab(text: 'Progress', icon: Icon(Icons.analytics)),
-              Tab(text: 'Payment', icon: Icon(Icons.payment)),
+              const Tab(text: 'Workouts', icon: Icon(Icons.fitness_center)),
+              const Tab(text: 'Nutrition', icon: Icon(Icons.restaurant_menu)),
+              const Tab(text: 'Progress', icon: Icon(Icons.analytics)),
+              if (isSuperTrainer)
+                const Tab(text: 'Payment', icon: Icon(Icons.payment)),
             ],
           ),
         ),
@@ -372,6 +390,23 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                           }
                         },
                       ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextButton.icon(
+                              onPressed: _navigateToClientMeals,
+                              icon: const Icon(Icons.restaurant),
+                              label: const Text('View Meal History'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                backgroundColor: Theme.of(context).colorScheme.secondary,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -406,7 +441,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  'No nutrition plans assigned yet',
+                                  'No nutrition plan assigned yet',
                                   style: Theme.of(context).textTheme.titleMedium,
                                   textAlign: TextAlign.center,
                                 ),
@@ -420,15 +455,8 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                                       foregroundColor: Colors.white,
                                       padding: const EdgeInsets.symmetric(vertical: 12),
                                     ),
-                                    child: const Text('Assign First Plan'),
+                                    child: const Text('Assign Nutrition Plan'),
                                   ),
-                                ),
-                                // View Meals button even if no plan
-                                const SizedBox(height: 24),
-                                OutlinedButton.icon(
-                                  onPressed: () => _navigateToClientMeals(),
-                                  icon: const Icon(Icons.restaurant),
-                                  label: const Text('View Client\'s Meals'),
                                 ),
                               ],
                             ),
@@ -436,37 +464,13 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                         );
                       }
                       
-                      return Column(
-                        children: [
-                          // Add a button to view client's meals - MOVED UP
-                          Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                onPressed: () => _navigateToClientMeals(),
-                                icon: const Icon(Icons.restaurant, size: 24),
-                                label: const Text('View Client\'s Meals', style: TextStyle(fontSize: 16)),
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  backgroundColor: Theme.of(context).colorScheme.secondary,
-                                  foregroundColor: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                          
-                          Expanded(
-                            child: ListView.builder(
-                              padding: const EdgeInsets.all(16.0),
-                              itemCount: plans.length,
-                              itemBuilder: (context, index) {
-                                final plan = plans[index];
-                                return NutritionPlanCard(plan: plan);
-                              },
-                            ),
-                          ),
-                        ],
+                      return ListView.builder(
+                        padding: const EdgeInsets.all(16.0),
+                        itemCount: plans.length,
+                        itemBuilder: (context, index) {
+                          final plan = plans[index];
+                          return NutritionPlanCard(plan: plan);
+                        },
                       );
                     },
                   ),
@@ -480,14 +484,16 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
               clientName: widget.clientName,
             ),
             
-            // PAYMENT TAB
-            _trainerId != null
-                ? ClientPaymentTab(
-                    clientId: widget.clientId,
-                    clientName: widget.clientName,
-                    trainerId: _trainerId!,
-                  )
-                : const Center(child: CircularProgressIndicator()),
+            // PAYMENT TAB (only for super trainers)
+            ...isSuperTrainer ? [
+              _trainerId != null
+                  ? ClientPaymentTab(
+                      clientId: widget.clientId,
+                      clientName: widget.clientName,
+                      trainerId: _trainerId!,
+                    )
+                  : const Center(child: CircularProgressIndicator()),
+            ] : [],
           ],
         ),
       ),

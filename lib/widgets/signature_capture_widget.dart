@@ -48,7 +48,7 @@ class SignatureDialog extends StatelessWidget {
               height: MediaQuery.of(context).size.height * 0.4,
               decoration: BoxDecoration(
                 color: Colors.grey[100],
-                border: Border.all(color: Colors.grey[300]!),
+                border: Border.all(color: Colors.grey[300] ?? Colors.grey),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: SingleChildScrollView(

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/assigned_workout_model.dart';
 import '../../models/workout_template_model.dart';
+import '../../models/video_call_model.dart';
 import '../../services/workout_template_service.dart';
+import '../../services/video_call_service.dart';
 import '../../theme/app_styles.dart';
+import '../shared/video_call_screen.dart';
 import 'package:chewie/chewie.dart';
 import 'package:video_player/video_player.dart';
 
@@ -21,13 +24,46 @@ class WorkoutDetailScreen extends StatefulWidget {
 
 class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   final WorkoutTemplateService _workoutService = WorkoutTemplateService();
+  final VideoCallService _videoCallService = VideoCallService();
   bool _isUpdating = false;
   WorkoutStatus _currentStatus = WorkoutStatus.assigned;
+  VideoCall? _currentVideoCall;
   
   @override
   void initState() {
     super.initState();
     _currentStatus = widget.workout.status;
+    
+    // If this is a session-based workout, listen for video calls
+    if (widget.workout.isSessionBased && widget.workout.sessionId != null) {
+      _listenForVideoCall();
+    }
+  }
+
+  void _listenForVideoCall() {
+    print('Client: Listening for video calls for session ID: ${widget.workout.sessionId}');
+    _videoCallService.streamVideoCallBySessionId(widget.workout.sessionId!).listen((videoCall) {
+      print('Client: Video call update received: ${videoCall?.toMap()}');
+      if (mounted) {
+        setState(() {
+          _currentVideoCall = videoCall;
+        });
+        
+        if (videoCall != null) {
+          print('Client: Video call status: ${videoCall.status}, trainerJoined: ${videoCall.trainerJoined}, clientJoined: ${videoCall.clientJoined}');
+        } else {
+          print('Client: No active video call found for this session');
+        }
+      }
+    }, onError: (error) {
+      print('Client: Error listening for video calls: $error');
+    });
+  }
+
+  @override
+  void dispose() {
+    _videoCallService.dispose();
+    super.dispose();
   }
   
   Future<void> _updateWorkoutStatus(WorkoutStatus status) async {
@@ -71,6 +107,27 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error updating workout: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _joinVideoCall(VideoCall videoCall) async {
+    try {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => VideoCallScreen(
+            callId: videoCall.id,
+            isTrainer: false,
+            sessionId: videoCall.sessionId,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to join video call: $e')),
         );
       }
     }
@@ -264,6 +321,42 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                 height: 1.5,
                               ),
                             ),
+                            
+                            // Video call button
+                            if (_currentVideoCall != null) ...[
+                              const SizedBox(height: 20),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: _currentVideoCall!.trainerJoined && !_currentVideoCall!.isEnded
+                                      ? () => _joinVideoCall(_currentVideoCall!)
+                                      : null,
+                                  icon: Icon(
+                                    _currentVideoCall!.trainerJoined && !_currentVideoCall!.isEnded 
+                                        ? Icons.videocam 
+                                        : Icons.videocam_off,
+                                    size: 20,
+                                  ),
+                                  label: Text(
+                                    _currentVideoCall!.isEnded
+                                        ? 'Video Call Ended'
+                                        : _currentVideoCall!.trainerJoined
+                                            ? 'Trainer has joined'
+                                            : 'Waiting for trainer to start...',
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _currentVideoCall!.trainerJoined && !_currentVideoCall!.isEnded
+                                        ? Colors.green
+                                        : AppStyles.slateGray,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 16),
                             Container(
                               padding: const EdgeInsets.all(12),

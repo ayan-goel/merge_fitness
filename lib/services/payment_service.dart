@@ -248,6 +248,38 @@ class PaymentService {
     return package != null && package.sessionsRemaining > 0;
   }
 
+  // Create default session package for new client-trainer relationship
+  Future<SessionPackage?> createDefaultSessionPackage({
+    required String clientId,
+    required String trainerId,
+  }) async {
+    try {
+      // Check if package already exists
+      final existingPackage = await getSessionPackage(clientId, trainerId);
+      if (existingPackage != null) {
+        return existingPackage; // Package already exists
+      }
+
+      // Create new package with default $1000 cost
+      final newPackage = SessionPackage(
+        id: '',
+        clientId: clientId,
+        trainerId: trainerId,
+        costPerTenSessions: 1000.0, // Default cost
+        sessionsRemaining: 0, // Start with 0 sessions
+        createdAt: DateTime.now(),
+      );
+
+      final docRef = await _firestore.collection('sessionPackages')
+          .add(newPackage.toMap());
+
+      return newPackage.copyWith(id: docRef.id);
+    } catch (e) {
+      print('Error creating default session package: $e');
+      return null;
+    }
+  }
+
   // Handle session cancellation logic
   Future<bool> handleSessionCancellation({
     required TrainingSession session,

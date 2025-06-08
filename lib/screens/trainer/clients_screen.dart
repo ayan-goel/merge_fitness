@@ -3,6 +3,7 @@ import '../../services/workout_template_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/profile_avatar.dart';
 import 'client_details_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ClientsScreen extends StatefulWidget {
   const ClientsScreen({super.key});
@@ -18,6 +19,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
   List<Map<String, dynamic>> _clients = [];
   List<Map<String, dynamic>> _filteredClients = [];
   bool _isLoading = true;
+  bool _isSuperTrainer = false;
   String _searchQuery = '';
   
   @override
@@ -27,20 +29,34 @@ class _ClientsScreenState extends State<ClientsScreen> {
   }
   
   Future<void> _loadClients() async {
+    print('=== LOADING CLIENTS ===');
     setState(() {
       _isLoading = true;
     });
     
     try {
       final user = await _authService.getUserModel();
+      final isSuperTrainer = user.isSuperTrainer;
+      print('User is super trainer: $isSuperTrainer');
+      
       final clients = await _workoutService.getTrainerClients(user.uid);
+      print('Loaded ${clients.length} clients');
+      
+      for (int i = 0; i < clients.length; i++) {
+        final client = clients[i];
+        print('Client $i: ${client['displayName']} (ID: ${client['id']}) - trainerId: ${client['trainerId']}');
+      }
       
       setState(() {
         _clients = clients;
         _filteredClients = clients;
+        _isSuperTrainer = isSuperTrainer;
         _isLoading = false;
       });
+      
+      print('=== CLIENTS LOADED SUCCESSFULLY ===');
     } catch (e) {
+      print('Error loading clients: $e');
       setState(() {
         _isLoading = false;
       });
@@ -73,7 +89,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Clients'),
+        title: Text(_isSuperTrainer ? 'All Clients' : 'My Clients'),
       ),
       body: Column(
         children: [
@@ -100,7 +116,9 @@ class _ClientsScreenState extends State<ClientsScreen> {
                 : _filteredClients.isEmpty
                     ? Center(
                         child: _searchQuery.isEmpty
-                            ? const Text('No clients found')
+                            ? Text(_isSuperTrainer 
+                                ? 'No clients in the system yet' 
+                                : 'No clients assigned to you yet')
                             : Text('No clients matching "$_searchQuery"'),
                       )
                     : RefreshIndicator(
@@ -111,8 +129,8 @@ class _ClientsScreenState extends State<ClientsScreen> {
                             final client = _filteredClients[index];
                             return ClientListItem(
                               client: client,
-                              onTap: () {
-                                Navigator.push(
+                              onTap: () async {
+                                await Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => ClientDetailsScreen(
@@ -121,7 +139,11 @@ class _ClientsScreenState extends State<ClientsScreen> {
                                     ),
                                   ),
                                 );
+                                // Refresh the clients list when returning from client details
+                                print('Returned from client details, refreshing clients list...');
+                                await _loadClients();
                               },
+                              isSuperTrainer: _isSuperTrainer,
                             );
                           },
                         ),
@@ -136,11 +158,13 @@ class _ClientsScreenState extends State<ClientsScreen> {
 class ClientListItem extends StatelessWidget {
   final Map<String, dynamic> client;
   final VoidCallback onTap;
+  final bool isSuperTrainer;
   
   const ClientListItem({
     super.key,
     required this.client,
     required this.onTap,
+    required this.isSuperTrainer,
   });
   
   @override
@@ -153,10 +177,79 @@ class ClientListItem extends StatelessWidget {
           radius: 20,
         ),
         title: Text(client['displayName'] ?? 'Unknown'),
-        subtitle: Text(client['email'] ?? ''),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(client['email'] ?? ''),
+            if (isSuperTrainer && client['trainerId'] != null) ...[
+              const SizedBox(height: 4),
+              Builder(
+                builder: (context) {
+                  print('ClientListItem: Client ${client['displayName']} has trainerId: ${client['trainerId']}');
+                  return FutureBuilder<String>(
+                    future: _getTrainerName(client['trainerId']),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        return Text(
+                          'Assigned to: ${snapshot.data}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).primaryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  );
+                },
+              ),
+            ] else if (isSuperTrainer && client['trainerId'] == null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'No trainer assigned',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.orange[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ],
+        ),
         trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
       ),
     );
+  }
+  
+  Future<String> _getTrainerName(String trainerId) async {
+    try {
+      print('ClientListItem: _getTrainerName called with trainerId: $trainerId');
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(trainerId)
+          .get();
+      
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        print('ClientListItem: Trainer document found. Data keys: ${data.keys.toList()}');
+        print('ClientListItem: Trainer displayName: ${data['displayName']}');
+        print('ClientListItem: Trainer firstName: ${data['firstName']}');
+        print('ClientListItem: Trainer lastName: ${data['lastName']}');
+        print('ClientListItem: Trainer email: ${data['email']}');
+        
+        final displayName = data['displayName'] ?? 
+            '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'.trim();
+        final result = displayName.isNotEmpty ? displayName : data['email'] ?? 'Unknown Trainer';
+        print('ClientListItem: _getTrainerName returning: $result');
+        return result;
+      }
+      print('ClientListItem: Trainer document not found for ID: $trainerId');
+      return 'Unknown Trainer';
+    } catch (e) {
+      print('ClientListItem: Error in _getTrainerName: $e');
+      return 'Unknown Trainer';
+    }
   }
 } 

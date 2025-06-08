@@ -294,6 +294,206 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
       }
     }
   }
+
+  Future<void> _showDeleteAccountDialog() async {
+    final passwordController = TextEditingController();
+    bool isValidating = false;
+    String? errorMessage;
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  const Icon(Icons.warning, color: AppStyles.errorRed),
+                  const SizedBox(width: 8),
+                  const Text('Delete Account'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Are you sure you want to delete your account?',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('This action will:'),
+                  const SizedBox(height: 8),
+                  const Text('• Permanently delete all your profile data'),
+                  const Text('• Remove all your workout history'),
+                  const Text('• Delete all your nutrition plans'),
+                  const Text('• Cancel any active training sessions'),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppStyles.errorRed.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppStyles.errorRed.withOpacity(0.3)),
+                    ),
+                    child: const Text(
+                      '⚠️ This action cannot be undone!',
+                      style: TextStyle(
+                        color: AppStyles.errorRed,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Enter your password to confirm deletion:',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    enabled: !isValidating,
+                    decoration: InputDecoration(
+                      hintText: 'Password',
+                      errorText: errorMessage,
+                      prefixIcon: const Icon(Icons.lock),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      filled: true,
+                      fillColor: AppStyles.offWhite,
+                    ),
+                    onChanged: (value) {
+                      if (errorMessage != null) {
+                        setState(() {
+                          errorMessage = null;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isValidating ? null : () {
+                    Navigator.of(context).pop(false);
+                  },
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: AppStyles.slateGray),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: isValidating ? null : () async {
+                    if (passwordController.text.isEmpty) {
+                      setState(() {
+                        errorMessage = 'Password is required';
+                      });
+                      return;
+                    }
+                    
+                    setState(() {
+                      isValidating = true;
+                      errorMessage = null;
+                    });
+                    
+                    try {
+                      // Reauthenticate with password
+                      await _authService.reauthenticateWithPassword(passwordController.text);
+                      Navigator.of(context).pop(true);
+                    } catch (e) {
+                      if (mounted) {
+                        setState(() {
+                          isValidating = false;
+                          errorMessage = e.toString().replaceFirst('Exception: ', '');
+                        });
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppStyles.errorRed,
+                    foregroundColor: AppStyles.textLight,
+                  ),
+                  child: isValidating 
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text('Delete Account'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    // Dispose the controller after dialog is closed
+    passwordController.dispose();
+
+    if (confirmed == true) {
+      await _deleteAccount();
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text('Deleting account...'),
+            ],
+          ),
+        ),
+      );
+
+      final user = await _authService.getUserModel();
+      
+      // Delete user data from Firestore
+      await _authService.deleteUserAccount(user.uid);
+      
+      if (mounted) {
+        // Dismiss loading dialog
+        Navigator.pop(context);
+        
+        // Navigate to login and clear all routes
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+        
+        // Show confirmation
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account deleted successfully'),
+            backgroundColor: AppStyles.successGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error deleting account: $e');
+      if (mounted) {
+        // Dismiss loading dialog
+        Navigator.pop(context);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting account: $e'),
+            backgroundColor: AppStyles.errorRed,
+          ),
+        );
+      }
+    }
+  }
   
   InputDecoration _getInputDecoration({
     required String label,
@@ -347,8 +547,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         actions: [
           if (!_isEditing)
             IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => setState(() => _isEditing = true),
+              icon: const Icon(Icons.logout),
+              onPressed: _signOut,
+              tooltip: 'Sign Out',
             )
           else
             IconButton(
@@ -377,244 +578,137 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                 
                 // Training Sessions Card (only show if user has a trainer)
                 if (_user?.trainerId != null) ...[
-                  Container(
-                    decoration: AppStyles.cardDecoration.copyWith(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppStyles.offWhite,
-                          AppStyles.primarySage.withOpacity(0.02),
+                  Card(
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Simple Header
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.fitness_center,
+                                color: AppStyles.primarySage,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Training Sessions',
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppStyles.textDark,
+                                ),
+                              ),
+                            ],
+                          ),
+                          
+                          const SizedBox(height: 20),
+                          
+                          // Clean Stats Row
+                          Row(
+                            children: [
+                              // Sessions Left
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Sessions Remaining',
+                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        color: AppStyles.slateGray,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${_sessionPackage?.sessionsRemaining ?? 0}',
+                                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                        color: AppStyles.primarySage,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              
+                              // Simple Divider
+                              Container(
+                                height: 40,
+                                width: 1,
+                                color: AppStyles.slateGray.withOpacity(0.2),
+                              ),
+                              
+                              const SizedBox(width: 16),
+                              
+                              // Package Cost
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Package Cost',
+                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        color: AppStyles.slateGray,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _sessionPackage != null 
+                                          ? '\$${_sessionPackage!.costPerTenSessions.toStringAsFixed(0)}'
+                                          : '\$0',
+                                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                        color: AppStyles.primarySage,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          
+                          const SizedBox(height: 20),
+                          
+                          // Clean Payment Button
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _navigateToPayment,
+                              icon: Icon(
+                                Icons.payment,
+                                size: 18,
+                                color: AppStyles.primarySage,
+                              ),
+                              label: Text(
+                                'Manage Payments',
+                                style: TextStyle(
+                                  color: AppStyles.primarySage,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: AppStyles.primarySage,
+                                  width: 1.5,
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header Section
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    AppStyles.primarySage.withOpacity(0.15),
-                                    AppStyles.primarySage.withOpacity(0.08),
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: AppStyles.primarySage.withOpacity(0.2),
-                                  width: 1,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.fitness_center,
-                                color: AppStyles.primarySage,
-                                size: 28,
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Training Sessions',
-                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppStyles.textDark,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Manage your session package',
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: AppStyles.slateGray,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        
-                        const SizedBox(height: 24),
-                        
-                        // Sessions Info Section
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: AppStyles.primarySage.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: AppStyles.primarySage.withOpacity(0.15),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              // Sessions Remaining
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'Sessions Left',
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: AppStyles.slateGray,
-                                        fontWeight: FontWeight.w600,
-                                        letterSpacing: 0.5,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppStyles.primarySage,
-                                        borderRadius: BorderRadius.circular(12),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: AppStyles.primarySage.withOpacity(0.3),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Text(
-                                        '${_sessionPackage?.sessionsRemaining ?? 0}',
-                                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              
-                              // Divider
-                              Container(
-                                height: 60,
-                                width: 1,
-                                margin: const EdgeInsets.symmetric(horizontal: 20),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      AppStyles.slateGray.withOpacity(0.2),
-                                      AppStyles.slateGray.withOpacity(0.5),
-                                      AppStyles.slateGray.withOpacity(0.2),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              
-                                                             // Package Cost
-                               Expanded(
-                                 child: Column(
-                                   crossAxisAlignment: CrossAxisAlignment.center,
-                                   children: [
-                                     Text(
-                                       'Package Cost',
-                                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                         color: AppStyles.slateGray,
-                                         fontWeight: FontWeight.w600,
-                                         letterSpacing: 0.5,
-                                       ),
-                                       textAlign: TextAlign.center,
-                                     ),
-                                     const SizedBox(height: 8),
-                                     Container(
-                                       padding: const EdgeInsets.symmetric(
-                                         horizontal: 16,
-                                         vertical: 8,
-                                       ),
-                                       decoration: BoxDecoration(
-                                         color: AppStyles.mutedBlue,
-                                         borderRadius: BorderRadius.circular(12),
-                                         boxShadow: [
-                                           BoxShadow(
-                                             color: AppStyles.mutedBlue.withOpacity(0.3),
-                                             blurRadius: 8,
-                                             offset: const Offset(0, 2),
-                                           ),
-                                         ],
-                                       ),
-                                       child: Text(
-                                         _sessionPackage != null 
-                                             ? '\$${_sessionPackage!.costPerTenSessions.toStringAsFixed(0)}'
-                                             : '\$0',
-                                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                           color: Colors.white,
-                                           fontWeight: FontWeight.bold,
-                                         ),
-                                         textAlign: TextAlign.center,
-                                       ),
-                                     ),
-                                   ],
-                                 ),
-                               ),
-                            ],
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 24),
-                        
-                        // Payment Button
-                        SizedBox(
-                          width: double.infinity,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: AppStyles.primaryGradient,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: AppStyles.buttonShadow,
-                            ),
-                            child: ElevatedButton.icon(
-                              onPressed: _navigateToPayment,
-                              icon: const Icon(
-                                Icons.account_balance_wallet,
-                                size: 20,
-                              ),
-                              label: const Text(
-                                'Manage Payments & Sessions',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                foregroundColor: Colors.white,
-                                shadowColor: Colors.transparent,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
                 ],
                 
                 // Personal Information Section
@@ -964,26 +1058,44 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                     ),
                   ),
                 
-                // Logout Section
+                // Account Management Section
                 if (!_isEditing) ...[
                   const Divider(),
                   const SizedBox(height: 16),
-                  // Log out button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _signOut,
-                      icon: const Icon(Icons.logout),
-                      label: const Text("Sign Out"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppStyles.errorRed,
-                        foregroundColor: AppStyles.textLight,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => setState(() => _isEditing = true),
+                          icon: const Icon(Icons.edit),
+                          label: const Text("Edit Account"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppStyles.primarySage,
+                            foregroundColor: AppStyles.textLight,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _showDeleteAccountDialog,
+                          icon: const Icon(Icons.delete_forever),
+                          label: const Text("Delete Account"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppStyles.errorRed,
+                            foregroundColor: AppStyles.textLight,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ],

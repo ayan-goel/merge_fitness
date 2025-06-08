@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import '../../services/auth_service.dart';
 import '../../services/profile_image_service.dart';
 import '../../services/calendly_service.dart';
@@ -13,7 +14,7 @@ class TrainerProfileScreen extends StatefulWidget {
   State<TrainerProfileScreen> createState() => _TrainerProfileScreenState();
 }
 
-class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
+class _TrainerProfileScreenState extends State<TrainerProfileScreen> with WidgetsBindingObserver {
   final AuthService _authService = AuthService();
   final CalendlyService _calendlyService = CalendlyService();
   final ProfileImageService _profileImageService = ProfileImageService();
@@ -34,20 +35,63 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
   List<Map<String, dynamic>> _eventTypes = [];
   String? _selectedEventType;
   String? _selectedEventTypeName;
+  bool _hasShownEventTypeDialog = false;
+  StreamSubscription<DocumentSnapshot>? _userDataSubscription;
   
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadTrainerData();
+    _setupFirestoreListener();
   }
   
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _userDataSubscription?.cancel();
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     super.dispose();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Reload data when app comes back from background (after OAuth flow)
+    if (state == AppLifecycleState.resumed) {
+      print('TrainerProfileScreen: App resumed, reloading data...');
+      _loadTrainerData();
+    }
+  }
+  
+  void _setupFirestoreListener() async {
+    try {
+      final user = await _authService.getUserModel();
+      _userDataSubscription = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots()
+          .listen((snapshot) {
+        if (mounted && snapshot.exists) {
+          final data = snapshot.data();
+          final isConnected = data?['calendlyConnected'] == true;
+          final hasToken = data?['calendlyToken'] != null;
+          
+          print('TrainerProfileScreen: Firestore listener - connected: $isConnected, hasToken: $hasToken');
+          
+          // If Calendly just got connected and we haven't shown the dialog yet
+          if (isConnected && hasToken && !_hasShownEventTypeDialog && !_isCalendlyConnected) {
+            print('TrainerProfileScreen: Calendly just connected, refreshing data...');
+            _loadTrainerData();
+          }
+        }
+      });
+    } catch (e) {
+      print('Error setting up Firestore listener: $e');
+    }
   }
   
   Future<void> _loadTrainerData() async {
@@ -63,20 +107,32 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
       final calendlyUrl = await _calendlyService.getTrainerCalendlyUrl(trainer.uid);
       
       bool isConnected = false;
-      if (calendlyUrl != null) {
-        _calendlyUrl = calendlyUrl;
+      _calendlyUrl = calendlyUrl;
+      
+      // Check if trainer has a Calendly token (more reliable than just URL)
+      final doc = await FirebaseFirestore.instance.collection('users').doc(trainer.uid).get();
+      final userData = doc.data();
+      final hasToken = userData?['calendlyToken'] != null;
+      final calendlyConnectedFlag = userData?['calendlyConnected'] == true;
+      
+      print('TrainerProfileScreen: _loadTrainerData - calendlyUrl: $calendlyUrl');
+      print('TrainerProfileScreen: _loadTrainerData - hasToken: $hasToken');
+      print('TrainerProfileScreen: _loadTrainerData - calendlyConnectedFlag: $calendlyConnectedFlag');
+      
+      if (hasToken && calendlyConnectedFlag) {
         isConnected = true;
         
         // Load event types if connected
         if (isConnected) {
           try {
+            print('TrainerProfileScreen: _loadTrainerData - Loading event types for connected trainer...');
             final eventTypes = await _calendlyService.getTrainerEventTypes(trainer.uid);
             _eventTypes = eventTypes;
+            print('TrainerProfileScreen: _loadTrainerData - Loaded ${_eventTypes.length} event types');
             
             // Get selected event type
-            final doc = await FirebaseFirestore.instance.collection('users').doc(trainer.uid).get();
-            final data = doc.data();
-            _selectedEventType = data?['selectedCalendlyEventType'] as String?;
+            _selectedEventType = userData?['selectedCalendlyEventType'] as String?;
+            print('TrainerProfileScreen: _loadTrainerData - Selected event type: $_selectedEventType');
             
             // Find the matching event type name
             if (_selectedEventType != null) {
@@ -85,9 +141,18 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                 orElse: () => {'name': 'Unknown Event Type'},
               );
               _selectedEventTypeName = selectedEvent['name'];
+              print('TrainerProfileScreen: _loadTrainerData - Selected event type name: $_selectedEventTypeName');
             }
           } catch (e) {
             print('Error loading event types: $e');
+            // If token expired, mark as disconnected
+            if (e.toString().contains('token has expired') || e.toString().contains('Unauthenticated')) {
+              isConnected = false;
+              _calendlyUrl = null;
+              _eventTypes = [];
+              _selectedEventType = null;
+              _selectedEventTypeName = null;
+            }
           }
         }
       }
@@ -103,6 +168,18 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
         _isCalendlyConnected = isConnected;
         _isLoading = false;
       });
+      
+      // If connected but no event type selected, show selection dialog
+      if (isConnected && _eventTypes.isNotEmpty && _selectedEventType == null && !_hasShownEventTypeDialog) {
+        print('TrainerProfileScreen: _loadTrainerData - Connected but no event type selected, showing dialog...');
+        _hasShownEventTypeDialog = true;
+        // Use a slight delay to ensure the UI is fully built
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _showEventTypeSelectionDialog();
+          }
+        });
+      }
     } catch (e) {
       print('Error loading trainer data: $e');
       setState(() {
@@ -150,25 +227,81 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
   }
   
   Future<void> _connectCalendly() async {
+    if (!mounted) return;
+    
     setState(() {
       _isConnecting = true;
     });
     
     try {
-      final token = await _calendlyService.connectCalendlyAccount();
+      print('TrainerProfileScreen: Starting Calendly connection...');
+      print('TrainerProfileScreen: Current connection status: $_isCalendlyConnected');
+      print('TrainerProfileScreen: Current event types count: ${_eventTypes.length}');
+      print('TrainerProfileScreen: Current selected event type: $_selectedEventType');
       
-      // After connecting, load event types to let the user select one
-      await _loadTrainerData();
-      
-      if (mounted && _eventTypes.isNotEmpty) {
-        // Show dialog to select event type
-        await _showEventTypeSelectionDialog();
+      // If already connected and has event types but no selection, just show the dialog
+      if (_isCalendlyConnected && _eventTypes.isNotEmpty && _selectedEventType == null) {
+        print('TrainerProfileScreen: Already connected, showing event type selection...');
+        if (mounted) {
+          await _showEventTypeSelectionDialog();
+        }
+        return;
       }
       
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Calendly connected successfully')),
-        );
+      final token = await _calendlyService.connectCalendlyAccount();
+      
+      if (!mounted) {
+        print('TrainerProfileScreen: Widget not mounted after OAuth, but connection may have succeeded');
+        print('TrainerProfileScreen: The app will reload data when it resumes');
+        return;
+      }
+      
+      print('TrainerProfileScreen: Token received: ${token != null ? 'Yes' : 'No'}');
+      print('TrainerProfileScreen: About to process token...');
+      
+      if (token != null) {
+        print('TrainerProfileScreen: Processing token...');
+        try {
+          // After connecting, load event types to let the user select one
+          print('TrainerProfileScreen: Loading trainer data...');
+          await _loadTrainerData();
+          
+          print('TrainerProfileScreen: Event types loaded: ${_eventTypes.length} types');
+          print('TrainerProfileScreen: Event types: $_eventTypes');
+          print('TrainerProfileScreen: Widget mounted: $mounted');
+          print('TrainerProfileScreen: _isCalendlyConnected: $_isCalendlyConnected');
+          
+          if (mounted && _eventTypes.isNotEmpty) {
+            // Show dialog to select event type
+            print('TrainerProfileScreen: Showing event type selection dialog...');
+            await _showEventTypeSelectionDialog();
+            print('TrainerProfileScreen: Event type selection dialog completed');
+          } else {
+            print('TrainerProfileScreen: Not showing dialog - mounted: $mounted, eventTypes: ${_eventTypes.length}');
+          }
+          
+          if (mounted) {
+            print('TrainerProfileScreen: Showing success message');
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Calendly connected successfully')),
+            );
+          }
+        } catch (e) {
+          print('TrainerProfileScreen: Error processing token: $e');
+          print('TrainerProfileScreen: Error stack: ${StackTrace.current}');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error processing Calendly connection: $e')),
+            );
+          }
+        }
+      } else {
+        print('TrainerProfileScreen: No token received');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to connect Calendly - no token received')),
+          );
+        }
       }
     } catch (e) {
       print('Error connecting Calendly: $e');
@@ -178,10 +311,12 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
         );
       }
     } finally {
+      print('TrainerProfileScreen: In finally block, mounted: $mounted');
       if (mounted) {
         setState(() {
           _isConnecting = false;
         });
+        print('TrainerProfileScreen: Set _isConnecting = false');
       }
     }
   }
@@ -215,7 +350,8 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
     try {
       await _calendlyService.disconnectCalendlyAccount();
       
-      // Reload trainer data to update UI
+      // Reset dialog flag and reload trainer data to update UI
+      _hasShownEventTypeDialog = false;
       await _loadTrainerData();
       
       if (mounted) {
@@ -240,13 +376,17 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
   }
   
   Future<void> _showEventTypeSelectionDialog() async {
+    print('TrainerProfileScreen: _showEventTypeSelectionDialog - Starting...');
+    
     // Store a local context reference to avoid using potentially deactivated context
     final BuildContext localContext = context;
     
     // Filter to only show active event types
     final activeEventTypes = _eventTypes.where((type) => type['active'] == true).toList();
+    print('TrainerProfileScreen: _showEventTypeSelectionDialog - Active event types: ${activeEventTypes.length}');
     
     if (activeEventTypes.isEmpty) {
+      print('TrainerProfileScreen: _showEventTypeSelectionDialog - No active event types found');
       if (mounted) {
         ScaffoldMessenger.of(localContext).showSnackBar(
           const SnackBar(content: Text('No active event types found. Please activate at least one event type in your Calendly account.')),
@@ -256,7 +396,12 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
     }
     
     // Check if widget is still mounted before showing dialog
-    if (!mounted) return;
+    if (!mounted) {
+      print('TrainerProfileScreen: _showEventTypeSelectionDialog - Widget not mounted, returning');
+      return;
+    }
+    
+    print('TrainerProfileScreen: _showEventTypeSelectionDialog - About to show dialog...');
     
     // Show dialog to select event type
     await showDialog(
@@ -327,6 +472,207 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
       }
     }
   }
+
+  Future<void> _showDeleteAccountDialog() async {
+    final passwordController = TextEditingController();
+    bool isValidating = false;
+    String? errorMessage;
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  const Icon(Icons.warning, color: AppStyles.errorRed),
+                  const SizedBox(width: 8),
+                  const Text('Delete Account'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Are you sure you want to delete your trainer account?',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('This action will:'),
+                  const SizedBox(height: 8),
+                  const Text('• Permanently delete all your profile data'),
+                  const Text('• Remove all client assignments'),
+                  const Text('• Delete all workout templates you created'),
+                  const Text('• Disconnect your Calendly integration'),
+                  const Text('• Cancel all scheduled training sessions'),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppStyles.errorRed.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppStyles.errorRed.withOpacity(0.3)),
+                    ),
+                    child: const Text(
+                      '⚠️ This action cannot be undone!',
+                      style: TextStyle(
+                        color: AppStyles.errorRed,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Enter your password to confirm deletion:',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    enabled: !isValidating,
+                    decoration: InputDecoration(
+                      hintText: 'Password',
+                      errorText: errorMessage,
+                      prefixIcon: const Icon(Icons.lock),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      filled: true,
+                      fillColor: AppStyles.offWhite,
+                    ),
+                    onChanged: (value) {
+                      if (errorMessage != null) {
+                        setState(() {
+                          errorMessage = null;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isValidating ? null : () {
+                    Navigator.of(context).pop(false);
+                  },
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: AppStyles.slateGray),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: isValidating ? null : () async {
+                    if (passwordController.text.isEmpty) {
+                      setState(() {
+                        errorMessage = 'Password is required';
+                      });
+                      return;
+                    }
+                    
+                    setState(() {
+                      isValidating = true;
+                      errorMessage = null;
+                    });
+                    
+                    try {
+                      // Reauthenticate with password
+                      await _authService.reauthenticateWithPassword(passwordController.text);
+                      Navigator.of(context).pop(true);
+                    } catch (e) {
+                      if (mounted) {
+                        setState(() {
+                          isValidating = false;
+                          errorMessage = e.toString().replaceFirst('Exception: ', '');
+                        });
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppStyles.errorRed,
+                    foregroundColor: AppStyles.textLight,
+                  ),
+                  child: isValidating 
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text('Delete Account'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    // Dispose the controller after dialog is closed
+    passwordController.dispose();
+
+    if (confirmed == true) {
+      await _deleteAccount();
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text('Deleting account...'),
+            ],
+          ),
+        ),
+      );
+
+      final user = await _authService.getUserModel();
+      
+      // Delete user data from Firestore
+      await _authService.deleteUserAccount(user.uid);
+      
+      if (mounted) {
+        // Dismiss loading dialog
+        Navigator.pop(context);
+        
+        // Navigate to login and clear all routes
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+        
+        // Show confirmation
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account deleted successfully'),
+            backgroundColor: AppStyles.successGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error deleting account: $e');
+      if (mounted) {
+        // Dismiss loading dialog
+        Navigator.pop(context);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting account: $e'),
+            backgroundColor: AppStyles.errorRed,
+          ),
+        );
+      }
+    }
+  }
   
   // Add input decoration method to match client profile screen
   InputDecoration _getInputDecoration({
@@ -378,8 +724,9 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
         actions: [
           if (!_isEditing)
             IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => setState(() => _isEditing = true),
+              icon: const Icon(Icons.logout),
+              onPressed: _signOut,
+              tooltip: 'Sign Out',
             )
           else
             IconButton(
@@ -637,25 +984,45 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                     ),
                   ),
                 
-                // Logout Section
+                // Account Management Section
                 if (!_isEditing) ...[
                   const SizedBox(height: 16),
                   const Divider(),
                   const SizedBox(height: 16),
-                  Center(
-                    child: ElevatedButton.icon(
-                      onPressed: _signOut,
-                      icon: const Icon(Icons.logout),
-                      label: const Text('Sign Out'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppStyles.errorRed,
-                        foregroundColor: AppStyles.textLight,
-                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => setState(() => _isEditing = true),
+                          icon: const Icon(Icons.edit),
+                          label: const Text("Edit Account"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppStyles.primarySage,
+                            foregroundColor: AppStyles.textLight,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _showDeleteAccountDialog,
+                          icon: const Icon(Icons.delete_forever),
+                          label: const Text("Delete Account"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppStyles.errorRed,
+                            foregroundColor: AppStyles.textLight,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ],

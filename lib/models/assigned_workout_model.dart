@@ -82,12 +82,11 @@ class AssignedWorkout {
     
     switch (session.status) {
       case 'scheduled':
-        // Check if session should be marked as completed (30 minutes after start)
+        // Check if session should be marked as completed (when current time is past the session end time)
         final now = DateTime.now();
-        final completionTime = session.startTime.add(const Duration(minutes: 30));
-        if (now.isAfter(completionTime)) {
+        if (now.isAfter(session.endTime)) {
           status = WorkoutStatus.completed;
-          completedDate = completionTime;
+          completedDate = session.endTime;
         } else {
           status = WorkoutStatus.assigned;
         }

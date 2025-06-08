@@ -38,19 +38,28 @@ class _SelectTrainerScreenState extends State<SelectTrainerScreen> {
       final trainers = await _calendlyService.getAvailableTrainers();
       
       if (mounted) {
-        // Even if we get an empty list, don't treat it as an error - just show empty state
         setState(() {
           _trainers = trainers;
           _isLoading = false;
-          // Only set error message if we truly got an error from the service
-          _errorMessage = trainers.isEmpty ? "No trainers available" : null;
+          _errorMessage = null;
         });
       }
     } catch (e) {
       print('SelectTrainerScreen: Error loading trainers: $e');
       if (mounted) {
+        String errorMessage = 'Error loading trainers, please try again.';
+        
+        // Provide more specific error messages
+        if (e.toString().contains('No trainer assigned')) {
+          errorMessage = 'No trainer has been assigned to you yet. Please contact support.';
+        } else if (e.toString().contains('not set up their scheduling calendar')) {
+          errorMessage = 'Your trainer has not set up their scheduling calendar yet. Please contact them directly.';
+        } else if (e.toString().contains('User data not found')) {
+          errorMessage = 'Account setup incomplete. Please contact support.';
+        }
+        
         setState(() {
-          _errorMessage = 'Error loading trainers, please try again.';
+          _errorMessage = errorMessage;
           _isLoading = false;
         });
       }
@@ -92,47 +101,58 @@ class _SelectTrainerScreenState extends State<SelectTrainerScreen> {
 
   Widget _buildErrorView() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.error_outline,
-            size: 64,
-            color: Colors.red,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Error Loading Trainers',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Text(
-              _errorMessage ?? 'Unknown error',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.red),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _errorMessage!.contains('No trainer assigned') 
+                  ? Icons.person_off_outlined
+                  : _errorMessage!.contains('scheduling calendar')
+                      ? Icons.calendar_today_outlined
+                      : Icons.error_outline,
+              size: 64,
+              color: Colors.orange,
             ),
-          ),
-          const SizedBox(height: 8),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 32.0),
-            child: Text(
-              'Please make sure trainers have been registered in the system with Calendly URLs set up.',
-              textAlign: TextAlign.center,
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage!.contains('No trainer assigned')
+                  ? 'No Trainer Assigned'
+                  : _errorMessage!.contains('scheduling calendar')
+                      ? 'Scheduling Unavailable'
+                      : 'Connection Error',
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _loadTrainers,
-            child: const Text('Try Again'),
-          ),
-          const SizedBox(height: 12),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Go Back'),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 24),
+            if (!_errorMessage!.contains('No trainer assigned') && 
+                !_errorMessage!.contains('Account setup incomplete'))
+              ElevatedButton(
+                onPressed: _loadTrainers,
+                child: const Text('Try Again'),
+              ),
+            if (_errorMessage!.contains('No trainer assigned') || 
+                _errorMessage!.contains('Account setup incomplete'))
+              ElevatedButton(
+                onPressed: () {
+                  // You could add a contact support action here
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please contact support at bj@mergeintohealth.com'),
+                      duration: Duration(seconds: 5),
+                    ),
+                  );
+                },
+                child: const Text('Contact Support'),
+              ),
+          ],
+        ),
       ),
     );
   }

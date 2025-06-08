@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/workout_template_service.dart';
 import '../../services/onboarding_service.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/profile_avatar.dart';
 import '../../theme/app_styles.dart';
 import 'client_onboarding_details_screen.dart';
@@ -24,33 +25,370 @@ class ClientInfoScreen extends StatefulWidget {
 class _ClientInfoScreenState extends State<ClientInfoScreen> {
   final WorkoutTemplateService _workoutService = WorkoutTemplateService();
   final OnboardingService _onboardingService = OnboardingService();
+  final AuthService _authService = AuthService();
   bool _isLoading = true;
   Map<String, dynamic>? _clientDetails;
   String? _errorMessage;
+  bool _isSuperTrainer = false;
+  String? _currentTrainerName;
 
   @override
   void initState() {
     super.initState();
-    _loadClientDetails();
+    _initializeData();
+  }
+
+  Future<void> _initializeData() async {
+    await _checkUserRole();
+    await _loadClientDetails();
+  }
+
+  Future<void> _checkUserRole() async {
+    try {
+      final user = await _authService.getUserModel();
+      setState(() {
+        _isSuperTrainer = user.isSuperTrainer;
+      });
+    } catch (e) {
+      print('Error checking user role: $e');
+    }
   }
 
   Future<void> _loadClientDetails() async {
+    print('=== LOADING CLIENT DETAILS ===');
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
+      print('Getting client details for ID: ${widget.clientId}');
       final details = await _workoutService.getClientDetails(widget.clientId);
+      print('Client details loaded. Keys: ${details.keys.toList()}');
+      print('Client trainerId: ${details['trainerId']}');
+      print('trainerId is null: ${details['trainerId'] == null}');
+      print('trainerId type: ${details['trainerId'].runtimeType}');
+      
+      // Get current trainer name if assigned
+      String? trainerName;
+      if (details['trainerId'] != null) {
+        print('trainerId is not null, calling _getTrainerName...');
+        trainerName = await _getTrainerName(details['trainerId']);
+        print('_getTrainerName returned: $trainerName');
+      } else {
+        print('trainerId is null, skipping trainer name lookup');
+      }
+      
       setState(() {
         _clientDetails = details;
+        _currentTrainerName = trainerName;
         _isLoading = false;
       });
+      
+      print('Client details state updated. _currentTrainerName: $_currentTrainerName');
+      print('=== CLIENT DETAILS LOADED ===');
     } catch (e) {
+      print('Error in _loadClientDetails: $e');
       setState(() {
         _errorMessage = 'Error loading client details: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<String> _getTrainerName(String trainerId) async {
+    try {
+      print('_getTrainerName called with trainerId: $trainerId');
+      final doc = await FirebaseFirestore.instance.collection('users').doc(trainerId).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        print('Trainer document found. Data keys: ${data.keys.toList()}');
+        print('Trainer displayName: ${data['displayName']}');
+        print('Trainer firstName: ${data['firstName']}');
+        print('Trainer lastName: ${data['lastName']}');
+        print('Trainer email: ${data['email']}');
+        
+        final displayName = data['displayName'] ?? 
+            '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'.trim();
+        final result = displayName.isNotEmpty ? displayName : data['email'] ?? 'Unknown Trainer';
+        print('_getTrainerName returning: $result');
+        return result;
+      }
+      print('Trainer document not found for ID: $trainerId');
+      return 'Unknown Trainer';
+    } catch (e) {
+      print('Error in _getTrainerName: $e');
+      return 'Unknown Trainer';
+    }
+  }
+
+  Future<void> _showReassignTrainerDialog() async {
+    try {
+      // Get all available trainers
+      List<Map<String, dynamic>> trainers = [];
+      
+      // Get both regular trainers and super trainers
+      final trainerQuery = await FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'trainer')
+          .get();
+          
+      final superTrainerQuery = await FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'superTrainer')
+          .get();
+      
+      for (final doc in [...trainerQuery.docs, ...superTrainerQuery.docs]) {
+        final data = doc.data();
+        final displayName = data['displayName'] ?? 
+            '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'.trim();
+        final name = displayName.isNotEmpty ? displayName : data['email'] ?? 'Unknown';
+        
+        trainers.add({
+          'id': doc.id,
+          'name': name,
+          'email': data['email'] ?? '',
+          'role': data['role'] ?? 'trainer',
+        });
+      }
+      
+      if (trainers.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('No trainers available for assignment'),
+              backgroundColor: AppStyles.errorRed,
+            ),
+          );
+        }
+        return;
+      }
+      
+      // Show selection dialog
+      final selectedTrainer = await showDialog<Map<String, dynamic>>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Reassign Trainer'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Select a new trainer for ${widget.clientName}:',
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 300),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: trainers.map((trainer) {
+                        final isCurrentTrainer = trainer['id'] == _clientDetails?['trainerId'];
+                        
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: isCurrentTrainer 
+                                  ? AppStyles.primarySage.withOpacity(0.4)
+                                  : AppStyles.primarySage.withOpacity(0.2),
+                              child: Text(
+                                trainer['name'].isNotEmpty ? trainer['name'][0].toUpperCase() : 'T',
+                                style: TextStyle(
+                                  color: AppStyles.primarySage,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              trainer['name'],
+                              style: TextStyle(
+                                fontWeight: isCurrentTrainer ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(trainer['email']),
+                                Row(
+                                  children: [
+                                    Text(
+                                      trainer['role'] == 'superTrainer' ? 'Super Trainer' : 'Trainer',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppStyles.primarySage,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    if (isCurrentTrainer) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppStyles.primarySage.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'Current',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: AppStyles.primarySage,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: BorderSide(
+                                color: isCurrentTrainer 
+                                    ? AppStyles.primarySage.withOpacity(0.5)
+                                    : AppStyles.primarySage.withOpacity(0.2),
+                                width: isCurrentTrainer ? 2 : 1,
+                              ),
+                            ),
+                            enabled: !isCurrentTrainer,
+                            onTap: isCurrentTrainer ? null : () => Navigator.of(context).pop(trainer),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(null),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: AppStyles.slateGray),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+      
+      if (selectedTrainer != null) {
+        await _reassignTrainer(selectedTrainer);
+      }
+      
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading trainers: $e'),
+            backgroundColor: AppStyles.errorRed,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _reassignTrainer(Map<String, dynamic> newTrainer) async {
+    try {
+      print('=== REASSIGN TRAINER DEBUG ===');
+      print('Client ID: ${widget.clientId}');
+      print('Client Name: ${widget.clientName}');
+      print('New Trainer ID: ${newTrainer['id']}');
+      print('New Trainer Name: ${newTrainer['name']}');
+      print('Current trainer before update: $_currentTrainerName');
+      
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+      
+      // First, let's verify current state before update
+      final beforeDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.clientId)
+          .get();
+      
+      if (beforeDoc.exists) {
+        final beforeData = beforeDoc.data()!;
+        print('Before update - trainerId: ${beforeData['trainerId']}');
+        print('Before update - full data keys: ${beforeData.keys.toList()}');
+      } else {
+        print('ERROR: Client document does not exist!');
+      }
+      
+      // Update the client's assigned trainer
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.clientId)
+          .update({
+            'trainerId': newTrainer['id'],
+          });
+      
+      print('Firestore update completed successfully');
+      
+      // Verify the update worked
+      final afterDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.clientId)
+          .get();
+      
+      if (afterDoc.exists) {
+        final afterData = afterDoc.data()!;
+        print('After update - trainerId: ${afterData['trainerId']}');
+        print('After update - full data keys: ${afterData.keys.toList()}');
+        
+        if (afterData['trainerId'] == newTrainer['id']) {
+          print('✅ SUCCESS: trainerId updated correctly in Firestore');
+        } else {
+          print('❌ ERROR: trainerId was not updated correctly!');
+          print('Expected: ${newTrainer['id']}, Got: ${afterData['trainerId']}');
+        }
+      } else {
+        print('ERROR: Client document does not exist after update!');
+      }
+      
+      // Dismiss loading dialog
+      if (mounted) {
+        Navigator.pop(context);
+      }
+      
+      // Reload client details to reflect changes
+      print('Reloading client details...');
+      await _loadClientDetails();
+      print('Client details reloaded. New trainer name: $_currentTrainerName');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${widget.clientName} has been reassigned to ${newTrainer['name']}'),
+            backgroundColor: AppStyles.successGreen,
+          ),
+        );
+      }
+      
+      print('=== REASSIGN TRAINER DEBUG END ===');
+    } catch (e) {
+      print('ERROR in _reassignTrainer: $e');
+      print('Stack trace: ${StackTrace.current}');
+      
+      // Dismiss loading dialog if showing
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error reassigning trainer: $e'),
+            backgroundColor: AppStyles.errorRed,
+          ),
+        );
+      }
     }
   }
 
@@ -142,21 +480,55 @@ class _ClientInfoScreenState extends State<ClientInfoScreen> {
                               ),
                             ),
                             
-                            // Onboarding Form Button
+                            // Action Buttons
                             const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: () => _viewClientOnboardingForm(),
-                              icon: const Icon(Icons.description),
-                              label: const Text('View Onboarding Form'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppStyles.primarySage,
-                                foregroundColor: Colors.white,
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: () => _viewClientOnboardingForm(),
+                                  icon: const Icon(Icons.description),
+                                  label: const Text('View Form'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppStyles.primarySage,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                                if (_isSuperTrainer) ...[
+                                  const SizedBox(width: 12),
+                                  ElevatedButton.icon(
+                                    onPressed: _showReassignTrainerDialog,
+                                    icon: const Icon(Icons.person_add),
+                                    label: const Text('Reassign'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppStyles.mutedBlue,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 32),
+                      
+                      // Assigned Trainer Section (only show for super trainers)
+                      if (_isSuperTrainer)
+                        InfoSection(
+                          title: 'Assigned Trainer',
+                          icon: Icons.person_pin,
+                          children: [
+                            InfoItem(
+                              icon: _currentTrainerName != null ? Icons.check_circle : Icons.warning,
+                              value: _currentTrainerName ?? 'No trainer assigned',
+                              valueColor: _currentTrainerName != null ? null : Colors.orange[700],
+                            ),
+                          ],
+                        ),
+                      
+                      if (_isSuperTrainer)
+                        const SizedBox(height: 24),
                       
                       // Contact Information
                       InfoSection(

@@ -194,7 +194,7 @@ class EnhancedWorkoutService {
     }
   }
 
-  // Mark session as completed (called automatically after 30 minutes)
+  // Mark session as completed (called automatically when session ends)
   Future<void> markSessionAsCompleted(String sessionId) async {
     try {
       await _firestore.collection('sessions').doc(sessionId).update({
@@ -218,9 +218,9 @@ class EnhancedWorkoutService {
 
       for (final doc in snapshot.docs) {
         final session = TrainingSession.fromFirestore(doc);
-        final completionTime = session.startTime.add(Duration(minutes: 30));
         
-        if (now.isAfter(completionTime)) {
+        // Check if session should be marked as completed (when current time is past the session end time)
+        if (now.isAfter(session.endTime)) {
           await markSessionAsCompleted(session.id);
         }
       }

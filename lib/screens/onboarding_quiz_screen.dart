@@ -353,6 +353,56 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
         Goal(value: goalStr, completed: false)
       ).toList();
       
+      // Create onboarding data map for storage in user document
+      Map<String, dynamic> onboardingData = {
+        'firstName': _firstName,
+        'lastName': _lastName,
+        'phoneNumber': _phoneNumber,
+        'address': _address,
+        'emergencyContact': _emergencyContact,
+        'emergencyPhone': _emergencyPhone,
+        'hasHeartDisease': _hasHeartDisease,
+        'hasBreathingIssues': _hasBreathingIssues,
+        'lastPhysicalDate': _lastPhysicalDate,
+        'lastPhysicalResult': _lastPhysicalResult,
+        'hasDoctorNoteHeartTrouble': _hasDoctorNoteHeartTrouble,
+        'hasAnginaPectoris': _hasAnginaPectoris,
+        'hasHeartPalpitations': _hasHeartPalpitations,
+        'hasHeartAttack': _hasHeartAttack,
+        'hasDiabetesOrHighBloodPressure': _hasDiabetesOrHighBloodPressure,
+        'hasHeartDiseaseInFamily': _hasHeartDiseaseInFamily,
+        'hasCholesterolMedication': _hasCholesterolMedication,
+        'hasHeartMedication': _hasHeartMedication,
+        'sleepsWell': _sleepsWell,
+        'drinksDailyAlcohol': _drinksDailyAlcohol,
+        'smokescigarettes': _smokescigarettes,
+        'hasPhysicalCondition': _hasPhysicalCondition,
+        'hasJointOrMuscleProblems': _hasJointOrMuscleProblems,
+        'isPregnant': _isPregnant,
+        'additionalMedicalInfo': _additionalMedicalInfo,
+        'exerciseFrequency': _exerciseFrequency,
+        'medications': _medications,
+        'healthGoals': _healthGoals,
+        'stressLevel': _stressLevel,
+        'bestLifePoint': _bestLifePoint,
+        'regularFoods': _regularFoods,
+        'eatingHabits': _eatingHabits,
+        'typicalBreakfast': _typicalBreakfast,
+        'typicalLunch': _typicalLunch,
+        'typicalDinner': _typicalDinner,
+        'typicalSnacks': _typicalSnacks,
+        'cardioRespiratoryRating': _cardioRespiratoryRating,
+        'strengthRating': _strengthRating,
+        'enduranceRating': _enduranceRating,
+        'flexibilityRating': _flexibilityRating,
+        'powerRating': _powerRating,
+        'bodyCompositionRating': _bodyCompositionRating,
+        'selfImageRating': _selfImageRating,
+        'additionalNotes': _additionalNotes,
+        'signatureTimestamp': _signatureTimestamp,
+        'selectedGoals': _selectedGoals,
+      };
+      
       // Update basic user profile in Auth and Firestore
       await _authService.updateUserProfile(
         firstName: _firstName,
@@ -364,7 +414,10 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
         phoneNumber: _phoneNumber,
       );
       
-      // Create onboarding form model
+      // Save onboarding data to user document
+      await _authService.updateOnboardingData(onboardingData);
+      
+      // Create onboarding form model for the detailed form collection
       final onboardingForm = OnboardingFormModel(
         clientId: user.uid,
         clientName: (_firstName != null && _lastName != null) 
@@ -445,7 +498,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
         print("No pending photos to upload");
       }
       
-      // Navigate to home screen
+      // Navigate to home screen (which will show pending approval screen)
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -617,7 +670,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
                         onPressed: _returnToLogin,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.grey[600],
-                          side: BorderSide(color: Colors.grey[400]!),
+                          side: BorderSide(color: Colors.grey[400] ?? Colors.grey),
                         ),
                         child: const Text('Back'),
                       ),
@@ -1757,7 +1810,7 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               color: _canFinishOnboarding() ? Colors.green[50] : Colors.orange[50],
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: _canFinishOnboarding() ? Colors.green[200]! : Colors.orange[200]!,
+                color: _canFinishOnboarding() ? (Colors.green[200] ?? Colors.green) : (Colors.orange[200] ?? Colors.orange),
               ),
             ),
             child: Column(

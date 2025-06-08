@@ -111,18 +111,27 @@ class NotificationService {
         } else {
           // Mobile platforms - add more robust error handling
           try {
-          String? token = await _messaging.getToken();
-          if (token != null) {
-            await _saveFcmToken(token);
-              print('Mobile FCM token retrieved successfully');
+            // For iOS, handle APNS token availability
+            if (Platform.isIOS) {
+              await _requestAPNSTokenAndGetFCM();
             } else {
-              print('No FCM token available for mobile');
+              // Android - direct FCM token request
+              String? token = await _messaging.getToken();
+              if (token != null) {
+                await _saveFcmToken(token);
+                print('Mobile FCM token retrieved successfully');
+              } else {
+                print('No FCM token available for mobile');
+              }
             }
           } catch (e) {
             if (e.toString().contains('MISSING_INSTANCEID_SERVICE')) {
               print('Google Play Services not available - FCM not supported');
             } else if (e.toString().contains('SERVICE_NOT_AVAILABLE')) {
               print('FCM service not available on this device');
+            } else if (e.toString().contains('apns-token-not-set')) {
+              print('APNS token not ready yet - will retry after user authentication');
+              // Don't treat this as a critical error - token will be retrieved later
             } else {
               print('Error getting mobile FCM token: $e');
             }
@@ -190,10 +199,22 @@ class NotificationService {
           }
         } else {
           // Mobile platforms
-          String? token = await _messaging.getToken();
-          if (token != null) {
-            await _saveFcmToken(token);
-            print('FCM token initialized after auth for mobile');
+          try {
+            if (Platform.isIOS) {
+              await _requestAPNSTokenAndGetFCM();
+            } else {
+              String? token = await _messaging.getToken();
+              if (token != null) {
+                await _saveFcmToken(token);
+                print('FCM token initialized after auth for mobile');
+              }
+            }
+          } catch (e) {
+            if (e.toString().contains('apns-token-not-set')) {
+              print('APNS token still not ready - this is normal on iOS, will retry later');
+            } else {
+              print('Error getting FCM token after auth: $e');
+            }
           }
         }
       }
@@ -230,6 +251,52 @@ class NotificationService {
     } catch (e) {
       print('Error saving FCM token: $e');
       // Don't throw the error - continue app execution
+    }
+  }
+  
+  // Request APNS token first, then get FCM token (iOS-specific)
+  Future<void> _requestAPNSTokenAndGetFCM() async {
+    try {
+      // First try to get APNS token to ensure it's available
+      String? apnsToken = await _messaging.getAPNSToken();
+      
+      if (apnsToken != null) {
+        print('APNS token obtained successfully');
+        // Now that APNS token is available, get FCM token
+        String? token = await _messaging.getToken();
+        if (token != null) {
+          await _saveFcmToken(token);
+          print('Mobile FCM token retrieved successfully after APNS');
+        } else {
+          print('No FCM token available even after APNS token');
+        }
+      } else {
+        print('APNS token not available yet - will retry later');
+        // Schedule a retry after a short delay
+        Timer(const Duration(seconds: 5), () async {
+          try {
+            String? retryToken = await _messaging.getToken();
+            if (retryToken != null) {
+              await _saveFcmToken(retryToken);
+              print('FCM token retrieved on retry');
+            }
+          } catch (e) {
+            print('Failed to get FCM token on retry: $e');
+          }
+        });
+      }
+    } catch (e) {
+      print('Error in APNS/FCM token sequence: $e');
+      // Still try to get FCM token directly as fallback
+      try {
+        String? fallbackToken = await _messaging.getToken();
+        if (fallbackToken != null) {
+          await _saveFcmToken(fallbackToken);
+          print('FCM token retrieved via fallback method');
+        }
+      } catch (fallbackError) {
+        print('Fallback FCM token retrieval also failed: $fallbackError');
+      }
     }
   }
   
@@ -597,6 +664,16 @@ class NotificationService {
       // we'll need to use a stream or global key approach
       // to communicate with the UI
       _notifyWorkoutSelected(workoutId);
+    } else if (payload == 'account_approved') {
+      // Account was approved - user can now access the app normally
+      // The home screen will automatically redirect them to the main app
+      print('Account approved notification tapped');
+    } else if (payload == 'account_rejected') {
+      // Account was rejected - user will see the rejection screen
+      print('Account rejected notification tapped');
+    } else if (payload == 'setup_workout_reminders') {
+      // This is a system notification to set up workout reminders
+      setupDailyWorkoutReminderCheck();
     }
   }
   
@@ -788,6 +865,77 @@ class NotificationService {
     final period = time.hour >= 12 ? 'PM' : 'AM';
     final date = '${time.month}/${time.day}/${time.year}';
     return '$date at $hour:$minute $period';
+  }
+  
+  // Send notification for account approval
+  Future<void> sendAccountApprovalNotification(String clientId) async {
+    // Skip for web platform
+    if (kIsWeb) return;
+    
+    try {
+      // Get client's FCM token(s)
+      final clientDoc = await _firestore.collection('users').doc(clientId).get();
+      final clientData = clientDoc.data();
+      if (clientData == null || !clientData.containsKey('fcmTokens')) {
+        print('No FCM tokens found for client: $clientId');
+        return;
+      }
+      
+      final List<dynamic> fcmTokens = clientData['fcmTokens'] ?? [];
+      if (fcmTokens.isEmpty) {
+        print('Empty FCM tokens list for client: $clientId');
+        return;
+      }
+      
+      // Get client name for personalized notification
+      final String clientName = clientData['displayName'] ?? 'there';
+      
+      // Show a local notification
+      await _showLocalNotification(
+        id: DateTime.now().millisecondsSinceEpoch,
+        title: 'Account Approved! 🎉',
+        body: 'Welcome to Merge Fitness, $clientName! Your account has been approved and you can now access all features.',
+        payload: 'account_approved',
+      );
+      
+      print('Account approval notification sent to client: $clientId');
+    } catch (e) {
+      print('Error sending account approval notification: $e');
+    }
+  }
+  
+  // Send notification for account rejection
+  Future<void> sendAccountRejectionNotification(String clientId) async {
+    // Skip for web platform
+    if (kIsWeb) return;
+    
+    try {
+      // Get client's FCM token(s)
+      final clientDoc = await _firestore.collection('users').doc(clientId).get();
+      final clientData = clientDoc.data();
+      if (clientData == null || !clientData.containsKey('fcmTokens')) {
+        print('No FCM tokens found for client: $clientId');
+        return;
+      }
+      
+      final List<dynamic> fcmTokens = clientData['fcmTokens'] ?? [];
+      if (fcmTokens.isEmpty) {
+        print('Empty FCM tokens list for client: $clientId');
+        return;
+      }
+      
+      // Show a local notification
+      await _showLocalNotification(
+        id: DateTime.now().millisecondsSinceEpoch,
+        title: 'Account Update',
+        body: 'Your account application was not approved. Please contact support at bj@mergeintohealth.com if you believe this was a mistake.',
+        payload: 'account_rejected',
+      );
+      
+      print('Account rejection notification sent to client: $clientId');
+    } catch (e) {
+      print('Error sending account rejection notification: $e');
+    }
   }
 }
 

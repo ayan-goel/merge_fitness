@@ -13,12 +13,14 @@ import 'trainer/clients_screen.dart';
 import 'trainer/trainer_dashboard.dart';
 import 'trainer/trainer_scheduling_screen.dart';
 import 'trainer/trainer_profile_screen.dart';
+import 'trainer/super_trainer_admin_screen.dart';
 import 'client/client_dashboard.dart';
 import 'client/client_workouts_screen.dart';
 import 'client/client_progress_screen.dart';
 import 'client/client_profile_screen.dart';
 import 'client/client_nutrition_screen.dart';
 import 'client/workout_detail_screen.dart';
+import 'client/pending_approval_screen.dart';
 import '../models/assigned_workout_model.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -36,7 +38,7 @@ class HomeScreen extends StatefulWidget {
   }
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late Future<UserModel> _userFuture;
   final AuthService _authService = AuthService();
   final NotificationService _notificationService = NotificationService();
@@ -47,15 +49,54 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _userFuture = _loadUser();
     
     // Listen for workout notification responses
     _notificationService.workoutSelectedStream.listen(_handleWorkoutSelected);
   }
   
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    // Refresh user data when app is resumed
+    if (state == AppLifecycleState.resumed) {
+      _refreshUserData();
+    }
+  }
+  
   Future<UserModel> _loadUser() async {
     final user = await _authService.getUserModel();
     _user = user;
+    
+    // Check account status for clients
+    if (user.isClient) {
+      final accountStatus = await _authService.checkAccountStatus();
+      if (accountStatus == 'pending' || accountStatus == 'rejected') {
+        // Get rejection reason if rejected
+        String? rejectionReason;
+        if (accountStatus == 'rejected') {
+          rejectionReason = await _authService.getRejectionReason();
+        }
+        
+        // Return user with updated status and rejection reason
+        _user = user.copyWith(
+          accountStatus: accountStatus == 'pending' 
+              ? AccountStatus.pending 
+              : AccountStatus.rejected,
+          rejectionReason: rejectionReason,
+        );
+        return _user!;
+      }
+    }
+    
     return user;
   }
   
@@ -108,6 +149,45 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // Refresh user data and account status
+  Future<void> _refreshUserData() async {
+    try {
+      final user = await _authService.getUserModel();
+      
+      // Check account status for clients
+      if (user.isClient) {
+        final accountStatus = await _authService.checkAccountStatus();
+        
+        // Get rejection reason if rejected
+        String? rejectionReason;
+        if (accountStatus == 'rejected') {
+          rejectionReason = await _authService.getRejectionReason();
+        }
+        
+        final updatedUser = user.copyWith(
+          accountStatus: accountStatus == 'pending' 
+              ? AccountStatus.pending 
+              : accountStatus == 'rejected'
+                  ? AccountStatus.rejected
+                  : AccountStatus.approved,
+          rejectionReason: rejectionReason,
+        );
+        
+        setState(() {
+          _user = updatedUser;
+          _userFuture = Future.value(updatedUser);
+        });
+      } else {
+        setState(() {
+          _user = user;
+          _userFuture = Future.value(user);
+        });
+      }
+    } catch (e) {
+      print('Error refreshing user data: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<UserModel>(
@@ -130,6 +210,14 @@ class _HomeScreenState extends State<HomeScreen> {
         }
 
         final user = snapshot.data!;
+        
+        // Check if client needs approval
+        if (user.isClient && !user.isApproved) {
+          return PendingApprovalScreen(
+            status: user.isPending ? 'pending' : 'rejected',
+            rejectionReason: user.rejectionReason,
+          );
+        }
         
         // Screens based on user role
         final List<Widget> _screens = _getScreensForRole(user.role);
@@ -183,6 +271,15 @@ class _HomeScreenState extends State<HomeScreen> {
           const TrainerSchedulingScreen(),
           _buildProfileScreen(),
         ];
+      case UserRole.superTrainer:
+        return [
+          const TrainerDashboard(),
+          const ClientsScreen(),
+          const TemplatesScreen(),
+          const TrainerSchedulingScreen(),
+          _buildAdminScreen(),
+          _buildProfileScreen(),
+        ];
       case UserRole.admin:
         return [
           _buildAdminDashboard(),
@@ -222,6 +319,33 @@ class _HomeScreenState extends State<HomeScreen> {
           const BottomNavigationBarItem(
             icon: Icon(Icons.calendar_month),
             label: 'Sessions',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ];
+      case UserRole.superTrainer:
+        return [
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard),
+            label: 'Dashboard',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.people),
+            label: 'Clients',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.fitness_center),
+            label: 'Templates',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month),
+            label: 'Sessions',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.admin_panel_settings),
+            label: 'Admin',
           ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.person),
@@ -328,8 +452,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildAdminScreen() {
+    return const SuperTrainerAdminScreen();
+  }
+
   Widget _buildProfileScreen() {
-    if (_user?.role == UserRole.trainer) {
+    if (_user?.isTrainer == true) {
       return const TrainerProfileScreen();
     } else {
       return const ClientProfileScreen();
@@ -367,13 +495,23 @@ class _HomeScreenState extends State<HomeScreen> {
       case 0:
         return Icons.dashboard;
       case 1:
-        return _user?.role == UserRole.trainer ? Icons.people : Icons.fitness_center;
+        return _user?.isTrainer == true ? Icons.people : Icons.fitness_center;
       case 2:
-        return _user?.role == UserRole.trainer ? Icons.fitness_center : Icons.insights;
+        return _user?.isTrainer == true ? Icons.fitness_center : Icons.insights;
       case 3:
-        return _user?.role == UserRole.trainer ? Icons.calendar_month : Icons.restaurant_menu;
+        if (_user?.isTrainer == true) {
+          return Icons.calendar_month;
+        } else {
+          return Icons.restaurant_menu;
+        }
       case 4:
-        return Icons.person;
+        if (_user?.isSuperTrainer == true) {
+          return Icons.admin_panel_settings;
+        } else {
+          return Icons.person;
+        }
+      case 5:
+        return Icons.person; // Profile for super trainer (6th tab)
       default:
         return Icons.error;
     }

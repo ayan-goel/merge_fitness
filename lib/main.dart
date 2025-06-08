@@ -200,18 +200,43 @@ class MergeFitnessApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Merge Fitness',
-      debugShowCheckedModeBanner: false,
-      navigatorObservers: [observer],
-      theme: ThemeData(
+      builder: (context, child) {
+        // Get the original MediaQuery data
+        final originalData = MediaQuery.of(context);
+        
+        // Create new MediaQuery data with accessibility settings forced to normal
+        final normalizedData = MediaQueryData(
+          size: originalData.size,
+          devicePixelRatio: originalData.devicePixelRatio,
+          textScaler: const TextScaler.linear(1.0), // Force normal text size
+          platformBrightness: originalData.platformBrightness,
+          padding: originalData.padding,
+          viewInsets: originalData.viewInsets,
+          systemGestureInsets: originalData.systemGestureInsets,
+          viewPadding: originalData.viewPadding,
+          alwaysUse24HourFormat: originalData.alwaysUse24HourFormat,
+          accessibleNavigation: false, // Force off
+          invertColors: false, // Force off
+          highContrast: false, // Force off
+          disableAnimations: false, // Force off
+          boldText: false, // Force off - this is key for preventing bold text
+          navigationMode: originalData.navigationMode,
+          gestureSettings: originalData.gestureSettings,
+          displayFeatures: originalData.displayFeatures,
+        );
+        
+        return MediaQuery(
+          data: normalizedData,
+          child: Theme(
+            data: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
         primaryColor: AppStyles.primarySage,
         colorScheme: ColorScheme.light(
-          primary: AppStyles.primarySage, // Soft sage green
-          secondary: AppStyles.taupeBrown, // Taupe brown
-          tertiary: AppStyles.mutedBlue, // Muted blue
-          background: AppStyles.offWhite, // Off-white/soft beige 
+                primary: AppStyles.primarySage,
+                secondary: AppStyles.taupeBrown,
+                tertiary: AppStyles.mutedBlue,
+                background: AppStyles.offWhite,
           surface: Colors.white,
           onBackground: AppStyles.textDark, 
           onSurface: AppStyles.textDark,
@@ -227,12 +252,12 @@ class MergeFitnessApp extends StatelessWidget {
           foregroundColor: AppStyles.slateGray,
           elevation: 0,
           centerTitle: true,
-          toolbarHeight: 56, // Standard height
+                toolbarHeight: 56,
           iconTheme: IconThemeData(color: AppStyles.slateGray),
           titleTextStyle: TextStyle(
             color: AppStyles.textDark,
             fontSize: 20,
-            fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.normal, // Force normal weight
             fontFamily: 'Montserrat',
           ),
         ),
@@ -255,16 +280,57 @@ class MergeFitnessApp extends StatelessWidget {
             borderSide: BorderSide(color: AppStyles.primarySage, width: 1.5),
           ),
         ),
+              // Explicitly define ALL text styles with normal font weight to override iOS bold text setting
         textTheme: const TextTheme(
-          displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w500, letterSpacing: -0.5, color: Color(0xFF414141)),
-          displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w500, letterSpacing: -0.5, color: Color(0xFF414141)),
-          displaySmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w500, color: Color(0xFF414141)),
-          headlineLarge: TextStyle(fontSize: 26, fontWeight: FontWeight.w500, letterSpacing: -0.5, color: Color(0xFF414141)),
-          headlineMedium: TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: Color(0xFF414141)),
-          headlineSmall: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: Color(0xFF414141)),
-          titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, letterSpacing: 0.15, color: Color(0xFF414141)),
+                displayLarge: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 32, letterSpacing: -0.5, color: Color(0xFF414141)),
+                displayMedium: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 28, letterSpacing: -0.5, color: Color(0xFF414141)),
+                displaySmall: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 24, color: Color(0xFF414141)),
+                headlineLarge: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 26, letterSpacing: -0.5, color: Color(0xFF414141)),
+                headlineMedium: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 22, color: Color(0xFF414141)),
+                headlineSmall: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 20, color: Color(0xFF414141)),
+                titleLarge: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 18, letterSpacing: 0.15, color: Color(0xFF414141)),
+                titleMedium: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 16, color: Color(0xFF414141)),
+                titleSmall: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 14, color: Color(0xFF414141)),
+                bodyLarge: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 16, color: Color(0xFF414141)),
+                bodyMedium: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 14, color: Color(0xFF414141)),
+                bodySmall: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 12, color: Color(0xFF414141)),
+                labelLarge: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 14, color: Color(0xFF414141)),
+                labelMedium: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 12, color: Color(0xFF414141)),
+                labelSmall: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 11, color: Color(0xFF414141)),
+              ),
+              primaryTextTheme: const TextTheme(
+                displayLarge: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 32, letterSpacing: -0.5, color: Color(0xFF414141)),
+                displayMedium: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 28, letterSpacing: -0.5, color: Color(0xFF414141)),
+                displaySmall: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 24, color: Color(0xFF414141)),
+                headlineLarge: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 26, letterSpacing: -0.5, color: Color(0xFF414141)),
+                headlineMedium: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 22, color: Color(0xFF414141)),
+                headlineSmall: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 20, color: Color(0xFF414141)),
+                titleLarge: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 18, letterSpacing: 0.15, color: Color(0xFF414141)),
+                titleMedium: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 16, color: Color(0xFF414141)),
+                titleSmall: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 14, color: Color(0xFF414141)),
+                bodyLarge: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 16, color: Color(0xFF414141)),
+                bodyMedium: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 14, color: Color(0xFF414141)),
+                bodySmall: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 12, color: Color(0xFF414141)),
+                labelLarge: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 14, color: Color(0xFF414141)),
+                labelMedium: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 12, color: Color(0xFF414141)),
+                labelSmall: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.normal, fontSize: 11, color: Color(0xFF414141)),
         ),
       ),
+            child: DefaultTextStyle(
+              style: const TextStyle(
+                fontFamily: 'Montserrat',
+                fontWeight: FontWeight.normal,
+                decoration: TextDecoration.none,
+              ),
+              child: child!,
+            ),
+          ),
+        );
+      },
+      title: 'Merge Fitness',
+      debugShowCheckedModeBanner: false,
+      navigatorObservers: [observer],
+
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,

@@ -99,14 +99,12 @@ class AuthService {
         'createdAt': Timestamp.now(),
       };
       
-      // If this is a client, get and assign all trainer IDs
+      // Set account status based on role
       if (role == UserRole.client) {
-        List<String> trainerIds = await getAllTrainerIds();
-        if (trainerIds.isNotEmpty) {
-          // For now, just assign the first trainer
-          // In a more advanced version, you could implement logic to distribute clients
-          userData['trainerId'] = trainerIds.first;
-        }
+        userData['accountStatus'] = 'pending'; // New clients need approval
+        // Note: trainerId will be assigned during approval process by super trainer
+      } else {
+        userData['accountStatus'] = 'approved'; // Trainers and admins are auto-approved
       }
       
       await _firestore.collection('users').doc(user.uid).set(userData);
@@ -119,12 +117,21 @@ class AuthService {
   // Get all trainers from Firestore
   Future<List<String>> getAllTrainerIds() async {
     try {
-      final querySnapshot = await _firestore
+      // Get both regular trainers and super trainers
+      final trainerQuery = await _firestore
           .collection('users')
           .where('role', isEqualTo: 'trainer')
           .get();
           
-      return querySnapshot.docs.map((doc) => doc.id).toList();
+      final superTrainerQuery = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'superTrainer')
+          .get();
+          
+      final trainerIds = trainerQuery.docs.map((doc) => doc.id).toList();
+      final superTrainerIds = superTrainerQuery.docs.map((doc) => doc.id).toList();
+      
+      return [...trainerIds, ...superTrainerIds];
     } catch (e) {
       print("Error getting trainers: $e");
       return [];
@@ -134,20 +141,34 @@ class AuthService {
   // Get all trainer user documents
   Future<List<UserModel>> getAllTrainers() async {
     try {
-      final snapshot = await _firestore.collection('users')
+      // Get both regular trainers and super trainers
+      final trainerQuery = await _firestore
+          .collection('users')
           .where('role', isEqualTo: 'trainer')
           .get();
+          
+      final superTrainerQuery = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'superTrainer')
+          .get();
       
-      return snapshot.docs.map((doc) {
+      List<UserModel> trainers = [];
+      
+      // Process regular trainers
+      for (var doc in trainerQuery.docs) {
         final data = doc.data();
-        return UserModel.fromMap(
-          data,
-          uid: doc.id,
-          email: data['email'] ?? '',
-        );
-      }).toList();
+        trainers.add(UserModel.fromMap(data, uid: doc.id, email: data['email'] ?? ''));
+      }
+      
+      // Process super trainers
+      for (var doc in superTrainerQuery.docs) {
+        final data = doc.data();
+        trainers.add(UserModel.fromMap(data, uid: doc.id, email: data['email'] ?? ''));
+      }
+      
+      return trainers;
     } catch (e) {
-      print('Error getting trainers: $e');
+      print("Error getting trainers: $e");
       return [];
     }
   }
@@ -170,6 +191,8 @@ class AuthService {
     switch (role) {
       case UserRole.trainer:
         return 'trainer';
+      case UserRole.superTrainer:
+        return 'superTrainer';
       case UserRole.admin:
         return 'admin';
       case UserRole.client:
@@ -278,39 +301,280 @@ class AuthService {
     }
   }
 
-  // Assign a trainer to a client (if not already assigned)
-  Future<void> assignTrainerToClient(String clientId) async {
+  // Check account status for current user
+  Future<String> checkAccountStatus() async {
+    User? user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    
     try {
-      // First check if client already has a trainer
-      DocumentSnapshot clientDoc = await _firestore.collection('users').doc(clientId).get();
+      DocumentSnapshot doc = await _firestore.collection('users').doc(user.uid).get();
       
-      if (!clientDoc.exists) {
-        throw Exception('Client not found');
-      }
-      
-      Map<String, dynamic> clientData = clientDoc.data() as Map<String, dynamic>;
-      
-      // Only assign if trainerId is missing or null
-      if (clientData['trainerId'] == null) {
-        List<String> trainerIds = await getAllTrainerIds();
-        
-        if (trainerIds.isEmpty) {
-          print('No trainers available to assign');
-          return;
-        }
-        
-        // Assign the first available trainer
-        await _firestore.collection('users').doc(clientId).update({
-          'trainerId': trainerIds.first,
-        });
-        
-        print('Assigned trainer ${trainerIds.first} to client $clientId');
+      if (doc.exists) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        return data['accountStatus'] ?? 'approved'; // Default to approved for existing users
       } else {
-        print('Client already has a trainer assigned: ${clientData['trainerId']}');
+        return 'approved'; // Default for users without Firestore document
       }
     } catch (e) {
-      print('Error assigning trainer to client: $e');
+      print("Error checking account status: $e");
+      return 'approved'; // Default on error
+    }
+  }
+
+  // Get rejection reason for current user
+  Future<String?> getRejectionReason() async {
+    User? user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    
+    try {
+      DocumentSnapshot doc = await _firestore.collection('users').doc(user.uid).get();
+      
+      if (doc.exists) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        return data['rejectionReason'];
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print("Error getting rejection reason: $e");
+      return null;
+    }
+  }
+
+  // Update onboarding data for a user
+  Future<void> updateOnboardingData(Map<String, dynamic> onboardingData) async {
+    User? user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    
+    try {
+      await _firestore.collection('users').doc(user.uid).update({
+        'onboardingData': onboardingData,
+      });
+    } catch (e) {
+      print("Error updating onboarding data: $e");
       throw e;
+    }
+  }
+
+  // Reauthenticate user with password
+  Future<bool> reauthenticateWithPassword(String password) async {
+    try {
+      User? currentUser = _auth.currentUser;
+      if (currentUser == null || currentUser.email == null) {
+        throw Exception('No user is currently authenticated');
+      }
+      
+      // Create credentials with current email and provided password
+      AuthCredential credential = EmailAuthProvider.credential(
+        email: currentUser.email!,
+        password: password,
+      );
+      
+      // Reauthenticate
+      await currentUser.reauthenticateWithCredential(credential);
+      return true;
+    } on FirebaseAuthException catch (e) {
+      print('Reauthentication failed: ${e.code} - ${e.message}');
+      if (e.code == 'wrong-password') {
+        throw Exception('Incorrect password');
+      } else if (e.code == 'too-many-requests') {
+        throw Exception('Too many failed attempts. Please try again later.');
+      } else {
+        throw Exception('Authentication failed: ${e.message}');
+      }
+    } catch (e) {
+      print('Error during reauthentication: $e');
+      throw Exception('Authentication failed: $e');
+    }
+  }
+
+  // Delete user account and all associated data
+  Future<void> deleteUserAccount(String userId) async {
+    try {
+      // CRITICAL: Verify that the current user is the one being deleted
+      User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('No user is currently authenticated');
+      }
+      
+      if (currentUser.uid != userId) {
+        throw Exception('Security violation: Cannot delete a different user account');
+      }
+      
+      print('=== ACCOUNT DELETION START ===');
+      print('Deleting account for user: $userId');
+      print('Current authenticated user: ${currentUser.uid}');
+      
+      // Verify user document exists before deletion
+      DocumentSnapshot userDoc = await _firestore.collection('users').doc(userId).get();
+      if (!userDoc.exists) {
+        throw Exception('User document not found');
+      }
+      
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+      print('User role: ${userData['role']}');
+      print('User email: ${userData['email']}');
+      
+      // Start individual deletions with explicit checks
+      int deletedItems = 0;
+      
+      // 1. Delete weight history
+      print('Deleting weight history...');
+      QuerySnapshot weightHistory = await _firestore
+          .collection('weightHistory')
+          .where('userId', isEqualTo: userId)
+          .get();
+      print('Found ${weightHistory.docs.length} weight history entries');
+      for (QueryDocumentSnapshot doc in weightHistory.docs) {
+        await doc.reference.delete();
+        deletedItems++;
+      }
+      
+      // 2. Delete assigned workouts (as client)
+      print('Deleting assigned workouts (as client)...');
+      QuerySnapshot assignedWorkouts = await _firestore
+          .collection('assignedWorkouts')
+          .where('clientId', isEqualTo: userId)
+          .get();
+      print('Found ${assignedWorkouts.docs.length} assigned workouts');
+      for (QueryDocumentSnapshot doc in assignedWorkouts.docs) {
+        await doc.reference.delete();
+        deletedItems++;
+      }
+      
+      // 3. Delete workout progress
+      print('Deleting workout progress...');
+      QuerySnapshot workoutProgress = await _firestore
+          .collection('workoutProgress')
+          .where('clientId', isEqualTo: userId)
+          .get();
+      print('Found ${workoutProgress.docs.length} workout progress entries');
+      for (QueryDocumentSnapshot doc in workoutProgress.docs) {
+        await doc.reference.delete();
+        deletedItems++;
+      }
+      
+      // 4. Delete nutrition plans (as client)
+      print('Deleting nutrition plans (as client)...');
+      QuerySnapshot nutritionPlans = await _firestore
+          .collection('nutritionPlans')
+          .where('clientId', isEqualTo: userId)
+          .get();
+      print('Found ${nutritionPlans.docs.length} nutrition plans');
+      for (QueryDocumentSnapshot doc in nutritionPlans.docs) {
+        await doc.reference.delete();
+        deletedItems++;
+      }
+      
+      // 5. Delete session packages (as client)
+      print('Deleting session packages (as client)...');
+      QuerySnapshot sessionPackages = await _firestore
+          .collection('sessionPackages')
+          .where('clientId', isEqualTo: userId)
+          .get();
+      print('Found ${sessionPackages.docs.length} session packages');
+      for (QueryDocumentSnapshot doc in sessionPackages.docs) {
+        await doc.reference.delete();
+        deletedItems++;
+      }
+      
+      // 6. Delete onboarding forms
+      print('Deleting onboarding forms...');
+      QuerySnapshot onboardingForms = await _firestore
+          .collection('onboardingForms')
+          .where('userId', isEqualTo: userId)
+          .get();
+      print('Found ${onboardingForms.docs.length} onboarding forms');
+      for (QueryDocumentSnapshot doc in onboardingForms.docs) {
+        await doc.reference.delete();
+        deletedItems++;
+      }
+      
+      // 6a. Also check for onboarding forms with clientId field
+      QuerySnapshot onboardingForms2 = await _firestore
+          .collection('onboardingForms')
+          .where('clientId', isEqualTo: userId)
+          .get();
+      print('Found ${onboardingForms2.docs.length} additional onboarding forms with clientId');
+      for (QueryDocumentSnapshot doc in onboardingForms2.docs) {
+        await doc.reference.delete();
+        deletedItems++;
+      }
+      
+      // 6b. Delete meals (if any)
+      print('Deleting meals...');
+      QuerySnapshot meals = await _firestore
+          .collection('meals')
+          .where('clientId', isEqualTo: userId)
+          .get();
+      print('Found ${meals.docs.length} meals');
+      for (QueryDocumentSnapshot doc in meals.docs) {
+        await doc.reference.delete();
+        deletedItems++;
+      }
+      
+      // 6c. Delete payment history (if any)
+      print('Deleting payment history...');
+      QuerySnapshot paymentHistory = await _firestore
+          .collection('paymentHistory')
+          .where('clientId', isEqualTo: userId)
+          .get();
+      print('Found ${paymentHistory.docs.length} payment history entries');
+      for (QueryDocumentSnapshot doc in paymentHistory.docs) {
+        await doc.reference.delete();
+        deletedItems++;
+      }
+      
+      // 7. IF USER IS A TRAINER: Delete workout templates they created
+      if (userData['role'] == 'trainer' || userData['role'] == 'superTrainer') {
+        print('User is a trainer, deleting workout templates...');
+        QuerySnapshot workoutTemplates = await _firestore
+            .collection('workoutTemplates')
+            .where('trainerId', isEqualTo: userId)
+            .get();
+        print('Found ${workoutTemplates.docs.length} workout templates');
+        for (QueryDocumentSnapshot doc in workoutTemplates.docs) {
+          await doc.reference.delete();
+          deletedItems++;
+        }
+        
+        // Update any clients assigned to this trainer (remove trainer assignment)
+        print('Updating clients assigned to this trainer...');
+        QuerySnapshot assignedClients = await _firestore
+            .collection('users')
+            .where('trainerId', isEqualTo: userId)
+            .get();
+        print('Found ${assignedClients.docs.length} assigned clients');
+        for (QueryDocumentSnapshot doc in assignedClients.docs) {
+          await doc.reference.update({'trainerId': FieldValue.delete()});
+          print('Removed trainer assignment from client: ${doc.id}');
+        }
+      }
+      
+      // 8. FINALLY: Delete the user document itself
+      print('Deleting user document...');
+      await _firestore.collection('users').doc(userId).delete();
+      deletedItems++;
+      
+      print('Firestore data deletion completed. Total items deleted: $deletedItems');
+      
+      // 9. Delete the Firebase Auth user (must be last)
+      print('Deleting Firebase Auth user...');
+      await currentUser.delete();
+      print('Firebase Auth user deleted successfully');
+      
+      print('=== ACCOUNT DELETION COMPLETE ===');
+      
+    } catch (e) {
+      print('ERROR in deleteUserAccount: $e');
+      print('Stack trace: ${StackTrace.current}');
+      throw Exception('Failed to delete account: $e');
     }
   }
 } 

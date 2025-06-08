@@ -493,7 +493,6 @@ class _TrainerClientProgressScreenState extends State<TrainerClientProgressScree
           
             // Weight and BMI Chart Section - Always show to debug
             Card(
-              color: AppStyles.offWhite,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -627,7 +626,6 @@ class _TrainerClientProgressScreenState extends State<TrainerClientProgressScree
       itemBuilder: (context, index) {
         final workout = workouts[index];
         return Card(
-          color: AppStyles.offWhite,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -673,7 +671,6 @@ class _TrainerClientProgressScreenState extends State<TrainerClientProgressScree
   }) {
     return Expanded(
       child: Card(
-        color: AppStyles.offWhite,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),

@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../services/auth_service.dart';
 import '../../services/calendly_service.dart';
+import '../../services/video_call_service.dart';
 import '../../models/session_model.dart';
 import '../../models/user_model.dart';
 import 'location_sharing_screen.dart';
+import '../shared/video_call_screen.dart';
 import '../../theme/app_styles.dart';
 import '../../theme/app_widgets.dart';
 import '../../theme/app_animations.dart';
@@ -21,6 +24,7 @@ class TrainerSchedulingScreen extends StatefulWidget {
 class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
   final AuthService _authService = AuthService();
   final CalendlyService _calendlyService = CalendlyService();
+  final VideoCallService _videoCallService = VideoCallService();
   
   bool _isLoading = true;
   UserModel? _trainer;
@@ -60,18 +64,16 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
               session.status != 'cancelled')
           .toList();
       
-      // Get cancelled future sessions
+      // Get all cancelled sessions (both past and future)
       final cancelledSessions = allSessions
-          .where((session) => 
-              session.startTime.isAfter(now) && 
-              session.status == 'cancelled')
+          .where((session) => session.status == 'cancelled')
           .toList();
       
-      // Get completed sessions (past sessions or sessions marked as completed)
+      // Get completed sessions (past sessions that are NOT cancelled, or sessions marked as completed)
       final completedSessions = allSessions
           .where((session) => 
-              session.startTime.isBefore(now) || 
-              session.status == 'completed')
+              session.status != 'cancelled' && 
+              (session.startTime.isBefore(now) || session.status == 'completed'))
           .toList();
       
       // Sort by date
@@ -494,51 +496,94 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                       ],
                     ],
                   ),
-                  trailing: Wrap(
-                    spacing: 0,
-                    children: [
-                      if (session.calendlyUrl != null)
-                        IconButton(
-                          icon: const Icon(
-                            Icons.open_in_new,
-                            size: 20,
-                            color: AppStyles.primarySage,
-                          ),
-                          tooltip: 'View in Calendly',
-                          padding: const EdgeInsets.all(8),
-                          constraints: const BoxConstraints(),
-                          onPressed: () async {
+                  trailing: PopupMenuButton<String>(
+                    icon: const Icon(
+                      Icons.more_vert,
+                      color: AppStyles.primarySage,
+                    ),
+                    onSelected: (value) async {
+                      switch (value) {
+                        case 'calendly':
+                          if (session.calendlyUrl != null) {
                             final url = Uri.parse(session.calendlyUrl!);
                             if (await canLaunchUrl(url)) {
                               await launchUrl(url, mode: LaunchMode.externalApplication);
                             }
-                          },
-                        ),
-                      if (!isCancelled && !isCompleted)
-                        IconButton(
-                          icon: const Icon(
-                            Icons.location_on,
-                            size: 20,
-                            color: AppStyles.taupeBrown,
+                          }
+                          break;
+                        case 'video':
+                          _startVideoCall(session);
+                          break;
+                        case 'location':
+                          _navigateToLocationSharing(session);
+                          break;
+                        case 'cancel':
+                          _showCancelSessionDialog(session);
+                          break;
+                      }
+                    },
+                    itemBuilder: (BuildContext context) {
+                      List<PopupMenuEntry<String>> items = [];
+                      
+                      if (session.calendlyUrl != null) {
+                        items.add(
+                          const PopupMenuItem<String>(
+                            value: 'calendly',
+                            child: Row(
+                              children: [
+                                Icon(Icons.open_in_new, size: 18, color: AppStyles.primarySage),
+                                SizedBox(width: 12),
+                                Text('View in Calendly'),
+                              ],
+                            ),
                           ),
-                          tooltip: 'Share Location',
-                          padding: const EdgeInsets.all(8),
-                          constraints: const BoxConstraints(),
-                          onPressed: () => _navigateToLocationSharing(session),
-                        ),
-                      if (!isCancelled && !isCompleted)
-                        IconButton(
-                          icon: const Icon(
-                            Icons.cancel_outlined,
-                            size: 20,
-                            color: AppStyles.errorRed,
+                        );
+                      }
+                      
+                      // Allow video calls for any session that's not cancelled and not explicitly marked as completed
+                      if (!isCancelled && session.status != 'completed') {
+                        items.addAll([
+                          const PopupMenuItem<String>(
+                            value: 'video',
+                            child: Row(
+                              children: [
+                                Icon(Icons.videocam, size: 18, color: AppStyles.primarySage),
+                                SizedBox(width: 12),
+                                Text('Start Video Call'),
+                              ],
+                            ),
                           ),
-                          tooltip: 'Cancel Session',
-                          padding: const EdgeInsets.all(8),
-                          constraints: const BoxConstraints(),
-                          onPressed: () => _showCancelSessionDialog(session),
-                        ),
-                    ],
+                          const PopupMenuItem<String>(
+                            value: 'location',
+                            child: Row(
+                              children: [
+                                Icon(Icons.location_on, size: 18, color: AppStyles.taupeBrown),
+                                SizedBox(width: 12),
+                                Text('Share Location'),
+                              ],
+                            ),
+                          ),
+                        ]);
+                      }
+                      
+                      // Allow cancellation for sessions that haven't started yet
+                      if (!isCancelled && session.status != 'completed' && session.startTime.isAfter(DateTime.now())) {
+                        items.add(
+                          const PopupMenuItem<String>(
+                            value: 'cancel',
+                            child: Row(
+                              children: [
+                                Icon(Icons.cancel_outlined, size: 18, color: AppStyles.errorRed),
+                                SizedBox(width: 12),
+                                Text('Cancel Session'),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                      
+                      return items;
+                    },
                   ),
                 ),
               ],
@@ -767,6 +812,62 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
       }
     } finally {
       reasonController.dispose();
+    }
+  }
+
+  // Start video call for session
+  Future<void> _startVideoCall(TrainingSession session) async {
+    try {
+      print('Trainer: Starting video call for session ${session.id}');
+      print('Trainer: Session details - trainerId: ${session.trainerId}, clientId: ${session.clientId}');
+      
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Create video call with session details first
+      final videoCall = await _videoCallService.createVideoCall(
+        session.id,
+        trainerId: session.trainerId,
+        clientId: session.clientId,
+      );
+      
+      print('Trainer: Video call created successfully: ${videoCall.id}');
+      print('Trainer: Video call details: ${videoCall.toMap()}');
+      
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Navigate to video call screen (let it handle permissions)
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VideoCallScreen(
+              callId: videoCall.id,
+              isTrainer: true,
+              sessionId: session.id,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Trainer: Error starting video call: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to start video call: $e'),
+            backgroundColor: AppStyles.errorRed,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 } 

@@ -297,7 +297,7 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         foregroundColor: Colors.grey[600],
-                        side: BorderSide(color: Colors.grey[400]!),
+                        side: BorderSide(color: Colors.grey[400] ?? Colors.grey),
                       ),
                       child: const Text('Back to Login'),
                     ),

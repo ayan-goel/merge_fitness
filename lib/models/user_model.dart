@@ -4,13 +4,21 @@ import 'goal_model.dart';
 enum UserRole {
   client,
   trainer,
+  superTrainer,
   admin,
+}
+
+enum AccountStatus {
+  pending,
+  approved,
+  rejected,
 }
 
 class UserModel {
   final String uid;
   final String email;
   final UserRole role;
+  final AccountStatus accountStatus;
   final String? firstName;
   final String? lastName;
   final String? displayName;
@@ -21,11 +29,14 @@ class UserModel {
   final List<Goal>? goals;
   final String? phoneNumber;
   final String? trainerId; // ID of the trainer associated with this client
+  final Map<String, dynamic>? onboardingData; // Store onboarding form data
+  final String? rejectionReason; // Reason for rejection if account was rejected
 
   UserModel({
     required this.uid,
     required this.email,
     required this.role,
+    this.accountStatus = AccountStatus.approved, // Default to approved for existing users
     this.firstName,
     this.lastName,
     this.displayName,
@@ -36,6 +47,8 @@ class UserModel {
     this.goals,
     this.phoneNumber,
     this.trainerId,
+    this.onboardingData,
+    this.rejectionReason,
   });
 
   // Create user from Firebase User + Firestore data
@@ -55,6 +68,7 @@ class UserModel {
           uid: uid,
           email: email,
           role: UserRole.client,
+          accountStatus: AccountStatus.approved, // Default for existing users
         );
       }
     } catch (e) {
@@ -63,6 +77,7 @@ class UserModel {
         uid: uid,
         email: email,
         role: UserRole.client,
+        accountStatus: AccountStatus.approved, // Default for existing users
       );
     }
   }
@@ -90,6 +105,7 @@ class UserModel {
       uid: uid,
       email: email,
       role: _stringToUserRole(map['role'] ?? 'client'),
+      accountStatus: _stringToAccountStatus(map['accountStatus'] ?? 'approved'),
       firstName: map['firstName'],
       lastName: map['lastName'],
       displayName: map['displayName'],
@@ -101,6 +117,8 @@ class UserModel {
       goals: goalsData,
       phoneNumber: map['phoneNumber'],
       trainerId: map['trainerId'],
+      onboardingData: map['onboardingData'] as Map<String, dynamic>?,
+      rejectionReason: map['rejectionReason'],
     );
   }
 
@@ -109,6 +127,7 @@ class UserModel {
     return {
       'email': email,
       'role': _userRoleToString(role),
+      'accountStatus': _accountStatusToString(accountStatus),
       'firstName': firstName,
       'lastName': lastName,
       'displayName': displayName,
@@ -119,6 +138,8 @@ class UserModel {
       'goals': goals?.map((goal) => goal.toMap()).toList(),
       'phoneNumber': phoneNumber,
       'trainerId': trainerId,
+      'onboardingData': onboardingData,
+      'rejectionReason': rejectionReason,
     };
   }
 
@@ -127,6 +148,8 @@ class UserModel {
     switch (roleStr) {
       case 'trainer':
         return UserRole.trainer;
+      case 'superTrainer':
+        return UserRole.superTrainer;
       case 'admin':
         return UserRole.admin;
       case 'client':
@@ -140,10 +163,37 @@ class UserModel {
     switch (role) {
       case UserRole.trainer:
         return 'trainer';
+      case UserRole.superTrainer:
+        return 'superTrainer';
       case UserRole.admin:
         return 'admin';
       case UserRole.client:
         return 'client';
+    }
+  }
+
+  // Helper to convert string to AccountStatus enum
+  static AccountStatus _stringToAccountStatus(String statusStr) {
+    switch (statusStr) {
+      case 'pending':
+        return AccountStatus.pending;
+      case 'rejected':
+        return AccountStatus.rejected;
+      case 'approved':
+      default:
+        return AccountStatus.approved;
+    }
+  }
+
+  // Helper to convert AccountStatus enum to string
+  static String _accountStatusToString(AccountStatus status) {
+    switch (status) {
+      case AccountStatus.pending:
+        return 'pending';
+      case AccountStatus.rejected:
+        return 'rejected';
+      case AccountStatus.approved:
+        return 'approved';
     }
   }
 
@@ -160,11 +210,15 @@ class UserModel {
     String? phoneNumber,
     UserRole? role,
     String? trainerId,
+    AccountStatus? accountStatus,
+    Map<String, dynamic>? onboardingData,
+    String? rejectionReason,
   }) {
     return UserModel(
       uid: this.uid,
       email: this.email,
       role: role ?? this.role,
+      accountStatus: accountStatus ?? this.accountStatus,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       displayName: displayName ?? this.displayName,
@@ -175,6 +229,19 @@ class UserModel {
       goals: goals ?? this.goals,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       trainerId: trainerId ?? this.trainerId,
+      onboardingData: onboardingData ?? this.onboardingData,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
     );
   }
+
+  // Helper methods for role checking
+  bool get isTrainer => role == UserRole.trainer || role == UserRole.superTrainer;
+  bool get isSuperTrainer => role == UserRole.superTrainer;
+  bool get isClient => role == UserRole.client;
+  bool get isAdmin => role == UserRole.admin;
+  
+  // Helper methods for account status checking
+  bool get isPending => accountStatus == AccountStatus.pending;
+  bool get isApproved => accountStatus == AccountStatus.approved;
+  bool get isRejected => accountStatus == AccountStatus.rejected;
 } 

@@ -56,13 +56,11 @@ class SessionMonitoringService {
         try {
           final session = TrainingSession.fromFirestore(doc);
           
-          // Check if session should be marked as completed (30 minutes after start)
-          final completionTime = session.startTime.add(Duration(minutes: 30));
-          
-          if (now.isAfter(completionTime)) {
+          // Check if session should be marked as completed (when current time is past the session end time)
+          if (now.isAfter(session.endTime)) {
             await _markSessionAsCompleted(session.id);
             updatedSessions++;
-            print('Auto-completed session ${session.id} for client ${session.clientName}');
+            print('Auto-completed session ${session.id} for client ${session.clientName} (ended at ${session.endTime})');
           }
         } catch (e) {
           print('Error processing session ${doc.id}: $e');

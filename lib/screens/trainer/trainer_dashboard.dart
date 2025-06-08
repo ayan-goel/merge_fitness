@@ -387,12 +387,12 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
                 ),
               ),
             ),
-            const SizedBox(height: 12), // Further reduced from 16
+            const SizedBox(height: 24), // Added more space between welcome card and Quick Actions
 
             // Quick actions - more compact row
             Text(
               'Quick Actions',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
             Row(

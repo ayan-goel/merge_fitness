@@ -13,6 +13,9 @@
 migrate_working_dir/
 lib/services/calendly_service.dart
 lib/config/api_keys.dart
+lib/config/agora_config.dart
+lib/config/env_config.dart
+scripts/create_super_trainer.dart
 
 # Firebase Related
 lib/firebase_options.dart

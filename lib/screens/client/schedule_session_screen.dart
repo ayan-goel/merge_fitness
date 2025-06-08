@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/calendly_service.dart';
 import '../../services/payment_service.dart';
 import '../../models/session_model.dart';
+import '../../models/user_model.dart';
 import '../../widgets/session_time_slot.dart';
 import '../../theme/app_styles.dart';
+
 
 class ScheduleSessionScreen extends StatefulWidget {
   final String clientId;
@@ -33,6 +36,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
   List<Map<String, dynamic>> _availableTimeSlots = [];
   Map<String, dynamic>? _selectedTimeSlot;
   bool _isSubmitting = false;
+  UserModel? _trainer;
   
   // Group time slots by date
   Map<DateTime, List<Map<String, dynamic>>> _timeSlotsByDate = {};
@@ -47,6 +51,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
   @override
   void initState() {
     super.initState();
+    _loadTrainerData();
     _loadAvailability();
   }
   
@@ -85,6 +90,27 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
       
       _animationControllers[date] = controller;
       _slideAnimations[date] = animation;
+    }
+  }
+  
+  Future<void> _loadTrainerData() async {
+    try {
+      final trainerDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.trainerId)
+          .get();
+      
+      if (trainerDoc.exists) {
+        setState(() {
+          _trainer = UserModel.fromMap(
+            trainerDoc.data() as Map<String, dynamic>,
+            uid: trainerDoc.id,
+            email: trainerDoc.data()?['email'] ?? '',
+          );
+        });
+      }
+    } catch (e) {
+      print("Error loading trainer data: $e");
     }
   }
   
@@ -129,12 +155,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
         // Initialize animation controllers for each date
         _initializeAnimationControllers(slotsByDate.keys.toList());
         
-        // Expand the first date by default if there are any slots
-        if (slotsByDate.isNotEmpty) {
-          final firstDate = slotsByDate.keys.first;
-          _expandedDates.add(firstDate);
-          _animationControllers[firstDate]?.forward();
-        }
+        // All date sections start collapsed
       });
       
       print('ScheduleSessionScreen: Loaded ${slots.length} available time slots across ${slotsByDate.length} days');
@@ -142,28 +163,79 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
       print('Error loading availability: $e');
       
       String errorMessage = 'Unable to load trainer availability';
+      String debugInfo = '';
       
       // Check for specific error types and provide better user messages
       if (e.toString().contains('start_time must be in the future')) {
         errorMessage = 'Error with scheduling timeframe. Please try again.';
+        debugInfo = 'Time validation error';
       } else if (e.toString().contains('date range can be no greater than 1 week')) {
         errorMessage = 'Cannot fetch availability beyond 7 days. Please try again.';
+        debugInfo = 'Date range error';
       } else if (e.toString().contains('Trainer has not connected their Calendly account')) {
         errorMessage = 'This trainer has not fully set up their scheduling calendar yet.';
+        debugInfo = 'No Calendly token found';
       } else if (e.toString().contains('Trainer has no event types configured')) {
         errorMessage = 'This trainer has not created any appointment types yet.';
+        debugInfo = 'No event types in Calendly';
       } else if (e.toString().contains('Trainer has no active event types')) {
         errorMessage = 'This trainer does not have any active calendars configured.';
+        debugInfo = 'Event types exist but none are active';
+      } else if (e.toString().contains('token has expired') || e.toString().contains('401')) {
+        errorMessage = 'Trainer\'s calendar connection has expired. They need to reconnect.';
+        debugInfo = 'Authentication token expired';
+      } else {
+        debugInfo = 'Unknown error: ${e.toString()}';
       }
+      
+      // Add trainer ID to debug info
+      debugInfo += '\nTrainer ID: ${widget.trainerId}';
       
       setState(() {
         _isLoading = false;
       });
       
-      // Show error snackbar
+      // Show error snackbar with debug option
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
+          SnackBar(
+            content: Text(errorMessage),
+            action: SnackBarAction(
+              label: 'Debug',
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Debug Information'),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Technical Details:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(debugInfo),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Use the debug tool (bug icon in top right) for detailed connection analysis.',
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Close'),
+                      ),
+
+                    ],
+                  ),
+                );
+              },
+            ),
+            duration: const Duration(seconds: 10),
+          ),
         );
       }
     }
@@ -280,6 +352,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text('Schedule with ${widget.trainerName}'),
+        actions: [],
       ),
       body: _isLoading
         ? const Center(child: CircularProgressIndicator())
@@ -329,14 +402,194 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
     
     return ListView.separated(
       padding: const EdgeInsets.only(bottom: 120), // Account for bottom bar
-      itemCount: sortedDates.length,
+      itemCount: sortedDates.length + 1, // +1 for trainer info card
       separatorBuilder: (context, index) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
-        final date = sortedDates[index];
+        if (index == 0) {
+          return _buildTrainerInfoCard();
+        }
+        
+        final date = sortedDates[index - 1];
         final slots = _timeSlotsByDate[date]!;
         
         return _buildDateSection(date, slots);
       },
+    );
+  }
+
+  Widget _buildTrainerInfoCard() {
+    if (_trainer == null) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundColor: AppStyles.primarySage.withOpacity(0.2),
+              child: Icon(
+                Icons.person,
+                size: 32,
+                color: AppStyles.primarySage,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.trainerName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppStyles.darkCharcoal,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Loading contact info...',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppStyles.slateGray,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppStyles.primarySage.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 30,
+                backgroundColor: AppStyles.primarySage.withOpacity(0.2),
+                child: Text(
+                  _trainer!.displayName?.isNotEmpty == true
+                      ? _trainer!.displayName![0].toUpperCase()
+                      : _trainer!.firstName?.isNotEmpty == true
+                          ? _trainer!.firstName![0].toUpperCase()
+                          : 'T',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppStyles.primarySage,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _trainer!.displayName ?? 
+                      '${_trainer!.firstName ?? ''} ${_trainer!.lastName ?? ''}'.trim(),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppStyles.darkCharcoal,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Your Trainer',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppStyles.slateGray,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            height: 1,
+            width: double.infinity,
+            color: AppStyles.slateGray.withOpacity(0.1),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Icon(
+                Icons.email,
+                size: 18,
+                color: AppStyles.primarySage,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _trainer!.email,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppStyles.darkCharcoal,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_trainer!.phoneNumber != null && _trainer!.phoneNumber!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                  Icons.phone,
+                  size: 18,
+                  color: AppStyles.primarySage,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _trainer!.phoneNumber!,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppStyles.darkCharcoal,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 
