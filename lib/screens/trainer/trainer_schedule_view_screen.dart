@@ -159,6 +159,117 @@ class _TrainerScheduleViewScreenState extends State<TrainerScheduleViewScreen> {
     return _sessions[normalizedDay] ?? [];
   }
 
+  int _getTotalSessionsThisMonth() {
+    final startOfMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
+    final endOfMonth = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
+    
+    int total = 0;
+    for (final entry in _sessions.entries) {
+      if (entry.key.isAfter(startOfMonth.subtract(const Duration(days: 1))) &&
+          entry.key.isBefore(endOfMonth.add(const Duration(days: 1)))) {
+        total += entry.value.length;
+      }
+    }
+    return total;
+  }
+
+  Map<String, double> _getAverageSessionsByDayOfWeek() {
+    final startOfMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
+    final endOfMonth = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
+    
+    final dayOfWeekCount = <String, int>{
+      'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0
+    };
+    final dayOfWeekSessions = <String, int>{
+      'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0
+    };
+    
+    final dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    
+    // Only count sessions from the focused month
+    for (final entry in _sessions.entries) {
+      if (entry.key.isAfter(startOfMonth.subtract(const Duration(days: 1))) &&
+          entry.key.isBefore(endOfMonth.add(const Duration(days: 1)))) {
+        final dayOfWeek = entry.key.weekday; // 1 = Monday, 7 = Sunday
+        final dayName = dayNames[dayOfWeek - 1];
+        
+        dayOfWeekCount[dayName] = dayOfWeekCount[dayName]! + 1;
+        dayOfWeekSessions[dayName] = dayOfWeekSessions[dayName]! + entry.value.length;
+      }
+    }
+    
+    final averages = <String, double>{};
+    for (final day in dayNames) {
+      if (dayOfWeekCount[day]! > 0) {
+        averages[day] = dayOfWeekSessions[day]! / dayOfWeekCount[day]!;
+      } else {
+        averages[day] = 0.0;
+      }
+    }
+    
+    return averages;
+  }
+
+  Widget _buildSessionsBarChart() {
+    final averages = _getAverageSessionsByDayOfWeek();
+    final maxAverage = averages.values.isNotEmpty 
+        ? averages.values.reduce((a, b) => a > b ? a : b) 
+        : 1.0;
+    
+    return SizedBox(
+      height: 120,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: averages.entries.map((entry) {
+          final dayName = entry.key;
+          final average = entry.value;
+          final barHeight = maxAverage > 0 ? (average / maxAverage) * 60 : 0.0; // Reduced from 80 to 60
+          
+          return Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min, // Added to prevent overflow
+              children: [
+                // Average value text
+                Text(
+                  average.toStringAsFixed(1),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppStyles.slateGray,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2), // Reduced from 4 to 2
+                // Bar
+                Container(
+                  width: 20,
+                  height: barHeight,
+                  decoration: BoxDecoration(
+                    color: AppStyles.primarySage,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(4),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4), // Reduced from 8 to 4
+                // Day name
+                Text(
+                  dayName,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppStyles.textDark,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   void _showSessionDetails(DateTime selectedDay) {
     final sessions = _getSessionsForDay(selectedDay);
     
@@ -563,50 +674,127 @@ class _TrainerScheduleViewScreenState extends State<TrainerScheduleViewScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppStyles.primarySage.withOpacity(0.2)),
                 ),
-                child: TableCalendar<Map<String, dynamic>>(
-                  firstDay: DateTime.utc(2020, 1, 1),
-                  lastDay: DateTime.utc(2030, 12, 31),
-                  focusedDay: _focusedDay,
-                  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                  eventLoader: _getSessionsForDay,
-                  calendarStyle: CalendarStyle(
-                    outsideDaysVisible: false,
-                    weekendTextStyle: TextStyle(color: AppStyles.slateGray),
-                    holidayTextStyle: TextStyle(color: AppStyles.slateGray),
-                    selectedDecoration: BoxDecoration(
-                      color: AppStyles.primarySage,
-                      shape: BoxShape.circle,
-                    ),
-                    todayDecoration: BoxDecoration(
-                      color: AppStyles.primarySage.withOpacity(0.5),
-                      shape: BoxShape.circle,
-                    ),
-                    markerDecoration: BoxDecoration(
-                      color: AppStyles.successGreen,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  headerStyle: HeaderStyle(
-                    formatButtonVisible: false,
-                    titleCentered: true,
-                    titleTextStyle: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  onDaySelected: (selectedDay, focusedDay) {
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                    // Calendar widget
+                    TableCalendar<Map<String, dynamic>>(
+                      firstDay: DateTime.utc(2020, 1, 1),
+                      lastDay: DateTime.utc(2030, 12, 31),
+                      focusedDay: _focusedDay,
+                      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                      eventLoader: _getSessionsForDay,
+                      calendarStyle: CalendarStyle(
+                        outsideDaysVisible: false,
+                        weekendTextStyle: TextStyle(color: AppStyles.slateGray),
+                        holidayTextStyle: TextStyle(color: AppStyles.slateGray),
+                        selectedDecoration: BoxDecoration(
+                          color: AppStyles.primarySage,
+                          shape: BoxShape.circle,
+                        ),
+                        todayDecoration: BoxDecoration(
+                          color: AppStyles.primarySage.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        markerDecoration: BoxDecoration(
+                          color: AppStyles.successGreen,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      headerStyle: HeaderStyle(
+                        formatButtonVisible: false,
+                        titleCentered: true,
+                        titleTextStyle: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onDaySelected: (selectedDay, focusedDay) {
+                        setState(() {
+                          _selectedDay = selectedDay;
+                          _focusedDay = focusedDay;
+                        });
+                        _showSessionDetails(selectedDay);
+                      },
+                                        onPageChanged: (focusedDay) {
                     setState(() {
-                      _selectedDay = selectedDay;
                       _focusedDay = focusedDay;
                     });
-                    _showSessionDetails(selectedDay);
                   },
-                  onPageChanged: (focusedDay) {
-                    _focusedDay = focusedDay;
-                  },
+                    ),
+                    
+                    // Session statistics
+                    const SizedBox(height: 24),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppStyles.offWhite,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppStyles.primarySage.withOpacity(0.1)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Total sessions this month
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Total Sessions - ${DateFormat('MMMM yyyy').format(_focusedDay)}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppStyles.textDark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${_getTotalSessionsThisMonth()}',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppStyles.primarySage,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Icon(
+                                Icons.calendar_month,
+                                color: AppStyles.primarySage,
+                                size: 32,
+                              ),
+                            ],
+                          ),
+                          
+                          const SizedBox(height: 20),
+                          
+                          // Average sessions by day of week
+                          Text(
+                            'Average Sessions by Day',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: AppStyles.textDark,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildSessionsBarChart(),
+                        ],
+                      ),
+                    ),
+                  ],
+                  ),
                 ),
               ),
             ),
+          
+          // Add bottom spacing after calendar card
+          if (_selectedTrainer != null)
+            const SizedBox(height: 24),
           
           if (_selectedTrainer == null)
             Expanded(

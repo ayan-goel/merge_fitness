@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'trainer_onboarding_screen.dart';
+import '../login_screen.dart';
 
 class TrainerEmailVerificationScreen extends StatefulWidget {
   final User user;
@@ -187,6 +188,20 @@ class _TrainerEmailVerificationScreenState extends State<TrainerEmailVerificatio
     return Scaffold(
       appBar: AppBar(
         title: const Text('Verify Your Email'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () async {
+            // Sign out the user before going back to login
+            await FirebaseAuth.instance.signOut();
+            if (mounted) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => const LoginScreen(),
+                ),
+              );
+            }
+          },
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),

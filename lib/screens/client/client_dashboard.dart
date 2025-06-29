@@ -831,12 +831,13 @@ class _ClientDashboardState extends State<ClientDashboard> {
                                     side: const BorderSide(color: AppStyles.primarySage, width: 1.5),
                                     elevation: 1,
                                     shadowColor: AppStyles.primarySage.withOpacity(0.2),
-                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(14),
                                     ),
                                     textStyle: const TextStyle(
                                       fontWeight: FontWeight.bold,
+                                      fontSize: 16,
                                     ),
                                   ),
                                 ),

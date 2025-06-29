@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/assigned_workout_model.dart';
 import '../../models/nutrition_plan_model.dart';
 import '../../models/user_model.dart';
@@ -167,10 +168,37 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
     try {
       final user = await _authService.getUserModel();
       setState(() {
-        _trainerId = user.uid;
         _currentUser = user;
-        _isLoading = false;
       });
+      
+      // For super trainers, get the client's actual trainer ID
+      // For regular trainers, use their own ID
+      if (user.isSuperTrainer) {
+        // Get the client's document to find their assigned trainer
+        final clientDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.clientId)
+            .get();
+        
+        if (clientDoc.exists) {
+          final clientData = clientDoc.data();
+          final clientTrainerId = clientData?['trainerId'] as String?;
+          setState(() {
+            _trainerId = clientTrainerId;
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      } else {
+        // Regular trainer uses their own ID
+        setState(() {
+          _trainerId = user.uid;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       print('Error loading trainer ID: $e');
       setState(() {

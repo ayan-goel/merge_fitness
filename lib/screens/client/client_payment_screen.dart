@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart' as stripe;
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/session_package_model.dart';
 import '../../models/payment_history_model.dart';
 import '../../models/user_model.dart';
@@ -53,6 +54,22 @@ class _ClientPaymentScreenState extends State<ClientPaymentScreen> {
     } catch (e) {
       print('Error loading session package: $e');
     }
+  }
+
+  // Stream for real-time session package updates
+  Stream<SessionPackage?> _getSessionPackageStream(String clientId, String trainerId) {
+    return FirebaseFirestore.instance
+        .collection('sessionPackages')
+        .where('clientId', isEqualTo: clientId)
+        .where('trainerId', isEqualTo: trainerId)
+        .limit(1)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.docs.isNotEmpty) {
+        return SessionPackage.fromFirestore(snapshot.docs.first);
+      }
+      return null;
+    });
   }
 
   Future<void> _purchaseSessions() async {
@@ -165,115 +182,141 @@ class _ClientPaymentScreenState extends State<ClientPaymentScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Sessions remaining card
-            Card(
-              elevation: 4,
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+            // Sessions remaining card - now with real-time updates
+            StreamBuilder<SessionPackage?>(
+              stream: _user?.trainerId != null 
+                  ? _getSessionPackageStream(_user!.uid, _user!.trainerId!)
+                  : null,
+              builder: (context, snapshot) {
+                final currentPackage = snapshot.data ?? _sessionPackage;
+                
+                return Card(
+                  elevation: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.fitness_center,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Your Sessions',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Sessions Remaining',
-                                style: Theme.of(context).textTheme.bodyLarge,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${_sessionPackage?.sessionsRemaining ?? 0}',
-                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (_sessionPackage != null)
-                          Expanded(
-                            flex: 3,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                '\$${_sessionPackage!.costPerTenSessions.toStringAsFixed(2)}/10',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                                textAlign: TextAlign.center,
-                                overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.fitness_center,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 28,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Your Sessions',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Sessions Remaining',
+                                    style: Theme.of(context).textTheme.bodyLarge,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${currentPackage?.sessionsRemaining ?? 0}',
+                                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (currentPackage != null)
+                              Expanded(
+                                flex: 3,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    '\$${currentPackage.costPerTenSessions.toStringAsFixed(2)}/10',
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
             
             const SizedBox(height: 24),
 
-            // Purchase sessions button
-            if (_sessionPackage != null) ...[
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _isProcessingPayment ? null : _purchaseSessions,
-                  icon: _isProcessingPayment
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.payment),
-                  label: Text(
-                    _isProcessingPayment
-                        ? 'Processing...'
-                        : 'Purchase 10 Sessions - \$${_sessionPackage!.costPerTenSessions.toStringAsFixed(2)}',
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
+            // Purchase sessions button - updated to use real-time data
+            StreamBuilder<SessionPackage?>(
+              stream: _user?.trainerId != null 
+                  ? _getSessionPackageStream(_user!.uid, _user!.trainerId!)
+                  : null,
+              builder: (context, snapshot) {
+                final currentPackage = snapshot.data ?? _sessionPackage;
+                
+                if (currentPackage == null) return const SizedBox.shrink();
+                
+                return Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _isProcessingPayment ? null : () {
+                          // Update _sessionPackage before purchasing
+                          _sessionPackage = currentPackage;
+                          _purchaseSessions();
+                        },
+                        icon: _isProcessingPayment
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.payment),
+                        label: Text(
+                          _isProcessingPayment
+                              ? 'Processing...'
+                              : 'Purchase 10 Sessions - \$${currentPackage.costPerTenSessions.toStringAsFixed(2)}',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                );
+              },
+            ),
 
             // Payment history
             Text(

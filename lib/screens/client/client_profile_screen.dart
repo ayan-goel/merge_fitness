@@ -154,6 +154,22 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
       print('Error loading session package: $e');
     }
   }
+
+  // Stream for real-time session package updates
+  Stream<SessionPackage?> _getSessionPackageStream(String clientId, String trainerId) {
+    return FirebaseFirestore.instance
+        .collection('sessionPackages')
+        .where('clientId', isEqualTo: clientId)
+        .where('trainerId', isEqualTo: trainerId)
+        .limit(1)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.docs.isNotEmpty) {
+        return SessionPackage.fromFirestore(snapshot.docs.first);
+      }
+      return null;
+    });
+  }
   
   void _navigateToPayment() {
     Navigator.push(
@@ -610,67 +626,77 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                           const SizedBox(height: 20),
                           
                           // Clean Stats Row
-                          Row(
-                            children: [
-                              // Sessions Left
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Sessions Remaining',
-                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                        color: AppStyles.slateGray,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${_sessionPackage?.sessionsRemaining ?? 0}',
-                                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                        color: AppStyles.primarySage,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                          // Real-time session package data
+                          StreamBuilder<SessionPackage?>(
+                            stream: _user?.trainerId != null 
+                                ? _getSessionPackageStream(_user!.uid, _user!.trainerId!)
+                                : null,
+                            builder: (context, snapshot) {
+                              final currentPackage = snapshot.data ?? _sessionPackage;
                               
-                              // Simple Divider
-                              Container(
-                                height: 40,
-                                width: 1,
-                                color: AppStyles.slateGray.withOpacity(0.2),
-                              ),
-                              
-                              const SizedBox(width: 16),
-                              
-                              // Package Cost
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Package Cost',
-                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                        color: AppStyles.slateGray,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                              return Row(
+                                children: [
+                                  // Sessions Left
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Sessions Remaining',
+                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                            color: AppStyles.slateGray,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${currentPackage?.sessionsRemaining ?? 0}',
+                                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                            color: AppStyles.primarySage,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      _sessionPackage != null 
-                                          ? '\$${_sessionPackage!.costPerTenSessions.toStringAsFixed(0)}'
-                                          : '\$0',
-                                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                        color: AppStyles.primarySage,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                  ),
+                                  
+                                  // Simple Divider
+                                  Container(
+                                    height: 40,
+                                    width: 1,
+                                    color: AppStyles.slateGray.withOpacity(0.2),
+                                  ),
+                                  
+                                  const SizedBox(width: 16),
+                                  
+                                  // Package Cost
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Package Cost',
+                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                            color: AppStyles.slateGray,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          currentPackage != null 
+                                              ? '\$${currentPackage.costPerTenSessions.toStringAsFixed(0)}'
+                                              : '\$0',
+                                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                            color: AppStyles.primarySage,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                           
                           const SizedBox(height: 20),
