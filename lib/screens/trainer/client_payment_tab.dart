@@ -73,6 +73,9 @@ class _ClientPaymentTabState extends State<ClientPaymentTab> {
       return;
     }
 
+    // Dismiss keyboard before updating
+    FocusScope.of(context).unfocus();
+
     setState(() => _isLoading = true);
     try {
       await _paymentService.createOrUpdateSessionPackage(
@@ -98,6 +101,9 @@ class _ClientPaymentTabState extends State<ClientPaymentTab> {
   }
 
   void _showAdjustSessionsDialog() {
+    // Dismiss keyboard before showing dialog
+    FocusScope.of(context).unfocus();
+    
     _adjustmentController.clear();
     showDialog(
       context: context,
@@ -119,12 +125,16 @@ class _ClientPaymentTabState extends State<ClientPaymentTab> {
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^[+-]?\d*')),
               ],
+              textInputAction: TextInputAction.done,
             ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              FocusScope.of(context).unfocus();
+              Navigator.pop(context);
+            },
             child: const Text('Cancel'),
           ),
           TextButton(
@@ -140,6 +150,7 @@ class _ClientPaymentTabState extends State<ClientPaymentTab> {
                 return;
               }
 
+              FocusScope.of(context).unfocus();
               Navigator.pop(context);
 
               setState(() => _isLoading = true);
@@ -241,6 +252,7 @@ class _ClientPaymentTabState extends State<ClientPaymentTab> {
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
                         ],
+                        textInputAction: TextInputAction.done,
                       ),
                     ),
                     const SizedBox(width: 16),

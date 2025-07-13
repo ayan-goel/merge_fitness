@@ -3,9 +3,12 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/calendly_service.dart';
 import '../../services/payment_service.dart';
+import '../../services/family_service.dart';
 import '../../models/session_model.dart';
 import '../../models/user_model.dart';
+import '../../models/family_model.dart';
 import '../../widgets/session_time_slot.dart';
+import '../../widgets/profile_avatar.dart';
 import '../../theme/app_styles.dart';
 
 
@@ -29,6 +32,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
     with TickerProviderStateMixin {
   final CalendlyService _calendlyService = CalendlyService();
   final PaymentService _paymentService = PaymentService();
+  final FamilyService _familyService = FamilyService();
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   
@@ -37,6 +41,11 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
   Map<String, dynamic>? _selectedTimeSlot;
   bool _isSubmitting = false;
   UserModel? _trainer;
+  UserModel? _currentUser;
+  Family? _family;
+  List<UserModel> _familyMembers = [];
+  Set<String> _selectedFamilyMembers = {};
+  bool _isBookingForFamily = false;
   
   // Group time slots by date
   Map<DateTime, List<Map<String, dynamic>>> _timeSlotsByDate = {};
@@ -53,6 +62,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
     super.initState();
     _loadTrainerData();
     _loadAvailability();
+    _loadFamilyData();
   }
   
   @override
@@ -111,6 +121,62 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
       }
     } catch (e) {
       print("Error loading trainer data: $e");
+    }
+  }
+
+  Future<void> _loadFamilyData() async {
+    try {
+      // Load current user
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.clientId)
+          .get();
+      
+      if (userDoc.exists) {
+        _currentUser = UserModel.fromMap(
+          userDoc.data() as Map<String, dynamic>,
+          uid: userDoc.id,
+          email: userDoc.data()?['email'] ?? '',
+        );
+      }
+
+      // Load family data if user is in a family
+      if (_currentUser?.familyId != null) {
+        final family = await _familyService.getCurrentUserFamily();
+        if (family != null) {
+          // Verify user is actually a member of this family
+          if (family.isMember(widget.clientId)) {
+            final members = await _familyService.getFamilyMembers(family.id);
+            
+            setState(() {
+              _family = family;
+              _familyMembers = members;
+              // Pre-select current user
+              _selectedFamilyMembers = {widget.clientId};
+            });
+            
+            print('Family data loaded: User ${widget.clientId} is member of family ${family.id}');
+          } else {
+            print('User ${widget.clientId} is not a member of family ${family.id}, clearing family data');
+            setState(() {
+              _family = null;
+              _familyMembers = [];
+              _selectedFamilyMembers = {};
+              _isBookingForFamily = false;
+            });
+          }
+        } else {
+          // Family is null, clear any existing family state
+          setState(() {
+            _family = null;
+            _familyMembers = [];
+            _selectedFamilyMembers = {};
+            _isBookingForFamily = false;
+          });
+        }
+      }
+    } catch (e) {
+      print("Error loading family data: $e");
     }
   }
   
@@ -255,15 +321,40 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
       );
       return;
     }
+
+    // If booking for family, ensure at least one member is selected
+    if (_isBookingForFamily && _selectedFamilyMembers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least one family member')),
+      );
+      return;
+    }
     
     setState(() {
       _isSubmitting = true;
     });
     
     try {
-      // Check if client has available sessions before booking
+      // Determine who pays for the session with proper validation
+      String payingClientId = widget.clientId;
+      if (_isBookingForFamily && _family != null) {
+        // CRITICAL: Double-check that user is still a family member before using organizer's credits
+        final isStillMember = _family!.isMember(widget.clientId);
+        if (!isStillMember) {
+          throw Exception('You are no longer a member of this family. Please refresh the page.');
+        }
+        
+        // Family organizer pays for family sessions
+        payingClientId = _family!.organizerId;
+        
+        print('Family booking: User ${widget.clientId} booking for family ${_family!.id}, organizer ${_family!.organizerId} pays');
+      } else {
+        print('Individual booking: User ${widget.clientId} pays for their own session');
+      }
+
+      // Check if paying client has available sessions before booking
       final canBook = await _paymentService.canBookSession(
-        widget.clientId,
+        payingClientId,
         widget.trainerId,
       );
       
@@ -277,8 +368,10 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('No Sessions Remaining'),
-            content: const Text(
-              'You don\'t have any sessions remaining. Would you like to purchase more sessions to book this appointment?'
+            content: Text(
+              _isBookingForFamily
+                ? 'Your family organizer doesn\'t have any sessions remaining. Would you like to purchase more sessions to book this appointment?'
+                : 'You don\'t have any sessions remaining. Would you like to purchase more sessions to book this appointment?'
             ),
             actions: [
               TextButton(
@@ -302,7 +395,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
       
       // Consume a session before booking
       final sessionConsumed = await _paymentService.consumeSession(
-        widget.clientId,
+        payingClientId,
         widget.trainerId,
       );
       
@@ -310,6 +403,19 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
         throw Exception('Failed to consume session. Please try again.');
       }
       
+      // Prepare family member information for the session
+      List<Map<String, dynamic>> familyMemberInfo = [];
+      if (_isBookingForFamily && _selectedFamilyMembers.isNotEmpty) {
+        familyMemberInfo = _familyMembers
+            .where((member) => _selectedFamilyMembers.contains(member.uid))
+            .map((member) => {
+              'uid': member.uid,
+              'name': member.displayName,
+              'email': member.email,
+            })
+            .toList();
+      }
+
       // Use the scheduleSession method which handles Calendly API integration
       await _calendlyService.scheduleSession(
         trainerId: widget.trainerId, 
@@ -317,12 +423,18 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
         timeSlot: _selectedTimeSlot!,
         location: _locationController.text,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
+        familyMembers: familyMemberInfo,
+        isBookingForFamily: _isBookingForFamily,
+        payingClientId: payingClientId,
       );
       
       // Show success message and pop back
       if (mounted) {
+        final memberCount = _isBookingForFamily ? _selectedFamilyMembers.length : 1;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Session scheduled successfully!')),
+          SnackBar(content: Text(
+            'Session scheduled successfully${memberCount > 1 ? ' for $memberCount family members' : ''}!'
+          )),
         );
         Navigator.pop(context, true); // Return true to indicate success
       }
@@ -331,7 +443,10 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
       
       // If session was consumed but scheduling failed, refund the session
       try {
-        await _paymentService.refundSession(widget.clientId, widget.trainerId);
+        final payingClientId = _isBookingForFamily && _family != null 
+            ? _family!.organizerId 
+            : widget.clientId;
+        await _paymentService.refundSession(payingClientId, widget.trainerId);
       } catch (refundError) {
         print('Error refunding session: $refundError');
       }
@@ -402,14 +517,19 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
     
     return ListView.separated(
       padding: const EdgeInsets.only(bottom: 120), // Account for bottom bar
-      itemCount: sortedDates.length + 1, // +1 for trainer info card
+      itemCount: sortedDates.length + (_family != null ? 2 : 1), // +1 for trainer info card, +1 for family section if in family
       separatorBuilder: (context, index) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         if (index == 0) {
           return _buildTrainerInfoCard();
         }
         
-        final date = sortedDates[index - 1];
+        if (_family != null && index == 1) {
+          return _buildFamilyMemberSelection();
+        }
+        
+        final dateIndex = _family != null ? index - 2 : index - 1;
+        final date = sortedDates[dateIndex];
         final slots = _timeSlotsByDate[date]!;
         
         return _buildDateSection(date, slots);
@@ -587,6 +707,188 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
                 ),
               ],
             ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFamilyMemberSelection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppStyles.primarySage.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.family_restroom,
+                color: AppStyles.primarySage,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Book for Family',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppStyles.darkCharcoal,
+                  ),
+                ),
+              ),
+              Switch(
+                value: _isBookingForFamily,
+                onChanged: (value) {
+                  // Additional validation: ensure user is still a family member
+                  if (value && _family != null && !_family!.isMember(widget.clientId)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('You are no longer a member of this family. Please refresh the page.')),
+                    );
+                    return;
+                  }
+                  
+                  setState(() {
+                    _isBookingForFamily = value;
+                    if (!value) {
+                      _selectedFamilyMembers.clear();
+                      _selectedFamilyMembers.add(widget.clientId);
+                    }
+                  });
+                },
+                activeColor: AppStyles.primarySage,
+              ),
+            ],
+          ),
+          if (_isBookingForFamily) ...[
+            const SizedBox(height: 16),
+            Container(
+              height: 1,
+              width: double.infinity,
+              color: AppStyles.slateGray.withOpacity(0.1),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Select Family Members',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppStyles.darkCharcoal,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (_familyMembers.isNotEmpty) ...[
+              ..._familyMembers.map((member) {
+                final isSelected = _selectedFamilyMembers.contains(member.uid);
+                final isCurrentUser = member.uid == widget.clientId;
+                
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: CheckboxListTile(
+                    value: isSelected,
+                    onChanged: (bool? value) {
+                      setState(() {
+                        if (value == true) {
+                          _selectedFamilyMembers.add(member.uid);
+                        } else {
+                          _selectedFamilyMembers.remove(member.uid);
+                        }
+                      });
+                    },
+                    title: Row(
+                      children: [
+                        ProfileAvatar(
+                          name: member.displayName ?? 'Unknown User',
+                          radius: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            member.displayName ?? 'Unknown User',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: AppStyles.darkCharcoal,
+                            ),
+                          ),
+                        ),
+                        if (isCurrentUser) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'You',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    activeColor: AppStyles.primarySage,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                );
+              }).toList(),
+              const SizedBox(height: 12),
+              if (_family?.organizerId != widget.clientId) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.amber.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info,
+                        color: Colors.amber.shade600,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Family sessions are paid by the family organizer.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.amber.shade800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ],
         ],
       ),

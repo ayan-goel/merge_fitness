@@ -4,11 +4,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
 import '../../services/profile_image_service.dart';
 import '../../services/payment_service.dart';
+import '../../services/family_service.dart';
 import '../../models/user_model.dart';
 import '../../models/goal_model.dart';
 import '../../models/session_package_model.dart';
+import '../../models/family_model.dart';
 import '../../theme/app_styles.dart';
 import 'client_payment_screen.dart';
+import 'family_management_screen.dart';
 
 class ClientProfileScreen extends StatefulWidget {
   const ClientProfileScreen({super.key});
@@ -22,6 +25,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final ProfileImageService _profileImageService = ProfileImageService();
   final PaymentService _paymentService = PaymentService();
+  final FamilyService _familyService = FamilyService();
   final _formKey = GlobalKey<FormState>();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
@@ -55,6 +59,8 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   bool _isSaving = false;
   List<Goal> _goals = [];
   SessionPackage? _sessionPackage;
+  Family? _family;
+  List<FamilyInvitation> _pendingInvitations = [];
   
   @override
   void initState() {
@@ -118,40 +124,76 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         weightLbs = mostRecentWeight * 2.20462;
       }
       
-      setState(() {
-        _user = user;
-        final fullName = user.displayName ?? '';
-        final nameParts = fullName.split(' ');
-        _firstNameController.text = nameParts.isNotEmpty ? nameParts.first : '';
-        _lastNameController.text = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
-        _emailController.text = user.email;
-        _phoneController.text = user.phoneNumber ?? '';
-        _heightFeetController.text = feet > 0 ? feet.toString() : '';
-        _heightInchesController.text = inches > 0 ? inches.toString() : '';
-        _weightController.text = weightLbs != null ? weightLbs.toStringAsFixed(1) : '';
-        _dateOfBirth = user.dateOfBirth;
-        _goals = user.goals ?? [];
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _user = user;
+          final fullName = user.displayName ?? '';
+          final nameParts = fullName.split(' ');
+          _firstNameController.text = nameParts.isNotEmpty ? nameParts.first : '';
+          _lastNameController.text = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+          _emailController.text = user.email;
+          _phoneController.text = user.phoneNumber ?? '';
+          _heightFeetController.text = feet > 0 ? feet.toString() : '';
+          _heightInchesController.text = inches > 0 ? inches.toString() : '';
+          _weightController.text = weightLbs != null ? weightLbs.toStringAsFixed(1) : '';
+          _dateOfBirth = user.dateOfBirth;
+          _goals = user.goals ?? [];
+          _isLoading = false;
+        });
+      }
       
       // Load session package if user has a trainer
       if (user.trainerId != null) {
         _loadSessionPackage(user.uid, user.trainerId!);
       }
+      
+      // Load family data
+      _loadFamilyData();
     } catch (e) {
       print('Error loading user data: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
   
   Future<void> _loadSessionPackage(String clientId, String trainerId) async {
     try {
       final package = await _paymentService.getSessionPackage(clientId, trainerId);
-      setState(() => _sessionPackage = package);
+      if (mounted) {
+        setState(() => _sessionPackage = package);
+      }
     } catch (e) {
       print('Error loading session package: $e');
+    }
+  }
+
+  Future<void> _loadFamilyData() async {
+    try {
+      // Load current family
+      final family = await _familyService.getCurrentUserFamily();
+      
+      // Load pending invitations
+      final invitations = await _familyService.getPendingInvitations();
+      
+      // Check if widget is still mounted before calling setState
+      if (mounted) {
+        setState(() {
+          _family = family;
+          _pendingInvitations = invitations;
+        });
+      }
+    } catch (e) {
+      print('Error loading family data: $e');
+      // Check if widget is still mounted before calling setState
+      if (mounted) {
+        setState(() {
+          _family = null;
+          _pendingInvitations = [];
+        });
+      }
     }
   }
 
@@ -180,13 +222,16 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     );
   }
   
-  Future<void> _saveChanges() async {
+    Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // Dismiss keyboard before saving
+    FocusScope.of(context).unfocus();
     
     setState(() {
       _isSaving = true;
     });
-    
+
     try {
       // Convert height from feet/inches to cm
       double? heightCm;
@@ -259,6 +304,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     final goalText = _goalController.text.trim();
     if (goalText.isEmpty) return;
     
+    // Dismiss keyboard before adding goal
+    FocusScope.of(context).unfocus();
+    
     setState(() {
       _goals.add(Goal(value: goalText));
       _goalController.clear();
@@ -281,6 +329,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   }
   
   Future<void> _selectDate() async {
+    // Dismiss keyboard before showing date picker
+    FocusScope.of(context).unfocus();
+    
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: _dateOfBirth ?? DateTime.now().subtract(const Duration(days: 365 * 18)),
@@ -296,6 +347,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   }
   
   Future<void> _signOut() async {
+    // Dismiss keyboard before signing out
+    FocusScope.of(context).unfocus();
+    
     try {
       await _authService.signOut();
       if (mounted) {
@@ -394,6 +448,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
               actions: [
                 TextButton(
                   onPressed: isValidating ? null : () {
+                    FocusScope.of(context).unfocus();
                     Navigator.of(context).pop(false);
                   },
                   child: Text(
@@ -409,6 +464,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                       });
                       return;
                     }
+                    
+                    // Dismiss keyboard before processing
+                    FocusScope.of(context).unfocus();
                     
                     setState(() {
                       isValidating = true;
@@ -539,7 +597,604 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
       ),
     );
   }
-  
+
+  // Family Management Methods
+  Future<void> _createFamily() async {
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
+    bool isCreating = false;
+    
+    try {
+      final result = await showDialog<bool>(
+        context: context,
+        builder: (context) => StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            title: const Text('Create Family'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Family Name',
+                    hintText: 'Enter a name for your family',
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description (Optional)',
+                    hintText: 'Brief description of your family',
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: isCreating ? null : () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: isCreating ? null : () async {
+                  if (nameController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please enter a family name')),
+                    );
+                    return;
+                  }
+                  
+                  setState(() => isCreating = true);
+                  
+                  try {
+                    await _familyService.createFamily(
+                      name: nameController.text.trim(),
+                      description: descriptionController.text.trim().isEmpty 
+                          ? null 
+                          : descriptionController.text.trim(),
+                    );
+                    Navigator.pop(context, true);
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error creating family: $e')),
+                    );
+                  } finally {
+                    setState(() => isCreating = false);
+                  }
+                },
+                child: isCreating 
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Create'),
+              ),
+            ],
+          ),
+        ),
+      );
+      
+      if (result == true) {
+        await _loadFamilyData();
+        await _loadUserData(); // Refresh user data to get family info
+      }
+    } finally {
+      // Dispose controllers after all dialog operations are complete
+      nameController.dispose();
+      descriptionController.dispose();
+    }
+  }
+
+  Future<void> _leaveFamily() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Leave Family'),
+        content: Text('Are you sure you want to leave "${_family?.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppStyles.errorRed,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed == true) {
+      try {
+        await _familyService.leaveFamily();
+        await _loadFamilyData();
+        await _loadUserData();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Left family successfully')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error leaving family: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _acceptInvitation(FamilyInvitation invitation) async {
+    try {
+      await _familyService.acceptInvitation(invitation.id);
+      await _loadFamilyData();
+      await _loadUserData();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Joined "${invitation.familyName}" successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error accepting invitation: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _declineInvitation(FamilyInvitation invitation) async {
+    try {
+      await _familyService.declineInvitation(invitation.id);
+      await _loadFamilyData();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Declined invitation to "${invitation.familyName}"')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error declining invitation: $e')),
+        );
+      }
+    }
+    }
+
+  Widget _buildFamilySection() {
+    return Column(
+      children: [
+        // Family Card
+        Card(
+          elevation: 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.family_restroom,
+                          color: AppStyles.primarySage,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Family',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppStyles.textDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_user?.isFamilyOrganizer == true)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppStyles.primarySage.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          'ORGANIZER',
+                          style: TextStyle(
+                            color: AppStyles.primarySage,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                
+                // Family Content
+                if (_family != null) ...[
+                  // Family exists - show family info
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _family!.name,
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppStyles.primarySage,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_family!.activeMemberCount} member${_family!.activeMemberCount == 1 ? '' : 's'}',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppStyles.slateGray,
+                        ),
+                      ),
+                      if (_family!.description != null && _family!.description!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          _family!.description!,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppStyles.slateGray,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Family Members
+                  FutureBuilder<List<UserModel>>(
+                    future: _familyService.getFamilyMembers(_family!.id),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
+                      
+                      if (snapshot.hasError) {
+                        return Text('Error loading members: ${snapshot.error}');
+                      }
+                      
+                      final members = snapshot.data ?? [];
+                      
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Members',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppStyles.textDark,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ...members.map((member) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: AppStyles.primarySage.withOpacity(0.1),
+                                  child: Text(
+                                    member.displayName?.substring(0, 1).toUpperCase() ?? 'U',
+                                    style: TextStyle(
+                                      color: AppStyles.primarySage,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        member.displayName ?? '${member.firstName} ${member.lastName}',
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      if (member.uid == _family!.organizerId) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Family Organizer',
+                                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            color: AppStyles.primarySage,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
+                        ],
+                      );
+                    },
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Family Actions
+                  Row(
+                    children: [
+                      if (_user?.isFamilyOrganizer == true) ...[
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => FamilyManagementScreen(
+                                    familyId: _family!.id,
+                                  ),
+                                ),
+                              ).then((_) {
+                                // Refresh data when returning from family management
+                                _loadFamilyData();
+                                _loadUserData();
+                              });
+                            },
+                            icon: const Icon(Icons.settings),
+                            label: const Text('Manage Family'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppStyles.primarySage,
+                              side: BorderSide(color: AppStyles.primarySage),
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _leaveFamily,
+                            icon: const Icon(Icons.exit_to_app),
+                            label: const Text('Leave Family'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppStyles.errorRed,
+                              side: BorderSide(color: AppStyles.errorRed),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ] else ...[
+                  // No family - show create or join options
+                  Column(
+                    children: [
+                      // Pending Invitations
+                      if (_pendingInvitations.isNotEmpty) ...[
+                        ..._pendingInvitations.map((invitation) => Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: AppStyles.primarySage.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        Icons.family_restroom,
+                                        color: AppStyles.primarySage,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Family Invitation',
+                                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                              color: AppStyles.primarySage,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Join "${invitation.familyName}"',
+                                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              color: AppStyles.textDark,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 16,
+                                        backgroundColor: AppStyles.primarySage.withOpacity(0.1),
+                                        child: Text(
+                                          invitation.organizerName.substring(0, 1).toUpperCase(),
+                                          style: TextStyle(
+                                            color: AppStyles.primarySage,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        'From: ${invitation.organizerName}',
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          color: AppStyles.slateGray,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (invitation.message != null && invitation.message!.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: AppStyles.primarySage.withOpacity(0.05),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: AppStyles.primarySage.withOpacity(0.1)),
+                                    ),
+                                    child: Text(
+                                      invitation.message!,
+                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        color: AppStyles.textDark,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 20),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    OutlinedButton(
+                                      onPressed: () => _declineInvitation(invitation),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppStyles.slateGray,
+                                        side: BorderSide(color: AppStyles.slateGray.withOpacity(0.5)),
+                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      child: const Text('Decline'),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    ElevatedButton(
+                                      onPressed: () => _acceptInvitation(invitation),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppStyles.primarySage,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        elevation: 2,
+                                      ),
+                                      child: const Text('Accept'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        )),
+                        const SizedBox(height: 20),
+                      ],
+                      
+                      // Create Family Option
+                      if (_user?.canCreateFamily == true) ...[
+                        Icon(
+                          Icons.family_restroom,
+                          size: 48,
+                          color: AppStyles.slateGray.withOpacity(0.5),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Create a Family',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppStyles.textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Create a family to book sessions together and share the cost.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppStyles.slateGray,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _createFamily,
+                            icon: const Icon(Icons.add),
+                            label: const Text('Create Family'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppStyles.primarySage,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        Icon(
+                          Icons.family_restroom,
+                          size: 48,
+                          color: AppStyles.slateGray.withOpacity(0.5),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Not in a Family',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppStyles.textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'You can join a family when someone invites you.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppStyles.slateGray,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+   
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -736,6 +1391,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                   ),
                   const SizedBox(height: 24),
                 ],
+                
+                // Family Section
+                _buildFamilySection(),
                 
                 // Personal Information Section
                 Text(

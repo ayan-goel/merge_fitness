@@ -67,12 +67,18 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
   }
 
   void _goToPreviousDay() {
+    // Dismiss keyboard before changing date
+    FocusScope.of(context).unfocus();
+    
     setState(() {
       _selectedDate = _selectedDate.subtract(const Duration(days: 1));
     });
   }
 
   void _goToNextDay() {
+    // Dismiss keyboard before changing date
+    FocusScope.of(context).unfocus();
+    
     final tomorrow = _selectedDate.add(const Duration(days: 1));
     if (!tomorrow.isAfter(DateTime.now())) {
       setState(() {
@@ -82,6 +88,9 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
   }
 
   void _selectDate() async {
+    // Dismiss keyboard before showing date picker
+    FocusScope.of(context).unfocus();
+    
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
@@ -98,6 +107,9 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
 
   void _navigateToAddMeal() async {
     if (_clientId == null) return;
+
+    // Dismiss keyboard before navigating
+    FocusScope.of(context).unfocus();
 
     final emptyMeal = MealEntry.empty(_clientId!).copyWith(date: _selectedDate);
     
@@ -120,6 +132,9 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
   }
 
   void _navigateToEditMeal(MealEntry meal) async {
+    // Dismiss keyboard before navigating
+    FocusScope.of(context).unfocus();
+    
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -144,6 +159,9 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
   }
 
   void _confirmDeleteMeal(MealEntry meal) {
+    // Dismiss keyboard before showing dialog
+    FocusScope.of(context).unfocus();
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -152,11 +170,15 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
           content: Text('Are you sure you want to delete "${meal.name}"?'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                FocusScope.of(context).unfocus();
+                Navigator.of(context).pop();
+              },
               child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () async {
+                FocusScope.of(context).unfocus();
                 Navigator.of(context).pop();
                 try {
                   await _mealService.deleteMealEntry(meal.id);

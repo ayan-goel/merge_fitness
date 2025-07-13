@@ -117,6 +117,9 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
   }
 
   Future<void> _selectStartDate() async {
+    // Dismiss keyboard before showing date picker
+    FocusScope.of(context).unfocus();
+    
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: _startDate,
@@ -136,6 +139,9 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
   }
   
   Future<void> _selectEndDate() async {
+    // Dismiss keyboard before showing date picker
+    FocusScope.of(context).unfocus();
+    
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: _endDate ?? _startDate.add(const Duration(days: 30)),
@@ -153,6 +159,9 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
   void _addSampleMeal() {
     final name = _mealNameController.text.trim();
     if (name.isEmpty) return;
+    
+    // Dismiss keyboard before processing
+    FocusScope.of(context).unfocus();
     
     // Create macronutrients map
     final macronutrients = <String, double>{
@@ -210,13 +219,16 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
     });
   }
   
-  Future<void> _assignNutritionPlan() async {
+    Future<void> _assignNutritionPlan() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // Dismiss keyboard before processing
+    FocusScope.of(context).unfocus();
     
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
       final currentUser = await _authService.getUserModel();
       
@@ -290,11 +302,15 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
           content: Text('Are you sure you want to delete "${widget.existingPlan!.name}"? This cannot be undone.'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                FocusScope.of(context).unfocus();
+                Navigator.of(context).pop();
+              },
               child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () async {
+                FocusScope.of(context).unfocus();
                 Navigator.of(context).pop();
                 setState(() {
                   _isLoading = true;
@@ -388,6 +404,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                         filled: true,
                         fillColor: Theme.of(context).colorScheme.surface,
                       ),
+                      textInputAction: TextInputAction.done,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter a plan name';
@@ -427,6 +444,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                         fillColor: Theme.of(context).colorScheme.surface,
                       ),
                       maxLines: 2,
+                      textInputAction: TextInputAction.done,
                     ),
                   ],
                 ),
@@ -535,6 +553,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: false),
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      textInputAction: TextInputAction.done,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter daily calories';
@@ -591,6 +610,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                             ],
+                            textInputAction: TextInputAction.done,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -628,6 +648,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                             ],
+                            textInputAction: TextInputAction.done,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -665,6 +686,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                             ],
+                            textInputAction: TextInputAction.done,
                           ),
                         ),
                       ],
@@ -718,6 +740,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                             ],
+                            textInputAction: TextInputAction.done,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -755,6 +778,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                             ],
+                            textInputAction: TextInputAction.done,
                           ),
                         ),
                       ],
@@ -796,6 +820,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                             ],
+                            textInputAction: TextInputAction.done,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -833,6 +858,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                             ],
+                            textInputAction: TextInputAction.done,
                           ),
                         ),
                       ],
@@ -880,6 +906,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                         filled: true,
                         fillColor: Theme.of(context).colorScheme.surface,
                       ),
+                      textInputAction: TextInputAction.done,
                     ),
                     const SizedBox(height: 12),
                     
@@ -899,6 +926,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                             ],
+                            textInputAction: TextInputAction.done,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -915,6 +943,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                             ],
+                            textInputAction: TextInputAction.done,
                           ),
                         ),
                       ],
@@ -936,6 +965,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                             ],
+                            textInputAction: TextInputAction.done,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -952,6 +982,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                             ],
+                            textInputAction: TextInputAction.done,
                           ),
                         ),
                       ],
@@ -1091,6 +1122,7 @@ class _AssignNutritionPlanScreenState extends State<AssignNutritionPlanScreen> {
                         fillColor: Theme.of(context).colorScheme.surface,
                       ),
                       maxLines: 3,
+                      textInputAction: TextInputAction.done,
                     ),
                   ],
                 ),

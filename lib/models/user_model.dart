@@ -28,9 +28,12 @@ class UserModel {
   final DateTime? dateOfBirth;
   final List<Goal>? goals;
   final String? phoneNumber;
-  final String? trainerId; // ID of the trainer associated with this client
+  final String? trainerId; // Legacy field - ID of the trainer associated with this client (for backwards compatibility)
+  final List<String>? trainerIds; // New field - IDs of the trainers associated with this client
   final Map<String, dynamic>? onboardingData; // Store onboarding form data
   final String? rejectionReason; // Reason for rejection if account was rejected
+  final String? familyId; // ID of the family this user belongs to
+  final bool isFamilyOrganizer; // Whether this user is the organizer of their family
 
   UserModel({
     required this.uid,
@@ -47,8 +50,11 @@ class UserModel {
     this.goals,
     this.phoneNumber,
     this.trainerId,
+    this.trainerIds,
     this.onboardingData,
     this.rejectionReason,
+    this.familyId,
+    this.isFamilyOrganizer = false,
   });
 
   // Create user from Firebase User + Firestore data
@@ -63,22 +69,14 @@ class UserModel {
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         return UserModel.fromMap(data, uid: uid, email: email);
       } else {
-        // Default to client role if document doesn't exist
-        return UserModel(
-          uid: uid,
-          email: email,
-          role: UserRole.client,
-          accountStatus: AccountStatus.approved, // Default for existing users
-        );
+        // Document doesn't exist - throw error instead of defaulting to client
+        print("WARNING: User document doesn't exist for uid: $uid");
+        throw Exception('User document not found for uid: $uid');
       }
     } catch (e) {
-      // Handle errors, default to client role
-      return UserModel(
-        uid: uid,
-        email: email,
-        role: UserRole.client,
-        accountStatus: AccountStatus.approved, // Default for existing users
-      );
+      // Don't hide errors by defaulting to client role
+      print("ERROR in UserModel.fromFirebase: $e");
+      throw Exception('Failed to load user data: $e');
     }
   }
 
@@ -101,6 +99,18 @@ class UserModel {
       }
     }
     
+    // Handle trainer assignment backwards compatibility
+    List<String>? trainerIds;
+    String? trainerId = map['trainerId'];
+    
+    if (map['trainerIds'] != null) {
+      // New format - use trainerIds array
+      trainerIds = List<String>.from(map['trainerIds']);
+    } else if (trainerId != null) {
+      // Legacy format - convert single trainerId to array
+      trainerIds = [trainerId];
+    }
+    
     return UserModel(
       uid: uid,
       email: email,
@@ -116,9 +126,12 @@ class UserModel {
         (map['dateOfBirth'] as Timestamp).toDate() : null,
       goals: goalsData,
       phoneNumber: map['phoneNumber'],
-      trainerId: map['trainerId'],
+      trainerId: trainerId,
+      trainerIds: trainerIds,
       onboardingData: map['onboardingData'] as Map<String, dynamic>?,
       rejectionReason: map['rejectionReason'],
+      familyId: map['familyId'],
+      isFamilyOrganizer: map['isFamilyOrganizer'] ?? false,
     );
   }
 
@@ -137,9 +150,12 @@ class UserModel {
       'dateOfBirth': dateOfBirth != null ? Timestamp.fromDate(dateOfBirth!) : null,
       'goals': goals?.map((goal) => goal.toMap()).toList(),
       'phoneNumber': phoneNumber,
-      'trainerId': trainerId,
+      'trainerId': trainerId, // Keep for backwards compatibility
+      'trainerIds': trainerIds,
       'onboardingData': onboardingData,
       'rejectionReason': rejectionReason,
+      'familyId': familyId,
+      'isFamilyOrganizer': isFamilyOrganizer,
     };
   }
 
@@ -210,9 +226,12 @@ class UserModel {
     String? phoneNumber,
     UserRole? role,
     String? trainerId,
+    List<String>? trainerIds,
     AccountStatus? accountStatus,
     Map<String, dynamic>? onboardingData,
     String? rejectionReason,
+    String? familyId,
+    bool? isFamilyOrganizer,
   }) {
     return UserModel(
       uid: this.uid,
@@ -229,8 +248,11 @@ class UserModel {
       goals: goals ?? this.goals,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       trainerId: trainerId ?? this.trainerId,
+      trainerIds: trainerIds ?? this.trainerIds,
       onboardingData: onboardingData ?? this.onboardingData,
       rejectionReason: rejectionReason ?? this.rejectionReason,
+      familyId: familyId ?? this.familyId,
+      isFamilyOrganizer: isFamilyOrganizer ?? this.isFamilyOrganizer,
     );
   }
 
@@ -244,4 +266,69 @@ class UserModel {
   bool get isPending => accountStatus == AccountStatus.pending;
   bool get isApproved => accountStatus == AccountStatus.approved;
   bool get isRejected => accountStatus == AccountStatus.rejected;
+  
+  // Helper methods for trainer assignments
+  
+  /// Get all assigned trainer IDs (supports both legacy and new format)
+  List<String> get assignedTrainerIds {
+    if (trainerIds != null && trainerIds!.isNotEmpty) {
+      return trainerIds!;
+    } else if (trainerId != null) {
+      return [trainerId!];
+    }
+    return [];
+  }
+  
+  /// Check if the client has any assigned trainers
+  bool get hasAssignedTrainers => assignedTrainerIds.isNotEmpty;
+  
+  /// Check if the client has multiple assigned trainers
+  bool get hasMultipleTrainers => assignedTrainerIds.length > 1;
+  
+  /// Get the primary trainer ID (first in the list, or the legacy trainerId)
+  String? get primaryTrainerId {
+    final ids = assignedTrainerIds;
+    return ids.isNotEmpty ? ids.first : null;
+  }
+  
+  /// Check if a specific trainer is assigned to this client
+  bool isAssignedToTrainer(String trainerId) {
+    return assignedTrainerIds.contains(trainerId);
+  }
+  
+  /// Get a copy of this user with updated trainer assignments
+  UserModel copyWithTrainers(List<String> newTrainerIds) {
+    return copyWith(
+      trainerIds: newTrainerIds,
+      // Update legacy trainerId to first trainer for backwards compatibility
+      trainerId: newTrainerIds.isNotEmpty ? newTrainerIds.first : null,
+    );
+  }
+
+  // Helper methods for family membership
+  
+  /// Check if user is part of a family
+  bool get isInFamily => familyId != null && familyId!.isNotEmpty;
+  
+  /// Check if user can create a family (clients only, not already in a family)
+  bool get canCreateFamily => isClient && !isInFamily;
+  
+  /// Check if user can join a family (clients only, not already in a family)
+  bool get canJoinFamily => isClient && !isInFamily;
+  
+  /// Get a copy of this user with updated family information
+  UserModel copyWithFamily(String? newFamilyId, bool isOrganizer) {
+    return copyWith(
+      familyId: newFamilyId,
+      isFamilyOrganizer: isOrganizer,
+    );
+  }
+  
+  /// Get a copy of this user with family removed
+  UserModel copyWithoutFamily() {
+    return copyWith(
+      familyId: null,
+      isFamilyOrganizer: false,
+    );
+  }
 } 

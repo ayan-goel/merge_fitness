@@ -385,7 +385,8 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                               : null,
                     ),
                     child: Icon(
-                      isCompleted ? Icons.check_circle : Icons.fitness_center,
+                      isCompleted ? Icons.check_circle : 
+                      session.isBookingForFamily ? Icons.family_restroom : Icons.fitness_center,
                       color: isCancelled 
                           ? Colors.grey 
                           : isCompleted 
@@ -394,14 +395,39 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                       size: 24,
                     ),
                   ),
-                  title: Text(
-                    session.clientName,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      decoration: isCancelled ? TextDecoration.lineThrough : null,
-                      color: isCancelled ? AppStyles.slateGray : AppStyles.textDark,
-                    ),
+                  title: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        session.isBookingForFamily && session.familyMembers != null && session.familyMembers!.isNotEmpty
+                            ? session.familyMembers!.map((member) => member['name'] ?? 'Unknown').join(', ')
+                            : session.clientName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          decoration: isCancelled ? TextDecoration.lineThrough : null,
+                          color: isCancelled ? AppStyles.slateGray : AppStyles.textDark,
+                        ),
+                      ),
+                      if (session.isBookingForFamily) ...[
+                        const SizedBox(height: 2),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppStyles.primarySage.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'Family Session',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppStyles.primarySage,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -748,6 +774,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                   ),
                   style: const TextStyle(color: AppStyles.textDark),
                   maxLines: 2,
+                  textInputAction: TextInputAction.done,
                 ),
               ],
             ),

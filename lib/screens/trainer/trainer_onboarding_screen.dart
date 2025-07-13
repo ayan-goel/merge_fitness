@@ -4,6 +4,7 @@ import '../../services/auth_service.dart';
 import '../../theme/app_styles.dart';
 import '../home_screen.dart';
 import '../login_screen.dart';
+import '../../main.dart';
 
 class TrainerOnboardingScreen extends StatefulWidget {
   const TrainerOnboardingScreen({super.key});
@@ -34,6 +35,9 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
       return;
     }
 
+    // Dismiss keyboard before proceeding
+    FocusScope.of(context).unfocus();
+
     setState(() {
       _isLoading = true;
     });
@@ -47,9 +51,9 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
       );
 
       if (mounted) {
-        // Navigate to home screen after saving
+        // Navigate to AuthWrapper which will handle proper routing
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const AuthWrapper()),
         );
       }
     } catch (e) {
@@ -68,6 +72,9 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
   }
 
   Future<void> _returnToLogin() async {
+    // Dismiss keyboard before navigating
+    FocusScope.of(context).unfocus();
+    
     // Sign out the user and return to login
     try {
       await _authService.signOut();

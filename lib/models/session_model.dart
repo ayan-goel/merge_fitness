@@ -17,6 +17,9 @@ class TrainingSession {
   final String? calendlyUrl;
   final String trainerName;
   final bool trainerLocationEnabled;
+  final List<Map<String, dynamic>>? familyMembers;
+  final bool isBookingForFamily;
+  final String? payingClientId;
   
   TrainingSession({
     required this.id,
@@ -35,6 +38,9 @@ class TrainingSession {
     this.calendlyUrl,
     this.trainerName = 'Trainer',
     this.trainerLocationEnabled = true,
+    this.familyMembers,
+    this.isBookingForFamily = false,
+    this.payingClientId,
   });
   
   factory TrainingSession.fromFirestore(DocumentSnapshot doc) {
@@ -57,6 +63,11 @@ class TrainingSession {
       calendlyUrl: data['calendlyUrl'],
       trainerName: data['trainerName'] ?? 'Trainer',
       trainerLocationEnabled: data['trainerLocationEnabled'] ?? true,
+      familyMembers: data['familyMembers'] != null 
+          ? List<Map<String, dynamic>>.from(data['familyMembers'])
+          : null,
+      isBookingForFamily: data['isBookingForFamily'] ?? false,
+      payingClientId: data['payingClientId'],
     );
   }
   
@@ -77,6 +88,9 @@ class TrainingSession {
       'calendlyUrl': calendlyUrl,
       'trainerName': trainerName,
       'trainerLocationEnabled': trainerLocationEnabled,
+      'familyMembers': familyMembers,
+      'isBookingForFamily': isBookingForFamily,
+      'payingClientId': payingClientId,
     };
   }
   

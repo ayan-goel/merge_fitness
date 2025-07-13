@@ -65,6 +65,9 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
   }
   
   void _addExercise() async {
+    // Dismiss keyboard before showing dialog
+    FocusScope.of(context).unfocus();
+    
     final exercise = await showDialog<ExerciseTemplate>(
       context: context,
       builder: (context) => const ExerciseDialog(),
@@ -78,6 +81,9 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
   }
   
   void _editExercise(int index) async {
+    // Dismiss keyboard before showing dialog
+    FocusScope.of(context).unfocus();
+    
     final exercise = await showDialog<ExerciseTemplate>(
       context: context,
       builder: (context) => ExerciseDialog(exercise: _exercises[index]),
@@ -106,7 +112,7 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
     });
   }
   
-  Future<void> _saveTemplate() async {
+    Future<void> _saveTemplate() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -118,10 +124,13 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
       return;
     }
     
+    // Dismiss keyboard before saving
+    FocusScope.of(context).unfocus();
+    
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
       WorkoutTemplate template;
       
@@ -206,6 +215,7 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                         filled: true,
                         fillColor: Theme.of(context).colorScheme.surface,
                       ),
+                      textInputAction: TextInputAction.done,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter a name';
@@ -242,6 +252,7 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                         fillColor: Theme.of(context).colorScheme.surface,
                       ),
                       maxLines: 2,
+                      textInputAction: TextInputAction.done,
                     ),
                   ],
                 ),
@@ -542,6 +553,9 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
   }
   
   void _selectVideo() async {
+    // Dismiss keyboard before showing dialog
+    FocusScope.of(context).unfocus();
+    
     if (_videos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No videos available. Add videos in Video Gallery.')),
@@ -580,6 +594,7 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
                       title: Text(video.name),
                       selected: _selectedVideoId == video.id,
                       onTap: () {
+                        FocusScope.of(context).unfocus();
                         Navigator.pop(context, video.id);
                       },
                     );
@@ -591,12 +606,18 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              FocusScope.of(context).unfocus();
+              Navigator.pop(context);
+            },
             child: const Text('Cancel'),
           ),
           if (_selectedVideoId != null)
             TextButton(
-              onPressed: () => Navigator.pop(context, 'clear'),
+              onPressed: () {
+                FocusScope.of(context).unfocus();
+                Navigator.pop(context, 'clear');
+              },
               child: const Text('Clear Selection'),
               style: TextButton.styleFrom(foregroundColor: Colors.red),
             ),
@@ -689,6 +710,7 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
                   filled: true,
                   fillColor: Theme.of(context).colorScheme.surface,
                 ),
+                textInputAction: TextInputAction.done,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter a name';
@@ -798,6 +820,7 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
                         fillColor: Theme.of(context).colorScheme.surface,
                       ),
                       keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.done,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Required';
@@ -839,6 +862,7 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
                         fillColor: Theme.of(context).colorScheme.surface,
                       ),
                       keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.done,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Required';
@@ -881,6 +905,7 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
                   fillColor: Theme.of(context).colorScheme.surface,
                 ),
                 keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
                 validator: (value) {
                   if (value != null && value.isNotEmpty) {
                     if (int.tryParse(value) == null || int.parse(value) < 0) {
@@ -896,11 +921,15 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            FocusScope.of(context).unfocus();
+            Navigator.pop(context);
+          },
           child: const Text('Cancel'),
         ),
         TextButton(
           onPressed: () {
+            FocusScope.of(context).unfocus();
             if (_formKey.currentState!.validate()) {
               Navigator.pop(context, _createExercise());
             }

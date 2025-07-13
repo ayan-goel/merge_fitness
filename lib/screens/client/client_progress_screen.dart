@@ -338,6 +338,348 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
     
     return result;
   }
+
+  // Fetch detailed workout information for dialog
+  Future<List<AssignedWorkout>> _getDetailedWorkoutsForDay(DateTime day) async {
+    if (_clientId == null) return [];
+    
+    try {
+      // Get all workouts for the client
+      final allWorkoutsStream = _enhancedWorkoutService.getClientWorkouts(_clientId!);
+      final allWorkouts = await allWorkoutsStream.first;
+      
+      // Filter for completed workouts on the specific day
+      final workoutsOnDay = allWorkouts.where((workout) {
+        if (workout.status != WorkoutStatus.completed || workout.completedDate == null) {
+          return false;
+        }
+        
+        final completedDate = workout.completedDate!;
+        return completedDate.year == day.year &&
+               completedDate.month == day.month &&
+               completedDate.day == day.day;
+      }).toList();
+      
+      return workoutsOnDay;
+    } catch (e) {
+      print("Error getting detailed workouts: $e");
+      return [];
+    }
+  }
+
+  // Show workout details dialog
+  Future<void> _showWorkoutDetailsDialog(DateTime selectedDay, List<WorkoutProgressData> workoutSummaries) async {
+    // Show loading dialog first
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // Fetch detailed workout information
+      final detailedWorkouts = await _getDetailedWorkoutsForDay(selectedDay);
+      
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+      
+      // Show workout details dialog
+      if (mounted && detailedWorkouts.isNotEmpty) {
+        showDialog(
+          context: context,
+          builder: (context) => _buildWorkoutDetailsDialog(selectedDay, detailedWorkouts),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+      
+      // Show error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading workout details: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Build workout details dialog
+  Widget _buildWorkoutDetailsDialog(DateTime selectedDay, List<AssignedWorkout> workouts) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 600, maxWidth: 400),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header with close button
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppStyles.primarySage.withOpacity(0.1),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Workouts Completed',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          DateFormat('EEEE, MMM d, yyyy').format(selectedDay),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppStyles.slateGray,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Workout list
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: workouts.length,
+                itemBuilder: (context, index) {
+                  final workout = workouts[index];
+                  return _buildWorkoutDetailCard(workout);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Build individual workout detail card
+  Widget _buildWorkoutDetailCard(AssignedWorkout workout) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppStyles.offWhite,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppStyles.successGreen.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Workout header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: AppStyles.successGreen,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      workout.workoutName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (workout.completedDate != null)
+                      Text(
+                        'Completed at ${DateFormat.jm().format(workout.completedDate!)}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppStyles.slateGray,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // Session info (if it's a trainer session)
+          if (workout.isSessionBased && workout.sessionId != null) ...[
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppStyles.primarySage.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.person,
+                    size: 16,
+                    color: AppStyles.primarySage,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FutureBuilder<String>(
+                      future: _getTrainerName(workout.trainerId),
+                      builder: (context, snapshot) {
+                        return Text(
+                          'Trainer Session with ${snapshot.data ?? 'Loading...'}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          
+          // Exercises
+          if (workout.exercises.isNotEmpty) ...[
+            Text(
+              'Exercises (${workout.exercises.length})',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...workout.exercises.take(3).map((exercise) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 4,
+                    decoration: const BoxDecoration(
+                      color: AppStyles.primarySage,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      exercise.name,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+            if (workout.exercises.length > 3)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '+ ${workout.exercises.length - 3} more exercises',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppStyles.slateGray,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+          ],
+          
+          // Feedback if available
+          if (workout.feedback != null && workout.feedback!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppStyles.mutedBlue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Notes:',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    workout.feedback!,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // Get trainer name for display
+  Future<String> _getTrainerName(String trainerId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(trainerId)
+          .get();
+      
+      if (doc.exists) {
+        final data = doc.data()!;
+        final displayName = data['displayName'];
+        if (displayName != null && displayName.isNotEmpty) {
+          return displayName;
+        }
+        
+        final firstName = data['firstName'] ?? '';
+        final lastName = data['lastName'] ?? '';
+        final fullName = '$firstName $lastName'.trim();
+        
+        return fullName.isNotEmpty ? fullName : 'Trainer';
+      }
+      return 'Trainer';
+    } catch (e) {
+      return 'Trainer';
+    }
+  }
   
   @override
   Widget build(BuildContext context) {
@@ -376,10 +718,17 @@ class _ClientProgressScreenState extends State<ClientProgressScreen> {
                       return isSameDay(_selectedDay, day);
                     },
                     onDaySelected: (selectedDay, focusedDay) {
+                      final workoutsOnDay = _getWorkoutsForDay(selectedDay);
+                      
                       setState(() {
                         _selectedDay = selectedDay;
                         _focusedDay = focusedDay;
                       });
+                      
+                      // Show workout details dialog if there are completed workouts on this day
+                      if (workoutsOnDay.isNotEmpty) {
+                        _showWorkoutDetailsDialog(selectedDay, workoutsOnDay);
+                      }
                     },
                     onFormatChanged: (format) {
                       setState(() {

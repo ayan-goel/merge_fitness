@@ -219,6 +219,53 @@ class _ClientDashboardState extends State<ClientDashboard> {
     );
   }
   
+  // Navigate to booking screen (handles multiple trainers)
+  void _navigateToBooking() {
+    if (_client == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Client data not loaded. Please refresh.')),
+      );
+      return;
+    }
+
+    final assignedTrainerIds = _client!.assignedTrainerIds;
+
+    if (assignedTrainerIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No trainer assigned. Please contact support.')),
+      );
+      return;
+    }
+
+    if (assignedTrainerIds.length == 1) {
+      // Single trainer - navigate directly to booking
+      final trainerId = assignedTrainerIds.first;
+      final trainerName = _trainer?.displayName ?? 
+          '${_trainer?.firstName ?? ''} ${_trainer?.lastName ?? ''}'.trim();
+      
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ScheduleSessionScreen(
+            clientId: _client!.uid,
+            trainerId: trainerId,
+            trainerName: trainerName,
+          ),
+        ),
+      ).then((_) => _loadUpcomingSessions());
+    } else {
+      // Multiple trainers - show selection screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SelectTrainerScreen(
+            clientId: _client!.uid,
+          ),
+        ),
+      ).then((_) => _loadUpcomingSessions());
+    }
+  }
+  
   // Load weight data for the client
   Future<void> _loadWeightData() async {
     try {
@@ -843,24 +890,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                                 ),
                                 const SizedBox(width: 12),
                                 OutlinedButton.icon(
-                                  onPressed: () {
-                                    if (_client?.trainerId != null && _trainer != null) {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => ScheduleSessionScreen(
-                                            clientId: _client!.uid,
-                                            trainerId: _client!.trainerId!,
-                                            trainerName: _trainer!.displayName ?? '${_trainer!.firstName ?? ''} ${_trainer!.lastName ?? ''}'.trim(),
-                                          ),
-                                        ),
-                                      ).then((_) => _loadUpcomingSessions());
-                                    } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('No trainer assigned. Please contact support.')),
-                                      );
-                                    }
-                                  },
+                                  onPressed: _navigateToBooking,
                                   icon: const Icon(Icons.add_circle_outline, size: 20),
                                   label: const Text('Schedule New'),
                                   style: OutlinedButton.styleFrom(
@@ -890,24 +920,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                               child: SizedBox(
                                 width: 300,
                                 child:                                 OutlinedButton.icon(
-                                  onPressed: () {
-                                    if (_client?.trainerId != null && _trainer != null) {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => ScheduleSessionScreen(
-                                            clientId: _client!.uid,
-                                            trainerId: _client!.trainerId!,
-                                            trainerName: _trainer!.displayName ?? '${_trainer!.firstName ?? ''} ${_trainer!.lastName ?? ''}'.trim(),
-                                          ),
-                                        ),
-                                      ).then((_) => _loadUpcomingSessions());
-                                    } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('No trainer assigned. Please contact support.')),
-                                      );
-                                    }
-                                  },
+                                  onPressed: _navigateToBooking,
                                   icon: const Icon(Icons.add_circle_outline),
                                   label: const Text('Schedule New Session'),
                                   style: OutlinedButton.styleFrom(
@@ -1014,24 +1027,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
                             ],
                           ),
                           child: ElevatedButton.icon(
-                            onPressed: () {
-                              if (_client?.trainerId != null && _trainer != null) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ScheduleSessionScreen(
-                                      clientId: _client!.uid,
-                                      trainerId: _client!.trainerId!,
-                                      trainerName: _trainer!.displayName ?? '${_trainer!.firstName ?? ''} ${_trainer!.lastName ?? ''}'.trim(),
-                                    ),
-                                  ),
-                                ).then((_) => _loadUpcomingSessions());
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('No trainer assigned. Please contact support.')),
-                                );
-                              }
-                            },
+                            onPressed: _navigateToBooking,
                             icon: const Icon(Icons.add_circle_outline, size: 20),
                             label: const Text('Schedule Session'),
                             style: ElevatedButton.styleFrom(

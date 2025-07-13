@@ -175,13 +175,7 @@ class WorkoutTemplateService {
           'clientId': workout.clientId,
         });
         
-        // Send notification to trainer
-        final notificationService = NotificationService();
-        notificationService.sendWorkoutCompletedNotification(
-          workout.trainerId,
-          clientName,
-          workout.workoutName,
-        );
+        // Notification to trainer is now handled by Cloud Functions
       } catch (e) {
         print('Error adding workout completion to activity feed: $e');
         // Continue even if adding to activity feed fails
@@ -202,25 +196,73 @@ class WorkoutTemplateService {
     final trainerData = trainerDoc.data() as Map<String, dynamic>?;
     final isSuperTrainer = trainerData?['role'] == 'superTrainer';
     
-    Query query = _usersCollection.where('role', isEqualTo: 'client');
-    
-    // If not a super trainer, only show clients assigned to this trainer
-    if (!isSuperTrainer) {
-      query = query.where('trainerId', isEqualTo: trainerId);
+    if (isSuperTrainer) {
+      // Super trainers can see all approved clients that have been assigned to a trainer
+      final snapshot = await _usersCollection.where('role', isEqualTo: 'client').get();
+      
+      return snapshot.docs.where((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        // Only show clients that are approved
+        if (data['accountStatus'] != 'approved') {
+          return false;
+        }
+        
+        // Only show clients that have been assigned to a trainer
+        final hasTrainerId = data['trainerId'] != null;
+        final hasTrainerIds = data['trainerIds'] is List && (data['trainerIds'] as List).isNotEmpty;
+        
+        return hasTrainerId || hasTrainerIds;
+      }).map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          'id': doc.id,
+          'displayName': data['displayName'] ?? 'Unknown',
+          'email': data['email'] ?? '',
+          'photoUrl': data['photoUrl'],
+          'trainerId': data['trainerId'], // Include trainerId for reference
+          'trainerIds': data['trainerIds'], // Include trainerIds for multiple trainer support
+        };
+      }).toList();
+    } else {
+      // Regular trainers - need to check both legacy and new trainer assignments
+      final snapshot = await _usersCollection.where('role', isEqualTo: 'client').get();
+      
+      // Filter clients that are assigned to this trainer AND are approved
+      final assignedClients = snapshot.docs.where((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        // Only show clients that are approved
+        if (data['accountStatus'] != 'approved') {
+          return false;
+        }
+        
+        // Check legacy trainerId field
+        if (data['trainerId'] == trainerId) {
+          return true;
+        }
+        
+        // Check new trainerIds array
+        if (data['trainerIds'] is List) {
+          final trainerIds = List<String>.from(data['trainerIds']);
+          return trainerIds.contains(trainerId);
+        }
+        
+        return false;
+      }).toList();
+      
+      return assignedClients.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          'id': doc.id,
+          'displayName': data['displayName'] ?? 'Unknown',
+          'email': data['email'] ?? '',
+          'photoUrl': data['photoUrl'],
+          'trainerId': data['trainerId'], // Include trainerId for reference
+          'trainerIds': data['trainerIds'], // Include trainerIds for multiple trainer support
+        };
+      }).toList();
     }
-    
-    final snapshot = await query.get();
-    
-    return snapshot.docs.map((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      return {
-        'id': doc.id,
-        'displayName': data['displayName'] ?? 'Unknown',
-        'email': data['email'] ?? '',
-        'photoUrl': data['photoUrl'],
-        'trainerId': data['trainerId'], // Include trainerId for reference
-      };
-    }).toList();
   }
 
   // Search for clients by name or email
@@ -317,6 +359,7 @@ class WorkoutTemplateService {
         'email': data['email'] ?? '',
         'phoneNumber': data['phoneNumber'] ?? '',
         'trainerId': data['trainerId'], // Include trainerId field
+        'trainerIds': data['trainerIds'], // Include trainerIds for multiple trainer support
         'height': data['height'], // in cm
         'heightImperial': heightImperial,
         'weight': data['weight'], // in kg

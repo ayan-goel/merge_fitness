@@ -82,6 +82,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen> {
               ),
               textCapitalization: TextCapitalization.words,
               autofocus: true,
+              textInputAction: TextInputAction.done,
             ),
           ],
         ),

@@ -286,9 +286,12 @@ class PaymentService {
     required bool isTrainerCancelling,
   }) async {
     try {
+      // Determine who should get the refund - for family sessions, it's the paying client (organizer)
+      final refundClientId = session.payingClientId ?? session.clientId;
+      
       // If trainer cancels, always refund the session
       if (isTrainerCancelling) {
-        return await refundSession(session.clientId, session.trainerId);
+        return await refundSession(refundClientId, session.trainerId);
       }
 
       // If client cancels, check timing
@@ -297,7 +300,7 @@ class PaymentService {
       
       // If more than 24 hours before session, refund
       if (timeDifference.inHours >= 24) {
-        return await refundSession(session.clientId, session.trainerId);
+        return await refundSession(refundClientId, session.trainerId);
       }
 
       // If less than 24 hours, no refund

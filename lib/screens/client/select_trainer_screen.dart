@@ -34,8 +34,8 @@ class _SelectTrainerScreenState extends State<SelectTrainerScreen> {
     });
 
     try {
-      print("SelectTrainerScreen: Attempting to load trainers");
-      final trainers = await _calendlyService.getAvailableTrainers();
+      print("SelectTrainerScreen: Attempting to load trainers for client ${widget.clientId}");
+      final trainers = await _calendlyService.getClientAssignedTrainers(widget.clientId);
       
       if (mounted) {
         setState(() {

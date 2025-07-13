@@ -395,6 +395,7 @@ class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
                 fontSize: 16,
                 color: AppStyles.textDark,
               ),
+              textInputAction: TextInputAction.done,
             ),
             
             const SizedBox(height: 32.0),

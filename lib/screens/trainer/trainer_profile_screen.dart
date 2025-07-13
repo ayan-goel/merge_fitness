@@ -188,13 +188,16 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> with Widget
     }
   }
   
-  Future<void> _saveChanges() async {
+    Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // Dismiss keyboard before saving
+    FocusScope.of(context).unfocus();
     
     setState(() {
       _isSaving = true;
     });
-    
+
     try {
       // Update user profile
       await _authService.updateUserProfile(
@@ -330,11 +333,17 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> with Widget
         content: const Text('Are you sure you want to disconnect your Calendly account? Clients will no longer be able to schedule sessions with you.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () {
+              FocusScope.of(context).unfocus();
+              Navigator.of(context).pop(false);
+            },
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () {
+              FocusScope.of(context).unfocus();
+              Navigator.of(context).pop(true);
+            },
             child: const Text('Disconnect'),
           ),
         ],
@@ -419,6 +428,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> with Widget
                 title: Text(eventType['name']),
                 subtitle: Text('${eventType['duration']} minutes'),
                 onTap: () async {
+                  FocusScope.of(dialogContext).unfocus();
                   Navigator.of(dialogContext).pop();
                   
                   // Save selected event type
@@ -448,7 +458,10 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> with Widget
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
+            onPressed: () {
+              FocusScope.of(dialogContext).unfocus();
+              Navigator.of(dialogContext).pop();
+            },
             child: const Text('Cancel'),
           ),
         ],
@@ -458,6 +471,9 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> with Widget
   
   // Sign out method
   Future<void> _signOut() async {
+    // Dismiss keyboard before signing out
+    FocusScope.of(context).unfocus();
+    
     try {
       await _authService.signOut();
       if (mounted) {
@@ -544,6 +560,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> with Widget
                       filled: true,
                       fillColor: AppStyles.offWhite,
                     ),
+                    textInputAction: TextInputAction.done,
                     onChanged: (value) {
                       if (errorMessage != null) {
                         setState(() {
@@ -557,6 +574,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> with Widget
               actions: [
                 TextButton(
                   onPressed: isValidating ? null : () {
+                    FocusScope.of(context).unfocus();
                     Navigator.of(context).pop(false);
                   },
                   child: Text(
@@ -572,6 +590,9 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> with Widget
                       });
                       return;
                     }
+                    
+                    // Dismiss keyboard before processing
+                    FocusScope.of(context).unfocus();
                     
                     setState(() {
                       isValidating = true;
@@ -772,6 +793,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> with Widget
                     prefixIcon: Icons.person,
                   ),
                   enabled: _isEditing,
+                  textInputAction: TextInputAction.done,
                   validator: (value) {
                     if (_isEditing && (value == null || value.isEmpty)) {
                       return 'Please enter your first name';
@@ -790,6 +812,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> with Widget
                     prefixIcon: Icons.person,
                   ),
                   enabled: _isEditing,
+                  textInputAction: TextInputAction.done,
                   validator: (value) {
                     if (_isEditing && (value == null || value.isEmpty)) {
                       return 'Please enter your last name';
@@ -821,6 +844,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> with Widget
                   ),
                   enabled: _isEditing,
                   keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.done,
                 ),
                 const SizedBox(height: 24),
                 

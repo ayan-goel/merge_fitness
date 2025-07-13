@@ -11,6 +11,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'firebase_options.dart';
 import 'services/notification_service.dart';
+import 'services/notification_handler.dart';
 import 'services/auth_service.dart';
 import 'theme/app_styles.dart';
 import 'config/env_config.dart';
@@ -65,6 +66,9 @@ void main() async {
       await Future.delayed(const Duration(seconds: 1));
       await notificationService.init();
       await notificationService.setupDailyWorkoutReminderCheck();
+      
+      // Initialize notification handler
+      NotificationHandler().initialize();
     } else {
       // For web, use a simpler initialization that doesn't require service workers
       await notificationService.initWebWithoutPush();
@@ -131,53 +135,92 @@ class AuthWrapper extends StatelessWidget {
                 );
               }
               
-              // Check if user document exists and has display name (indicating completed onboarding)
+              // Handle errors or missing data
+              if (userSnapshot.hasError) {
+                print("Error loading user data: ${userSnapshot.error}");
+                // Show error screen or retry
+                return const Scaffold(
+                  body: Center(
+                    child: Text('Error loading user data. Please try again.'),
+                  ),
+                );
+              }
+              
+              // Check if user document exists
               if (userSnapshot.hasData && userSnapshot.data!.exists) {
                 final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
-                final String role = userData?['role'] ?? 'client';
+                
+                // Get role - but don't default to client if missing
+                String? role = userData?['role'];
+                
+                // Log for debugging
+                print("User document exists. Role: $role, DisplayName: ${userData?['displayName']}");
+                
+                // If role is missing or null, this is a data integrity issue
+                if (role == null || role.isEmpty) {
+                  print("WARNING: User has no role field! User ID: ${snapshot.data!.uid}");
+                  print("User data: $userData");
+                  
+                  // Show error instead of defaulting to client
+                  return const Scaffold(
+                    body: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.error, size: 48, color: Colors.red),
+                          SizedBox(height: 16),
+                          Text(
+                            'Account setup incomplete',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Please contact support for assistance.',
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
                 
                 // Check if user needs to complete onboarding based on role
                 if (role == 'client' && (userData == null || userData['displayName'] == null)) {
                   print("Client needs to complete onboarding, redirecting to quiz");
                   return const OnboardingQuizScreen();
-                } else if (role == 'trainer' && (userData == null || userData['displayName'] == null)) {
-                  print("Trainer needs to complete onboarding, redirecting to trainer setup");
+                } else if ((role == 'trainer' || role == 'superTrainer') && (userData == null || userData['displayName'] == null)) {
+                  print("Trainer/SuperTrainer needs to complete onboarding, redirecting to trainer setup");
                   return const TrainerOnboardingScreen();
                 }
                 
                 // User has completed onboarding
+                print("User has completed onboarding, redirecting to home screen");
                 return const HomeScreen();
               } else {
-                // New user without profile data needs onboarding
-                print("New user detected, checking role for proper onboarding");
+                // User document doesn't exist - this is a new user
+                print("No user document found for user: ${snapshot.data!.uid}");
                 
-                // Check Firestore for role information to direct to correct onboarding
-                return FutureBuilder<DocumentSnapshot>(
-                  future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
-                  builder: (context, roleSnapshot) {
-                    if (roleSnapshot.connectionState == ConnectionState.waiting) {
-                      return const Scaffold(
-                        body: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-                    
-                    // Check if the user document exists and determine role
-                    if (roleSnapshot.hasData && roleSnapshot.data!.exists) {
-                      final userData = roleSnapshot.data!.data() as Map<String, dynamic>?;
-                      final String role = userData?['role'] ?? 'client';
-                      
-                      if (role == 'trainer') {
-                        print("New trainer detected, redirecting to trainer setup");
-                        return const TrainerOnboardingScreen();
-                      } else {
-                        print("New client detected, redirecting to onboarding quiz");
-                        return const OnboardingQuizScreen();
-                      }
-                    }
-                    
-                    // Default to client onboarding if we can't determine role
-                    return const OnboardingQuizScreen();
-                  },
+                // For new users, we need to create a proper user document
+                // This situation should be rare since user documents are created during signup
+                return const Scaffold(
+                  body: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.warning, size: 48, color: Colors.orange),
+                        SizedBox(height: 16),
+                        Text(
+                          'Account setup required',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Please contact support to complete your account setup.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
                 );
               }
             },
@@ -328,6 +371,7 @@ class MergeFitnessApp extends StatelessWidget {
         );
       },
       title: 'Merge Fitness',
+      navigatorKey: NotificationHandler.navigatorKey,
       debugShowCheckedModeBanner: false,
       navigatorObservers: [observer],
 

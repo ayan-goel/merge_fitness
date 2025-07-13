@@ -76,7 +76,7 @@ class AssignedWorkout {
   }
 
   // Create an AssignedWorkout from a TrainingSession
-  factory AssignedWorkout.fromSession(TrainingSession session) {
+  factory AssignedWorkout.fromSession(TrainingSession session, {String? overrideClientId}) {
     WorkoutStatus status;
     DateTime? completedDate;
     
@@ -128,13 +128,29 @@ class AssignedWorkout {
       }
     }
 
+    // Use overrideClientId for family sessions, otherwise use the session's clientId
+    final clientId = overrideClientId ?? session.clientId;
+    
+    // Adjust the ID to be unique for each family member
+    final workoutId = overrideClientId != null 
+        ? 'session_${session.id}_${overrideClientId}'
+        : 'session_${session.id}';
+    
+    // Add family session indicator to workout name if applicable
+    String workoutName = 'Session with ${session.trainerName}';
+    if (session.isBookingForFamily) {
+      workoutName = 'Family Session with ${session.trainerName}';
+    }
+
     return AssignedWorkout(
-      id: 'session_${session.id}', // Prefix to distinguish from regular workouts
+      id: workoutId,
       trainerId: session.trainerId,
-      clientId: session.clientId,
+      clientId: clientId,
       workoutTemplateId: 'session_template',
-      workoutName: 'Session with ${session.trainerName}',
-      workoutDescription: 'Personal training session',
+      workoutName: workoutName,
+      workoutDescription: session.isBookingForFamily 
+          ? 'Family training session'
+          : 'Personal training session',
       scheduledDate: session.startTime,
       status: status,
       completedDate: completedDate,

@@ -181,38 +181,35 @@ class ClientListItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(client['email'] ?? ''),
-            if (isSuperTrainer && client['trainerId'] != null) ...[
+            if (isSuperTrainer) ...[
               const SizedBox(height: 4),
-              Builder(
-                builder: (context) {
-                  print('ClientListItem: Client ${client['displayName']} has trainerId: ${client['trainerId']}');
-                  return FutureBuilder<String>(
-                    future: _getTrainerName(client['trainerId']),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData) {
-                        return Text(
-                          'Assigned to: ${snapshot.data}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Theme.of(context).primaryColor,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  );
+              FutureBuilder<List<String>>(
+                future: _getTrainerNames(client),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                    final trainerNames = snapshot.data!;
+                    return Text(
+                      trainerNames.length == 1 
+                          ? 'Assigned to: ${trainerNames.first}'
+                          : 'Assigned to: ${trainerNames.join(', ')}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).primaryColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    );
+                  } else if (snapshot.hasData && snapshot.data!.isEmpty) {
+                    return Text(
+                      'No trainers assigned',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange[700],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
                 },
-              ),
-            ] else if (isSuperTrainer && client['trainerId'] == null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'No trainer assigned',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.orange[700],
-                  fontWeight: FontWeight.w500,
-                ),
               ),
             ],
           ],
@@ -223,6 +220,34 @@ class ClientListItem extends StatelessWidget {
     );
   }
   
+  /// Get trainer IDs from client data
+  List<String> _getTrainerIds(Map<String, dynamic> client) {
+    // Check for new format first (trainerIds array)
+    if (client['trainerIds'] is List) {
+      return List<String>.from(client['trainerIds']);
+    }
+    
+    // Fall back to legacy format (single trainerId)
+    final trainerId = client['trainerId'];
+    if (trainerId is String) {
+      return [trainerId];
+    }
+    
+    return [];
+  }
+
+  Future<List<String>> _getTrainerNames(Map<String, dynamic> client) async {
+    final trainerIds = _getTrainerIds(client);
+    final List<String> trainerNames = [];
+    
+    for (final trainerId in trainerIds) {
+      final trainerName = await _getTrainerName(trainerId);
+      trainerNames.add(trainerName);
+    }
+    
+    return trainerNames;
+  }
+
   Future<String> _getTrainerName(String trainerId) async {
     try {
       print('ClientListItem: _getTrainerName called with trainerId: $trainerId');

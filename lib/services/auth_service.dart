@@ -75,6 +75,14 @@ class AuthService {
 
   // Sign out
   Future<void> signOut() async {
+    // Clear FCM token before signing out
+    try {
+      await notificationService.clearFcmTokenOnLogout();
+    } catch (e) {
+      print('Error clearing FCM token on logout: $e');
+      // Continue with logout even if FCM token clearing fails
+    }
+    
     await _auth.signOut();
   }
 

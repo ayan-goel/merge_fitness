@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:flutter/foundation.dart';
+import 'notification_handler.dart';
 
 // This needs to be added to pubspec.yaml:
 // flutter_local_notifications: ^16.3.2
@@ -82,7 +83,10 @@ class NotificationService {
       // Handle when app is opened from background state
       FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
       
-      // Get and store FCM token
+      // Get and store FCM token only if user is authenticated
+      // If user is not authenticated, we'll get the token later via initializeFcmTokenAfterAuth()
+      User? currentUser = _auth.currentUser;
+      if (currentUser != null) {
       try {
         if (kIsWeb) {
           // On web, check if running in secure context (required for service workers)
@@ -140,13 +144,22 @@ class NotificationService {
       } catch (e) {
         print('General error in FCM token setup: $e');
         // Continue even if token retrieval fails completely
+        }
+      } else {
+        print('User not authenticated during notification init - FCM token will be retrieved after login');
       }
       
       // Listen for token refresh with error handling
       _messaging.onTokenRefresh.listen((token) {
+        // Only save token if user is authenticated
+        User? currentUser = _auth.currentUser;
+        if (currentUser != null && currentUser.uid.isNotEmpty) {
         _saveFcmToken(token).catchError((error) {
           print('Error handling token refresh: $error');
         });
+        } else {
+          print('Token refresh received but user not authenticated - will save token after login');
+        }
       });
       
       // Check for any initial notification if app was launched from a notification
@@ -183,11 +196,95 @@ class NotificationService {
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
   }
   
+  // Clear FCM token on logout
+  Future<void> clearFcmTokenOnLogout() async {
+    try {
+      User? user = _auth.currentUser;
+      if (user != null && user.uid.isNotEmpty) {
+        // Get the current FCM token
+        String? token = await _messaging.getToken();
+        if (token != null) {
+          // Remove the token from the user's document
+          await _firestore.collection('users').doc(user.uid).update({
+            'fcmTokens': FieldValue.arrayRemove([token]),
+          });
+          print('FCM token cleared on logout for user: ${user.uid}');
+        }
+      }
+    } catch (e) {
+      print('Error clearing FCM token on logout: $e');
+      // Don't throw the error - continue with logout
+    }
+  }
+
+  // Debug method to check notification service status
+  Future<void> debugNotificationStatus() async {
+    print('=== Notification Service Debug Info ===');
+    
+    // Check authentication status
+    User? user = _auth.currentUser;
+    if (user != null) {
+      print('User authenticated: ${user.uid}');
+      print('User email: ${user.email}');
+    } else {
+      print('User not authenticated');
+    }
+    
+    // Check FCM token
+    try {
+      String? token = await _messaging.getToken();
+      if (token != null) {
+        print('FCM token available: ${token.substring(0, 20)}...');
+      } else {
+        print('No FCM token available');
+      }
+    } catch (e) {
+      print('Error getting FCM token: $e');
+    }
+    
+    // Check notification permissions
+    NotificationSettings settings = await _messaging.requestPermission();
+    print('Notification permission: ${settings.authorizationStatus}');
+    
+    // Check if user document exists in Firestore
+    if (user != null) {
+      try {
+        DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
+        if (userDoc.exists) {
+          Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+          print('User document exists in Firestore');
+          print('User has FCM tokens: ${userData.containsKey('fcmTokens')}');
+          if (userData.containsKey('fcmTokens')) {
+            List<dynamic> tokens = userData['fcmTokens'] ?? [];
+            print('Number of FCM tokens: ${tokens.length}');
+          }
+        } else {
+          print('User document does not exist in Firestore');
+        }
+      } catch (e) {
+        print('Error checking user document in Firestore: $e');
+      }
+    }
+    
+    print('=== End Debug Info ===');
+  }
+  
   // Initialize FCM token after user authentication
   Future<void> initializeFcmTokenAfterAuth() async {
     try {
       User? user = _auth.currentUser;
-      if (user != null) {
+      if (user == null) {
+        print('Cannot initialize FCM token after auth: User is null');
+        return;
+      }
+      
+      if (user.uid.isEmpty) {
+        print('Cannot initialize FCM token after auth: User ID is empty');
+        return;
+      }
+      
+      print('Initializing FCM token for authenticated user: ${user.uid}');
+      
         if (kIsWeb) {
           // Web platform
           if (Uri.base.scheme == 'https' || Uri.base.host == 'localhost') {
@@ -195,7 +292,11 @@ class NotificationService {
             if (token != null) {
               await _saveFcmToken(token);
               print('FCM token initialized after auth for web');
+          } else {
+            print('No FCM token available for web after auth');
             }
+        } else {
+          print('Web FCM token requires HTTPS or localhost');
           }
         } else {
           // Mobile platforms
@@ -207,19 +308,25 @@ class NotificationService {
               if (token != null) {
                 await _saveFcmToken(token);
                 print('FCM token initialized after auth for mobile');
+            } else {
+              print('No FCM token available for mobile after auth');
               }
             }
           } catch (e) {
             if (e.toString().contains('apns-token-not-set')) {
               print('APNS token still not ready - this is normal on iOS, will retry later');
+          } else if (e.toString().contains('permission-denied')) {
+            print('Permission denied when getting FCM token after auth - check Firestore rules');
             } else {
               print('Error getting FCM token after auth: $e');
-            }
           }
         }
       }
     } catch (e) {
       print('Error initializing FCM token after auth: $e');
+      if (e.toString().contains('permission-denied')) {
+        print('Permission denied in FCM token initialization - user may not be fully authenticated');
+      }
     }
   }
   
@@ -227,7 +334,17 @@ class NotificationService {
   Future<void> _saveFcmToken(String token) async {
     try {
     User? user = _auth.currentUser;
-    if (user != null) {
+      if (user == null) {
+        print('Cannot save FCM token: User not authenticated');
+        return;
+      }
+      
+      // Ensure user is fully authenticated before accessing Firestore
+      if (user.uid.isEmpty) {
+        print('Cannot save FCM token: User ID is empty');
+        return;
+      }
+      
         // Check if user document exists first
         DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
         
@@ -246,10 +363,13 @@ class NotificationService {
             'email': user.email,
           }, SetOptions(merge: true));
           print('FCM token saved with new document for user: ${user.uid}');
-        }
       }
     } catch (e) {
       print('Error saving FCM token: $e');
+      // Check if it's a permission error and provide more context
+      if (e.toString().contains('permission-denied')) {
+        print('Permission denied when saving FCM token - user may not be fully authenticated yet');
+      }
       // Don't throw the error - continue app execution
     }
   }
@@ -418,20 +538,8 @@ class NotificationService {
     );
   }
   
-  // Send notification to specific users through FCM (usually done from backend)
-  Future<void> sendNotificationToUsers(
-    List<String> userIds,
-    String title,
-    String body,
-    Map<String, dynamic>? data,
-  ) async {
-    // This is typically done from a Cloud Function
-    // Here we're just demonstrating the concept
-    print('Would send notification to users: $userIds');
-    print('Title: $title');
-    print('Body: $body');
-    print('Data: $data');
-  }
+  // NOTE: Push notifications are now handled by Cloud Functions
+  // This service only handles local notifications and FCM token management
   
   // Schedule workout reminder notification
   Future<void> scheduleWorkoutReminder(
@@ -546,7 +654,15 @@ class NotificationService {
     
     // Get current user
     User? user = _auth.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      print('Cannot check incomplete workouts: User not authenticated');
+      return;
+    }
+    
+    if (user.uid.isEmpty) {
+      print('Cannot check incomplete workouts: User ID is empty');
+      return;
+    }
 
     // Get today's date
     DateTime now = DateTime.now();
@@ -559,12 +675,21 @@ class NotificationService {
     // Otherwise, we'll schedule them for 7 PM
     
     // Query workouts assigned for today that aren't completed
-    QuerySnapshot workoutSnapshot = await _firestore
+    QuerySnapshot workoutSnapshot;
+    try {
+      workoutSnapshot = await _firestore
         .collection('workouts')
         .where('userId', isEqualTo: user.uid)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(DateTime(today.year, today.month, today.day, 23, 59, 59)))
         .get();
+    } catch (e) {
+      print('Error querying workouts for reminders: $e');
+      if (e.toString().contains('permission-denied')) {
+        print('Permission denied when querying workouts - check Firestore rules and user authentication');
+      }
+      return;
+    }
     
     for (var doc in workoutSnapshot.docs) {
       Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
@@ -586,6 +711,10 @@ class NotificationService {
             }
           } catch (e) {
             print('Error fetching workout program: $e');
+            if (e.toString().contains('permission-denied')) {
+              print('Permission denied when fetching workout program - using default name');
+            }
+            // Continue with default workout name
           }
         }
         
@@ -654,6 +783,10 @@ class NotificationService {
     
     print('Handling notification payload: $payload');
     
+    // Use the notification handler for navigation
+    final notificationHandler = NotificationHandler();
+    notificationHandler.handleNotificationPayload(payload);
+    
     // Parse the payload to determine action
     if (payload.startsWith('workout_reminder:') || payload.startsWith('workout_checkin:')) {
       // Extract workout ID from payload
@@ -664,17 +797,13 @@ class NotificationService {
       // we'll need to use a stream or global key approach
       // to communicate with the UI
       _notifyWorkoutSelected(workoutId);
-    } else if (payload == 'account_approved') {
-      // Account was approved - user can now access the app normally
-      // The home screen will automatically redirect them to the main app
-      print('Account approved notification tapped');
-    } else if (payload == 'account_rejected') {
-      // Account was rejected - user will see the rejection screen
-      print('Account rejected notification tapped');
     } else if (payload == 'setup_workout_reminders') {
       // This is a system notification to set up workout reminders
       setupDailyWorkoutReminderCheck();
     }
+    
+    // Most notification handling is now done by the NotificationHandler
+    // which properly handles navigation and actions
   }
   
   // Notification stream for UI to listen to
@@ -689,174 +818,13 @@ class NotificationService {
     _workoutStreamController.close();
   }
   
-  // Send notification for session cancellation by trainer
-  Future<void> sendSessionCancellationNotification(
-    String clientId,
-    String trainerName,
-    DateTime scheduledTime,
-    String sessionLocation,
-    String? cancellationReason,
-  ) async {
-    // Skip for web platform
-    if (kIsWeb) return;
-    
-    try {
-      // Get client's FCM token(s)
-      final clientDoc = await _firestore.collection('users').doc(clientId).get();
-      final clientData = clientDoc.data();
-      if (clientData == null || !clientData.containsKey('fcmTokens')) {
-        print('No FCM tokens found for client: $clientId');
-        return;
-      }
-      
-      final List<dynamic> fcmTokens = clientData['fcmTokens'] ?? [];
-      if (fcmTokens.isEmpty) {
-        print('Empty FCM tokens list for client: $clientId');
-        return;
-      }
-      
-      // Format session time for display
-      final String sessionTime = _formatSessionTime(scheduledTime);
-      
-      // Create notification message
-      String notificationBody = 'Your session with $trainerName scheduled for $sessionTime has been cancelled';
-      if (cancellationReason != null && cancellationReason.isNotEmpty) {
-        notificationBody += '. Reason: $cancellationReason';
-      }
-      
-      // Show a local notification
-      await _showLocalNotification(
-        id: scheduledTime.millisecondsSinceEpoch,
-        title: 'Session Cancelled',
-        body: notificationBody,
-        payload: 'session_cancelled',
-      );
-    } catch (e) {
-      print('Error sending session cancellation notification: $e');
-    }
-  }
+  // Session cancellation notifications are now handled by Cloud Functions
   
-  // Send notification for workout completion to trainer
-  Future<void> sendWorkoutCompletedNotification(
-    String trainerId,
-    String clientName,
-    String workoutName,
-  ) async {
-    // Skip for web platform
-    if (kIsWeb) return;
-    
-    try {
-      // Get trainer's FCM token(s)
-      final trainerDoc = await _firestore.collection('users').doc(trainerId).get();
-      final trainerData = trainerDoc.data();
-      if (trainerData == null || !trainerData.containsKey('fcmTokens')) {
-        print('No FCM tokens found for trainer: $trainerId');
-        return;
-      }
-      
-      final List<dynamic> fcmTokens = trainerData['fcmTokens'] ?? [];
-      if (fcmTokens.isEmpty) {
-        print('Empty FCM tokens list for trainer: $trainerId');
-        return;
-      }
-      
-      // Show a local notification
-      await _showLocalNotification(
-        id: DateTime.now().millisecondsSinceEpoch,
-        title: 'Workout Completed',
-        body: '$clientName completed the workout "$workoutName"',
-        payload: 'workout_completed',
-      );
-    } catch (e) {
-      print('Error sending workout completion notification: $e');
-    }
-  }
+  // Workout completion notifications are now handled by Cloud Functions
   
-  // Send notification for session booking to trainer
-  Future<void> sendSessionBookedNotification(
-    String trainerId,
-    String clientName,
-    DateTime sessionTime,
-    String sessionLocation,
-  ) async {
-    // Skip for web platform
-    if (kIsWeb) return;
-    
-    try {
-      // Get trainer's FCM token(s)
-      final trainerDoc = await _firestore.collection('users').doc(trainerId).get();
-      final trainerData = trainerDoc.data();
-      if (trainerData == null || !trainerData.containsKey('fcmTokens')) {
-        print('No FCM tokens found for trainer: $trainerId');
-        return;
-      }
-      
-      final List<dynamic> fcmTokens = trainerData['fcmTokens'] ?? [];
-      if (fcmTokens.isEmpty) {
-        print('Empty FCM tokens list for trainer: $trainerId');
-        return;
-      }
-      
-      // Format session time for display
-      final String formattedTime = _formatSessionTime(sessionTime);
-      
-      // Show a local notification
-      await _showLocalNotification(
-        id: sessionTime.millisecondsSinceEpoch,
-        title: 'New Session Booked',
-        body: '$clientName booked a session for $formattedTime at $sessionLocation',
-        payload: 'session_booked',
-      );
-    } catch (e) {
-      print('Error sending session booked notification: $e');
-    }
-  }
+  // Session booking notifications are now handled by Cloud Functions
   
-  // Send notification for session cancellation by client
-  Future<void> sendClientCancelledSessionNotification(
-    String trainerId,
-    String clientName,
-    DateTime scheduledTime,
-    String? cancellationReason,
-  ) async {
-    // Skip for web platform
-    if (kIsWeb) return;
-    
-    try {
-      // Get trainer's FCM token(s)
-      final trainerDoc = await _firestore.collection('users').doc(trainerId).get();
-      final trainerData = trainerDoc.data();
-      if (trainerData == null || !trainerData.containsKey('fcmTokens')) {
-        print('No FCM tokens found for trainer: $trainerId');
-        return;
-      }
-      
-      final List<dynamic> fcmTokens = trainerData['fcmTokens'] ?? [];
-      if (fcmTokens.isEmpty) {
-        print('Empty FCM tokens list for trainer: $trainerId');
-        return;
-      }
-      
-      // Format session time for display
-      final String sessionTime = _formatSessionTime(scheduledTime);
-      
-      // Create notification message
-      String notificationBody = '$clientName cancelled their session scheduled for $sessionTime';
-      if (cancellationReason != null && cancellationReason.isNotEmpty) {
-        notificationBody += '. Reason: $cancellationReason';
-      }
-      
-      // Show a local notification
-      await _showLocalNotification(
-        id: scheduledTime.millisecondsSinceEpoch,
-        title: 'Session Cancelled',
-        body: notificationBody,
-        payload: 'client_cancelled_session',
-      );
-    } catch (e) {
-      print('Error sending client session cancellation notification: $e');
-    }
-  }
+  // Client session cancellation notifications are now handled by Cloud Functions
   
   // Helper method to format session time for display
   String _formatSessionTime(DateTime time) {
@@ -867,76 +835,7 @@ class NotificationService {
     return '$date at $hour:$minute $period';
   }
   
-  // Send notification for account approval
-  Future<void> sendAccountApprovalNotification(String clientId) async {
-    // Skip for web platform
-    if (kIsWeb) return;
-    
-    try {
-      // Get client's FCM token(s)
-      final clientDoc = await _firestore.collection('users').doc(clientId).get();
-      final clientData = clientDoc.data();
-      if (clientData == null || !clientData.containsKey('fcmTokens')) {
-        print('No FCM tokens found for client: $clientId');
-        return;
-      }
-      
-      final List<dynamic> fcmTokens = clientData['fcmTokens'] ?? [];
-      if (fcmTokens.isEmpty) {
-        print('Empty FCM tokens list for client: $clientId');
-        return;
-      }
-      
-      // Get client name for personalized notification
-      final String clientName = clientData['displayName'] ?? 'there';
-      
-      // Show a local notification
-      await _showLocalNotification(
-        id: DateTime.now().millisecondsSinceEpoch,
-        title: 'Account Approved! 🎉',
-        body: 'Welcome to Merge Fitness, $clientName! Your account has been approved and you can now access all features.',
-        payload: 'account_approved',
-      );
-      
-      print('Account approval notification sent to client: $clientId');
-    } catch (e) {
-      print('Error sending account approval notification: $e');
-    }
-  }
-  
-  // Send notification for account rejection
-  Future<void> sendAccountRejectionNotification(String clientId) async {
-    // Skip for web platform
-    if (kIsWeb) return;
-    
-    try {
-      // Get client's FCM token(s)
-      final clientDoc = await _firestore.collection('users').doc(clientId).get();
-      final clientData = clientDoc.data();
-      if (clientData == null || !clientData.containsKey('fcmTokens')) {
-        print('No FCM tokens found for client: $clientId');
-        return;
-      }
-      
-      final List<dynamic> fcmTokens = clientData['fcmTokens'] ?? [];
-      if (fcmTokens.isEmpty) {
-        print('Empty FCM tokens list for client: $clientId');
-        return;
-      }
-      
-      // Show a local notification
-      await _showLocalNotification(
-        id: DateTime.now().millisecondsSinceEpoch,
-        title: 'Account Update',
-        body: 'Your account application was not approved. Please contact support at bj@mergeintohealth.com if you believe this was a mistake.',
-        payload: 'account_rejected',
-      );
-      
-      print('Account rejection notification sent to client: $clientId');
-    } catch (e) {
-      print('Error sending account rejection notification: $e');
-    }
-  }
+  // Account approval/rejection notifications are now handled by Cloud Functions
 }
 
 @pragma('vm:entry-point')

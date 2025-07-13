@@ -227,6 +227,9 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
   
   // Navigate to next page
   void _nextPage() {
+    // Dismiss keyboard before navigating
+    FocusScope.of(context).unfocus();
+    
     if (_currentPage < _totalPages - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
@@ -318,6 +321,9 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
   
   // Navigate to previous page
   void _previousPage() {
+    // Dismiss keyboard before navigating
+    FocusScope.of(context).unfocus();
+    
     if (_currentPage > 0) {
       _pageController.previousPage(
         duration: const Duration(milliseconds: 300),
@@ -548,6 +554,9 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
 
   // Return to login screen
   Future<void> _returnToLogin() async {
+    // Dismiss keyboard before navigating
+    FocusScope.of(context).unfocus();
+    
     // Sign out the user and return to login
     try {
       await _authService.signOut();
@@ -626,6 +635,8 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
               child: PageView(
                 controller: _pageController,
                 onPageChanged: (page) {
+                  // Dismiss keyboard when page changes
+                  FocusScope.of(context).unfocus();
                   setState(() {
                     _currentPage = page;
                   });

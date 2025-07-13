@@ -244,6 +244,39 @@ class _ClientEmailVerificationScreenState extends State<ClientEmailVerificationS
               'Please check your inbox and click the verification link in the email to complete your registration. You\'ll be able to access the onboarding questionnaire after verification.',
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 16),
+            // Prominent spam folder notice
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.amber.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.amber,
+                    size: 24,
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Don\'t see the email? Please check your spam or junk folder. Sometimes verification emails end up there.',
+                      style: TextStyle(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 24),
             if (!isCheckingExpired) ...[
               Row(
@@ -347,15 +380,6 @@ class _ClientEmailVerificationScreenState extends State<ClientEmailVerificationS
                   : Text(_resendCooldown > 0
                       ? 'Resend Email (${_resendCooldown}s)'
                       : 'Resend Verification Email'),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Note: If you don\'t see the email, please check your spam or junk folder.',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),

@@ -1332,9 +1332,7 @@ class ClientReviewScreen extends StatelessWidget {
             'rejectionReason': rejectionReason.trim(),
           });
       
-      // Send rejection notification to the client
-      final notificationService = NotificationService();
-      await notificationService.sendAccountRejectionNotification(client['id']);
+      // Account rejection notification is now handled by Cloud Functions
       
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1422,36 +1420,40 @@ class ClientReviewScreen extends StatelessWidget {
     final displayName = client['displayName'] ?? client['email'] ?? 'Unknown Client';
     
     // Show trainer selection dialog first
-    final selectedTrainer = await _showTrainerSelectionDialog(context);
-    if (selectedTrainer == null) {
+    final selectedTrainers = await _showTrainerSelectionDialog(context, client);
+    if (selectedTrainers == null || selectedTrainers.isEmpty) {
       // User cancelled trainer selection
       return;
     }
     
     try {
+      final trainerIds = selectedTrainers.map((trainer) => trainer['id'] as String).toList();
+      
       await FirebaseFirestore.instance
           .collection('users')
           .doc(client['id'])
           .update({
             'accountStatus': 'approved',
-            'trainerId': selectedTrainer['id'], // Assign selected trainer
+            'trainerIds': trainerIds, // Assign selected trainers
+            'trainerId': trainerIds.first, // Keep legacy field for backwards compatibility
           });
       
-      // Send approval notification to the client
-      final notificationService = NotificationService();
-      await notificationService.sendAccountApprovalNotification(client['id']);
+      // Account approval notification is now handled by Cloud Functions
       
-      // Create default session package with $1000 cost
+      // Create default session packages for each trainer
       final paymentService = PaymentService();
-      await paymentService.createDefaultSessionPackage(
-        clientId: client['id'],
-        trainerId: selectedTrainer['id'],
-      );
+      for (final trainerId in trainerIds) {
+        await paymentService.createDefaultSessionPackage(
+          clientId: client['id'],
+          trainerId: trainerId,
+        );
+      }
       
       if (context.mounted) {
+        final trainerNames = selectedTrainers.map((trainer) => trainer['name']).join(', ');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('$displayName has been approved and assigned to ${selectedTrainer['name']}'),
+            content: Text('$displayName has been approved and assigned to: $trainerNames'),
             backgroundColor: AppStyles.successGreen,
           ),
         );
@@ -1469,7 +1471,7 @@ class ClientReviewScreen extends StatelessWidget {
     }
   }
 
-  Future<Map<String, dynamic>?> _showTrainerSelectionDialog(BuildContext context) async {
+  Future<List<Map<String, dynamic>>?> _showTrainerSelectionDialog(BuildContext context, Map<String, dynamic> client) async {
     // Get all available trainers
     List<Map<String, dynamic>> trainers = [];
     
@@ -1523,77 +1525,150 @@ class ClientReviewScreen extends StatelessWidget {
       return null;
     }
     
-    // Show selection dialog
-    return showDialog<Map<String, dynamic>>(
+    // Show multi-selection dialog
+    List<Map<String, dynamic>> selectedTrainers = [];
+    
+    return showDialog<List<Map<String, dynamic>>>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Assign Trainer'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Select a trainer to assign to ${client['displayName'] ?? client['email']}:',
-                style: const TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                constraints: const BoxConstraints(maxHeight: 300),
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: trainers.map((trainer) {
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: AppStyles.primarySage.withOpacity(0.2),
-                            child: Text(
-                              trainer['name'].isNotEmpty ? trainer['name'][0].toUpperCase() : 'T',
-                              style: TextStyle(
-                                color: AppStyles.primarySage,
-                                fontWeight: FontWeight.bold,
-          ),
-                            ),
-                          ),
-                          title: Text(trainer['name']),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(trainer['email']),
-                              Text(
-                                trainer['role'] == 'superTrainer' ? 'Super Trainer' : 'Trainer',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppStyles.primarySage,
-                                  fontWeight: FontWeight.w500,
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Assign Trainers'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Select trainers to assign to ${client['displayName'] ?? client['email']}:',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 300),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: trainers.map((trainer) {
+                          final isSelected = selectedTrainers.any((t) => t['id'] == trainer['id']);
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () {
+                                setState(() {
+                                  if (isSelected) {
+                                    selectedTrainers.removeWhere((t) => t['id'] == trainer['id']);
+                                  } else {
+                                    selectedTrainers.add(trainer);
+                                  }
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isSelected 
+                                        ? AppStyles.primarySage 
+                                        : AppStyles.primarySage.withOpacity(0.2),
+                                  ),
+                                  color: isSelected 
+                                      ? AppStyles.primarySage.withOpacity(0.1) 
+                                      : null,
+                                ),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: AppStyles.primarySage.withOpacity(0.2),
+                                      child: Text(
+                                        trainer['name'].isNotEmpty ? trainer['name'][0].toUpperCase() : 'T',
+                                        style: TextStyle(
+                                          color: AppStyles.primarySage,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            trainer['name'],
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            trainer['role'] == 'superTrainer' ? 'Super Trainer' : 'Trainer',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: AppStyles.primarySage,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Checkbox(
+                                      value: isSelected,
+                                      onChanged: (bool? value) {
+                                        setState(() {
+                                          if (value == true) {
+                                            selectedTrainers.add(trainer);
+                                          } else {
+                                            selectedTrainers.removeWhere((t) => t['id'] == trainer['id']);
+                                          }
+                                        });
+                                      },
+                                      activeColor: AppStyles.primarySage,
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            side: BorderSide(color: AppStyles.primarySage.withOpacity(0.2)),
-                          ),
-                          onTap: () => Navigator.of(context).pop(trainer),
-                        ),
-                      );
-                    }).toList(),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                  if (selectedTrainers.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      'Selected: ${selectedTrainers.map((t) => t['name']).join(', ')}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppStyles.primarySage,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(null),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: AppStyles.slateGray),
                   ),
                 ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(null),
-              child: Text(
-                'Cancel',
-                style: TextStyle(color: AppStyles.slateGray),
-              ),
-            ),
-          ],
+                ElevatedButton(
+                  onPressed: selectedTrainers.isNotEmpty 
+                      ? () => Navigator.of(context).pop(selectedTrainers)
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppStyles.primarySage,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text('Assign (${selectedTrainers.length})'),
+                ),
+              ],
+            );
+          },
         );
       },
     );

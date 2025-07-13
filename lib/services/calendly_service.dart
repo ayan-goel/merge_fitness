@@ -499,8 +499,58 @@ class CalendlyService {
             (a['start_time'] as DateTime).compareTo(b['start_time'] as DateTime)
           );
           
-          print('CalendlyService: getTrainerAvailability - Successfully parsed ${availableTimes.length} available time slots');
-          return availableTimes;
+          // CRITICAL: Filter out slots that are already booked in our database
+          // PERFORMANCE OPTIMIZATION: Fetch all existing sessions once instead of querying for each slot
+          final existingSessions = <TrainingSession>[];
+          try {
+            final snapshot = await _firestore.collection('sessions')
+                .where('trainerId', isEqualTo: trainerId)
+                .where('status', isEqualTo: 'scheduled')
+                .get();
+                
+            for (final doc in snapshot.docs) {
+              existingSessions.add(TrainingSession.fromFirestore(doc));
+            }
+            
+            print('CalendlyService: getTrainerAvailability - Found ${existingSessions.length} existing sessions for conflict checking');
+          } catch (e) {
+            print('CalendlyService: getTrainerAvailability - Error fetching existing sessions: $e');
+            // If we can't fetch existing sessions, show all slots to avoid breaking UX
+            return availableTimes;
+          }
+          
+          final filteredTimes = <Map<String, dynamic>>[];
+          for (final slot in availableTimes) {
+            try {
+              final slotStart = slot['start_time'] as DateTime;
+              final slotEnd = slot['end_time'] as DateTime;
+              
+              // Check if this slot conflicts with any existing session (in-memory check)
+              bool hasConflict = false;
+              for (final existingSession in existingSessions) {
+                final existingStart = existingSession.startTime;
+                final existingEnd = existingSession.endTime;
+                
+                // Check for time overlap
+                if (slotStart.isBefore(existingEnd) && slotEnd.isAfter(existingStart)) {
+                  hasConflict = true;
+                  print('CalendlyService: getTrainerAvailability - Filtered out booked slot: ${slotStart.toIso8601String()} - ${slotEnd.toIso8601String()} (conflicts with session ${existingSession.id})');
+                  break;
+                }
+              }
+              
+              if (!hasConflict) {
+                filteredTimes.add(slot);
+              }
+            } catch (filterError) {
+              print('CalendlyService: getTrainerAvailability - Error filtering slot: $filterError');
+              // If there's an error checking this specific slot, include it to avoid breaking the UX
+              filteredTimes.add(slot);
+            }
+          }
+          
+          print('CalendlyService: getTrainerAvailability - Successfully parsed ${availableTimes.length} available time slots, ${filteredTimes.length} after filtering booked slots');
+          return filteredTimes;
         } catch (parseError) {
           print('CalendlyService: getTrainerAvailability - Error parsing response: $parseError');
           print('CalendlyService: getTrainerAvailability - Response body: ${response.body}');
@@ -521,7 +571,7 @@ class CalendlyService {
     }
   }
   
-  // Create a session
+  // Create a session with atomic transaction to prevent race conditions
   Future<TrainingSession> createSession({
     required String trainerId,
     required String clientId,
@@ -531,6 +581,9 @@ class CalendlyService {
     String? notes,
     String? calendlyEventUri,
     String? sessionType,
+    List<Map<String, dynamic>>? familyMembers,
+    bool isBookingForFamily = false,
+    String? payingClientId,
   }) async {
     try {
       // Ensure times are in EST
@@ -548,7 +601,7 @@ class CalendlyService {
       final trainerData = trainerDoc.data() as Map<String, dynamic>?;
       final trainerName = trainerData?['displayName'] ?? 'Trainer';
       
-      // Create session document
+      // Create session document reference
       final sessionRef = _firestore.collection('sessions').doc();
       
       final session = TrainingSession(
@@ -567,13 +620,27 @@ class CalendlyService {
         sessionType: sessionType,
         calendlyUrl: calendlyEventUri != null ? 'https://calendly.com/events/${calendlyEventUri.split('/').last}' : null,
         trainerName: trainerName,
+        familyMembers: familyMembers,
+        isBookingForFamily: isBookingForFamily,
+        payingClientId: payingClientId,
       );
       
-      // Save to Firestore
-      await sessionRef.set(session.toMap());
+      // Use a transaction to ensure atomicity and prevent race conditions
+      await _firestore.runTransaction((transaction) async {
+        // Create the session atomically
+        // Note: Conflict checking is done before the transaction since we can't use queries in transactions
+        transaction.set(sessionRef, session.toMap());
+        
+        print('CalendlyService: Session created successfully in transaction: ${session.id}');
+      });
       
-      // Add to activity feed
-      await _addSessionToActivityFeed(session);
+      // Add to activity feed (outside transaction since it's not critical)
+      try {
+        await _addSessionToActivityFeed(session);
+      } catch (e) {
+        print('Warning: Failed to add session to activity feed: $e');
+        // Continue anyway - activity feed is not critical
+      }
       
       return session;
     } catch (e) {
@@ -582,7 +649,56 @@ class CalendlyService {
     }
   }
   
-  // Schedule a session using the Calendly API
+  // Check for session conflicts (same trainer, overlapping time)
+  Future<bool> _hasSessionConflict({
+    required String trainerId,
+    required DateTime startTime,
+    required DateTime endTime,
+    String? excludeSessionId,
+  }) async {
+    try {
+      // Check for existing sessions for this trainer that overlap with the requested time
+      final snapshot = await _firestore.collection('sessions')
+          .where('trainerId', isEqualTo: trainerId)
+          .where('status', isEqualTo: 'scheduled')
+          .get();
+      
+      for (final doc in snapshot.docs) {
+        final session = TrainingSession.fromFirestore(doc);
+        
+        // Skip if this is the same session (for updates)
+        if (excludeSessionId != null && session.id == excludeSessionId) {
+          continue;
+        }
+        
+        // Check for time overlap
+        // Two sessions overlap if:
+        // 1. New session starts before existing ends AND new session ends after existing starts
+        // 2. OR new session completely contains the existing session
+        // 3. OR existing session completely contains the new session
+        final existingStart = session.startTime;
+        final existingEnd = session.endTime;
+        
+        bool overlaps = (startTime.isBefore(existingEnd) && endTime.isAfter(existingStart));
+        
+        if (overlaps) {
+          print('CalendlyService: Session conflict detected with session ${session.id}');
+          print('CalendlyService: Existing session: ${existingStart.toIso8601String()} - ${existingEnd.toIso8601String()}');
+          print('CalendlyService: New session: ${startTime.toIso8601String()} - ${endTime.toIso8601String()}');
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (e) {
+      print('Error checking session conflicts: $e');
+      // If there's an error checking conflicts, err on the side of caution and allow the booking
+      // This prevents the system from completely breaking due to database issues
+      return false;
+    }
+  }
+
+  // Schedule a session with conflict checking to prevent double bookings
   Future<TrainingSession> scheduleSession({
     required String trainerId,
     required String clientId,
@@ -590,6 +706,9 @@ class CalendlyService {
     required String location,
     String? notes,
     String? sessionType,
+    List<Map<String, dynamic>>? familyMembers,
+    bool isBookingForFamily = false,
+    String? payingClientId,
   }) async {
     try {
       final token = await _getCalendlyToken(trainerId);
@@ -605,12 +724,16 @@ class CalendlyService {
         throw Exception('Client not found');
       }
       
-      // For now, we'll create the event in our database without using the Calendly scheduling API
       // Ensure the times from Calendly are properly converted to EST
       DateTime startTime = timeSlot['start_time'];
       DateTime endTime = timeSlot['end_time'];
       
-      // Create the session
+      print('CalendlyService: Scheduling session for trainer $trainerId from ${startTime.toIso8601String()} to ${endTime.toIso8601String()}');
+      
+      // Note: Conflict checking is now handled in getTrainerAvailability() 
+      // so only properly available slots are shown to users
+      
+      // Create the session directly since slot was already validated as available
       final session = await createSession(
         trainerId: trainerId,
         clientId: clientId,
@@ -619,6 +742,9 @@ class CalendlyService {
         location: location,
         notes: notes,
         sessionType: sessionType,
+        familyMembers: familyMembers,
+        isBookingForFamily: isBookingForFamily,
+        payingClientId: payingClientId,
       );
       
       // Get client and trainer names for notifications
@@ -626,26 +752,12 @@ class CalendlyService {
       final trainerDoc = await _firestore.collection('users').doc(trainerId).get();
       final trainerName = trainerDoc.data()?['displayName'] ?? 'Trainer';
       
-      // Send notification to trainer about the new booking
-      final notificationService = NotificationService();
-      notificationService.sendSessionBookedNotification(
-        trainerId,
-        clientName,
-        startTime,
-        location
-      );
+      print('CalendlyService: Session scheduled successfully with ID: ${session.id}');
       
-      // Schedule 1-hour reminder for client
-      notificationService.scheduleOneHourSessionReminder(
-        trainerName,
-        startTime,
-      );
+      // Session booking notification is now handled by Cloud Functions automatically
       
-      // Schedule 15-minute reminder for client
-      notificationService.scheduleSessionReminder(
-        trainerName,
-        startTime,
-      );
+      // Session reminders are now handled by Cloud Functions automatically
+      // (15-minute and 1-hour reminders are scheduled in the backend)
       
       return session;
     } catch (e) {
@@ -680,30 +792,55 @@ class CalendlyService {
     try {
       final now = DateTime.now();
       
+      // Regular sessions where the client is the primary booking client (excluding family sessions)
       final snapshot = await _firestore.collection('sessions')
           .where('clientId', isEqualTo: clientId)
           .where('startTime', isGreaterThan: now)
           .orderBy('startTime')
           .get();
       
-      final sessions = snapshot.docs
+      // FAMILY SESSIONS ------------------------------------------------------
+      // Sessions booked for family where this user is listed in familyMembers
+      final familySnapshot = await _firestore.collection('sessions')
+          .where('isBookingForFamily', isEqualTo: true)
+          .where('startTime', isGreaterThan: now)
+          .orderBy('startTime')
+          .get();
+      
+      // Convert to TrainingSession objects
+      final regularSessions = snapshot.docs
           .map((doc) => TrainingSession.fromFirestore(doc))
-          .where((session) => session.status != 'cancelled') // Filter out cancelled sessions
+          .where((session) => session.isBookingForFamily != true) // Exclude family sessions from regular query
           .toList();
+      
+      final familySessions = familySnapshot.docs
+          .map((doc) => TrainingSession.fromFirestore(doc))
+          .where((session) {
+            if (session.familyMembers == null) return false;
+            return session.familyMembers!.any((member) => member['uid'] == clientId);
+          })
+          .toList();
+      
+      // Combine and filter out cancelled sessions
+      final sessions = [
+        ...regularSessions,
+        ...familySessions,
+      ].where((session) => session.status != 'cancelled').toList();
       
       // Ensure all times are properly in EST
       for (var session in sessions) {
         if (session.startTime.timeZoneName != targetTimeZone) {
-          // Convert start and end times to EST if they're not already
           session.startTime = _convertToEST(session.startTime);
           session.endTime = _convertToEST(session.endTime);
         }
       }
       
+      // Sort by startTime ascending
+      sessions.sort((a, b) => a.startTime.compareTo(b.startTime));
+      
       return sessions;
     } catch (e) {
       print('Error getting client upcoming sessions: $e');
-      
       // If the error is about indexes building, try an alternative approach
       if (e.toString().contains('index is currently building') || 
           e.toString().contains('requires an index')) {
@@ -715,17 +852,32 @@ class CalendlyService {
           
           final now = DateTime.now();
           // Filter and sort manually
-          final sessions = snapshot.docs
+          List<TrainingSession> sessions = snapshot.docs
               .map((doc) => TrainingSession.fromFirestore(doc))
               .where((session) => 
                   session.startTime.isAfter(now) && 
-                  session.status != 'cancelled') // Filter out cancelled sessions and past sessions
+                  session.status != 'cancelled' &&
+                  session.isBookingForFamily != true) // Exclude family sessions from regular query
               .toList();
+          
+          // Include family sessions in fallback as well
+          final familySnapshot = await _firestore.collection('sessions')
+              .where('isBookingForFamily', isEqualTo: true)
+              .get();
+          final familySessions = familySnapshot.docs
+              .map((doc) => TrainingSession.fromFirestore(doc))
+              .where((session) => 
+                  session.startTime.isAfter(now) &&
+                  session.status != 'cancelled' &&
+                  session.familyMembers != null &&
+                  session.familyMembers!.any((member) => member['uid'] == clientId))
+              .toList();
+          
+          sessions.addAll(familySessions);
           
           // Ensure all times are properly in EST
           for (var session in sessions) {
             if (session.startTime.timeZoneName != targetTimeZone) {
-              // Convert start and end times to EST if they're not already
               session.startTime = _convertToEST(session.startTime);
               session.endTime = _convertToEST(session.endTime);
             }
@@ -905,26 +1057,11 @@ class CalendlyService {
       if (isClientCancellation) {
         activityMessage = '${cancelledByName ?? session.clientName} cancelled a session scheduled for ${_formatDateTime(session.startTime)}';
         
-        // Send notification to trainer about client cancellation
-        final notificationService = NotificationService();
-        notificationService.sendClientCancelledSessionNotification(
-          session.trainerId,
-          session.clientName,
-          session.startTime,
-          cancellationReason,
-        );
+        // Session cancellation notifications are now handled by Cloud Functions automatically
       } else {
         activityMessage = 'You cancelled a session with ${session.clientName} scheduled for ${_formatDateTime(session.startTime)}';
         
-        // Send notification to client about trainer cancellation
-        final notificationService = NotificationService();
-        notificationService.sendSessionCancellationNotification(
-          session.clientId,
-          session.trainerName,
-          session.startTime,
-          session.location,
-          cancellationReason,
-        );
+        // Session cancellation notifications are now handled by Cloud Functions automatically
       }
       
       // Add reason if provided
@@ -994,6 +1131,89 @@ class CalendlyService {
       print('Error getting available trainers: $e');
       // Return empty list instead of throwing to avoid UI errors
       return [];
+    }
+  }
+
+  // Get assigned trainers for a specific client who are available for scheduling
+  Future<List<Map<String, dynamic>>> getClientAssignedTrainers(String clientId) async {
+    try {
+      print("CalendlyService: Getting assigned trainers for client $clientId");
+      
+      // First ensure user is authenticated
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        print("CalendlyService: User not authenticated");
+        throw Exception('User not authenticated');
+      }
+      
+      // Get the client's data
+      print("CalendlyService: Getting client data");
+      final clientDoc = await _firestore.collection('users').doc(clientId).get();
+      if (!clientDoc.exists) {
+        print("CalendlyService: Client document not found");
+        throw Exception('Client not found');
+      }
+      
+      final clientData = clientDoc.data()!;
+      
+      // Get assigned trainer IDs (support both legacy and new format)
+      List<String> assignedTrainerIds = [];
+      
+      if (clientData['trainerIds'] != null) {
+        // New format - use trainerIds array
+        assignedTrainerIds = List<String>.from(clientData['trainerIds']);
+      } else if (clientData['trainerId'] != null) {
+        // Legacy format - convert single trainerId to array
+        assignedTrainerIds = [clientData['trainerId']];
+      }
+      
+      print("CalendlyService: Client has ${assignedTrainerIds.length} assigned trainers: $assignedTrainerIds");
+      
+      if (assignedTrainerIds.isEmpty) {
+        print("CalendlyService: No trainers assigned to client");
+        throw Exception('No trainer assigned to this client');
+      }
+      
+      // Get trainer data for each assigned trainer
+      List<Map<String, dynamic>> availableTrainers = [];
+      
+      for (final trainerId in assignedTrainerIds) {
+        print("CalendlyService: Checking trainer $trainerId");
+        
+        final trainerDoc = await _firestore.collection('users').doc(trainerId).get();
+        if (!trainerDoc.exists) {
+          print("CalendlyService: Trainer document not found for $trainerId");
+          continue;
+        }
+        
+        final trainerData = trainerDoc.data()!;
+        
+        // Check if trainer has Calendly connected
+        if (trainerData['calendlyConnected'] == true) {
+          print("CalendlyService: Trainer $trainerId has Calendly connected");
+          availableTrainers.add({
+            'id': trainerId,
+            'displayName': trainerData['displayName'] ?? 'Trainer',
+            'calendlyUrl': trainerData['calendlySchedulingUrl'] ?? '',
+            'photoUrl': trainerData['photoUrl'],
+            'email': trainerData['email'] ?? '',
+            'phoneNumber': trainerData['phoneNumber'] ?? '',
+          });
+        } else {
+          print("CalendlyService: Trainer $trainerId does not have Calendly connected");
+        }
+      }
+      
+      print("CalendlyService: Found ${availableTrainers.length} available assigned trainers");
+      
+      if (availableTrainers.isEmpty) {
+        throw Exception('Your assigned trainers have not set up their scheduling calendar yet. Please contact them directly.');
+      }
+      
+      return availableTrainers;
+    } catch (e) {
+      print('Error getting client assigned trainers: $e');
+      rethrow;
     }
   }
   

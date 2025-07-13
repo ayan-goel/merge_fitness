@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../models/user_model.dart';
 import '../theme/app_styles.dart';
 import '../widgets/merge_button.dart';
+import '../main.dart';
 import 'home_screen.dart';
 import 'onboarding_quiz_screen.dart';
 import 'trainer/trainer_onboarding_screen.dart';
@@ -25,7 +26,6 @@ class _LoginScreenState extends State<LoginScreen> {
   
   bool _isLoading = false;
   bool _isLogin = true; // Toggle between login and signup
-  bool _isTrainer = false; // Toggle for trainer account
   String? _errorMessage;
   
   final AuthService _authService = AuthService();
@@ -43,11 +43,14 @@ class _LoginScreenState extends State<LoginScreen> {
     return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
   }
 
-  // Handle login/signup
-  Future<void> _handleAuth() async {
+  // Handle login
+  Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+
+    // Dismiss keyboard before proceeding
+    FocusScope.of(context).unfocus();
 
     setState(() {
       _isLoading = true;
@@ -55,70 +58,105 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      if (_isLogin) {
-        // Login
-        await _authService.signInWithEmailAndPassword(
+      await _authService.signInWithEmailAndPassword(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+      
+      // Navigate to main app on success - let AuthWrapper handle routing
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const AuthWrapper()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      print("FirebaseAuthException during login: ${e.code} - ${e.message}");
+      
+      // Show a user-friendly error message
+      setState(() {
+        if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential' || e.code == 'invalid-email') {
+          _errorMessage = 'Incorrect login information. Please check your email and password.';
+        } else {
+          _errorMessage = e.message ?? 'An authentication error occurred';
+        }
+      });
+    } catch (e) {
+      print("General exception during login: $e");
+      setState(() {
+        _errorMessage = 'An error occurred. Please try again.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // Handle signup with role
+  Future<void> _handleSignup(UserRole role) async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    // Dismiss keyboard before proceeding
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // Signup - Debug output
+      print("Starting user creation...");
+      
+      try {
+        // Create the user account with appropriate role
+        final UserCredential userCredential = await _authService.createUserWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text,
+          role: role,
         );
         
-        // Navigate to home on success
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
-        }
-      } else {
-        // Signup - Debug output
-        print("Starting user creation...");
+        print("User created successfully: ${userCredential.user?.uid}");
         
-        try {
-          // Create the user account with appropriate role
-          final UserRole role = _isTrainer ? UserRole.trainer : UserRole.client;
-          final UserCredential userCredential = await _authService.createUserWithEmailAndPassword(
-            _emailController.text.trim(),
-            _passwordController.text,
-            role: role,
-          );
-          
-          print("User created successfully: ${userCredential.user?.uid}");
-          
-          // Navigate to the appropriate onboarding screen based on role
-          if (mounted && userCredential.user != null) {
-            if (_isTrainer) {
-              print("Navigating to trainer email verification...");
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder: (context) => TrainerEmailVerificationScreen(
-                    user: userCredential.user!,
-                  ),
+        // Navigate to the appropriate onboarding screen based on role
+        if (mounted && userCredential.user != null) {
+          if (role == UserRole.trainer) {
+            print("Navigating to trainer email verification...");
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => TrainerEmailVerificationScreen(
+                  user: userCredential.user!,
                 ),
-              );
-            } else {
-              print("Navigating to client email verification...");
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder: (context) => ClientEmailVerificationScreen(
-                    user: userCredential.user!,
-                  ),
-                ),
-              );
-            }
-          }
-        } on FirebaseAuthException catch (e) {
-          print("FirebaseAuthException during signup: ${e.code} - ${e.message}");
-          if (e.code == 'email-already-in-use') {
-            setState(() {
-              _errorMessage = 'Email is already in use. Please use a different email or try logging in.';
-            });
+              ),
+            );
           } else {
-            throw e; // Re-throw to be caught by the outer catch block
+            print("Navigating to client email verification...");
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => ClientEmailVerificationScreen(
+                  user: userCredential.user!,
+                ),
+              ),
+            );
           }
-          return; // Return here to prevent the re-thrown exception from being caught
-        } catch (signupError) {
-          print("Other error during signup: $signupError");
-          throw signupError; // Re-throw to be caught by the outer catch block
         }
+      } on FirebaseAuthException catch (e) {
+        print("FirebaseAuthException during signup: ${e.code} - ${e.message}");
+        if (e.code == 'email-already-in-use') {
+          setState(() {
+            _errorMessage = 'Email is already in use. Please use a different email or try logging in.';
+          });
+        } else {
+          throw e; // Re-throw to be caught by the outer catch block
+        }
+        return; // Return here to prevent the re-thrown exception from being caught
+      } catch (signupError) {
+        print("Other error during signup: $signupError");
+        throw signupError; // Re-throw to be caught by the outer catch block
       }
     } on FirebaseAuthException catch (e) {
       print("Outer FirebaseAuthException: ${e.code} - ${e.message}");
@@ -127,8 +165,6 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         if (e.code == 'email-already-in-use') {
           _errorMessage = 'Email is already in use. Please use a different email or try logging in.';
-        } else if (_isLogin && (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential' || e.code == 'invalid-email')) {
-          _errorMessage = 'Incorrect login information. Please check your email and password.';
         } else {
           _errorMessage = e.message ?? 'An authentication error occurred';
         }
@@ -155,25 +191,28 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // Toggle between login and signup
   void _toggleAuthMode() {
+    // Dismiss keyboard when switching modes
+    FocusScope.of(context).unfocus();
+    
     setState(() {
       _isLogin = !_isLogin;
       _errorMessage = null;
-      if (_isLogin) {
-        _isTrainer = false; // Reset trainer toggle when switching to login
-      }
     });
   }
 
-  // Show dialog for trainer access code
-  Future<void> _showTrainerAccessCodeDialog(bool value) async {
-    // Only show dialog when switching from client to trainer
-    if (!value) {
-      setState(() {
-        _isTrainer = false;
-      });
-      return;
+  // Handle trainer signup with access code verification
+  Future<void> _handleTrainerSignup() async {
+    // First show the access code dialog
+    final isVerified = await _showTrainerAccessCodeDialog();
+    
+    if (isVerified) {
+      // If access code is verified, proceed with trainer signup
+      await _handleSignup(UserRole.trainer);
     }
+  }
 
+  // Show dialog for trainer access code
+  Future<bool> _showTrainerAccessCodeDialog() async {
     final codeController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     
@@ -261,7 +300,10 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () {
+              FocusScope.of(context).unfocus();
+              Navigator.of(context).pop(false);
+            },
             style: TextButton.styleFrom(
               foregroundColor: AppStyles.slateGray,
             ),
@@ -269,6 +311,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           ElevatedButton(
             onPressed: () {
+              FocusScope.of(context).unfocus();
               if (formKey.currentState!.validate()) {
                 Navigator.of(context).pop(true);
               }
@@ -288,13 +331,14 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
     
-    setState(() {
-      _isTrainer = result == true;
-    });
+    return result == true;
   }
 
   // Handle forgot password
   Future<void> _handleForgotPassword() async {
+    // Dismiss keyboard
+    FocusScope.of(context).unfocus();
+
     // Check if email is valid
     final email = _emailController.text.trim();
     if (email.isEmpty || !_isEmailValid(email)) {
@@ -554,7 +598,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                         onFieldSubmitted: (_) {
                           if (_isLogin) {
-                            _handleAuth();
+                            _handleLogin();
                           }
                         },
                       ),
@@ -611,53 +655,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             }
                             return null;
                           },
-                          onFieldSubmitted: (_) => _handleAuth(),
+                          onFieldSubmitted: (_) {
+                            // In signup mode, we now have two separate buttons
+                            // so no automatic submission on field submit
+                          },
                         ),
-                      
-                      // Trainer toggle (signup only)
-                      if (!_isLogin) ...[
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).brightness == Brightness.light 
-                                ? Colors.grey.shade50 
-                                : AppStyles.lightCharcoal,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: AppStyles.slateGray.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                _isTrainer ? Icons.fitness_center : Icons.person,
-                                color: AppStyles.taupeBrown,
-                                size: 22,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _isTrainer ? 'Register as a Trainer' : 'Register as a Client',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    color: Theme.of(context).brightness == Brightness.light
-                                        ? AppStyles.textDark 
-                                        : AppStyles.textLight,
-                                  ),
-                                ),
-                              ),
-                              Switch(
-                                value: _isTrainer,
-                                onChanged: _showTrainerAccessCodeDialog,
-                                activeColor: AppStyles.primarySage,
-                                activeTrackColor: AppStyles.primarySage.withOpacity(0.4),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
                       
                       // Spacing
                       SizedBox(height: _isLogin ? 8 : 16),
@@ -676,15 +678,41 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       const SizedBox(height: 8),
                       
-                      // Login/Signup button
-                      MergeButton(
-                        text: _isLogin ? 'Log In' : 'Sign Up',
-                        onPressed: _isLoading ? null : _handleAuth,
-                        isLoading: _isLoading,
-                        fullWidth: true,
-                        type: MergeButtonType.primary,
-                        size: MergeButtonSize.medium,
-                      ),
+                      // Login button or Signup buttons
+                      if (_isLogin) ...[
+                        // Single login button
+                        MergeButton(
+                          text: 'Log In',
+                          onPressed: _isLoading ? null : _handleLogin,
+                          isLoading: _isLoading,
+                          fullWidth: true,
+                          type: MergeButtonType.primary,
+                          size: MergeButtonSize.medium,
+                        ),
+                      ] else ...[
+                        // Two signup buttons: Client and Trainer
+                        MergeButton(
+                          text: 'Sign Up as Client',
+                          icon: Icons.person,
+                          onPressed: _isLoading ? null : () => _handleSignup(UserRole.client),
+                          isLoading: _isLoading,
+                          fullWidth: true,
+                          type: MergeButtonType.primary,
+                          size: MergeButtonSize.medium,
+                          color: AppStyles.primarySage,
+                        ),
+                        const SizedBox(height: 12),
+                        MergeButton(
+                          text: 'Sign Up as Trainer',
+                          icon: Icons.fitness_center,
+                          onPressed: _isLoading ? null : _handleTrainerSignup,
+                          isLoading: _isLoading,
+                          fullWidth: true,
+                          type: MergeButtonType.outline,
+                          size: MergeButtonSize.medium,
+                          color: AppStyles.mutedBlue,
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       
                       // Error message (moved after login button)

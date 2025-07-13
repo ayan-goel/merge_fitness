@@ -72,9 +72,22 @@ class _TrainerScheduleViewScreenState extends State<TrainerScheduleViewScreen> {
         }
         
         // Convert TrainingSession to Map for display
+        // Handle family sessions by showing all family member names
+        String displayName = session.clientName;
+        if (session.isBookingForFamily && session.familyMembers != null && session.familyMembers!.isNotEmpty) {
+          // Show all family member names
+          final familyNames = session.familyMembers!
+              .map((member) => member['name'] ?? 'Unknown')
+              .toList();
+          displayName = familyNames.join(', ');
+        }
+        
         sessions[normalizedDate]!.add({
           'id': session.id,
-          'clientName': session.clientName,
+          'clientName': displayName,
+          'originalClientName': session.clientName,
+          'isBookingForFamily': session.isBookingForFamily,
+          'familyMembers': session.familyMembers,
           'time': DateFormat('h:mm a').format(session.startTime),
           'endTime': DateFormat('h:mm a').format(session.endTime),
           'location': session.location,
@@ -385,20 +398,43 @@ class _TrainerScheduleViewScreenState extends State<TrainerScheduleViewScreen> {
           Row(
             children: [
               Icon(
-                Icons.person,
+                session['isBookingForFamily'] == true ? Icons.family_restroom : Icons.person,
                 color: AppStyles.primarySage,
                 size: 20,
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  session['clientName'] ?? 'Unknown Client',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    decoration: isCancelled ? TextDecoration.lineThrough : null,
-                    color: isCancelled ? AppStyles.slateGray : AppStyles.textDark,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      session['clientName'] ?? 'Unknown Client',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        decoration: isCancelled ? TextDecoration.lineThrough : null,
+                        color: isCancelled ? AppStyles.slateGray : AppStyles.textDark,
+                      ),
+                    ),
+                    if (session['isBookingForFamily'] == true) ...[
+                      const SizedBox(height: 2),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppStyles.primarySage.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Family Session',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppStyles.primarySage,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               Container(

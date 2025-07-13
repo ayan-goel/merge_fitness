@@ -89,6 +89,9 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
   }
   
   Future<void> _selectTime() async {
+    // Dismiss keyboard before showing time picker
+    FocusScope.of(context).unfocus();
+    
     final pickedTime = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_timeConsumed),
@@ -109,13 +112,16 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
     }
   }
   
-  Future<void> _saveMeal() async {
+    Future<void> _saveMeal() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // Dismiss keyboard before saving
+    FocusScope.of(context).unfocus();
     
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
       // Create macronutrients map
       final macronutrients = <String, double>{
@@ -170,6 +176,9 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
   }
   
   void _deleteMeal() {
+    // Dismiss keyboard before showing dialog
+    FocusScope.of(context).unfocus();
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -178,11 +187,15 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
           content: Text('Are you sure you want to delete "${widget.meal.name}"?'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                FocusScope.of(context).unfocus();
+                Navigator.of(context).pop();
+              },
               child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () async {
+                FocusScope.of(context).unfocus();
                 Navigator.of(context).pop();
                 
                 try {
@@ -283,6 +296,9 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
   
   // New method to scan food with camera
   Future<void> _scanFoodWithCamera() async {
+    // Dismiss keyboard before opening camera
+    FocusScope.of(context).unfocus();
+    
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(
@@ -329,27 +345,34 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
         return;
       }
       
-      // Update form fields with the recognized values
       setState(() {
-        _caloriesController.text = nutrients.calories.toInt().toString();
-        _proteinController.text = nutrients.protein.toStringAsFixed(1);
-        _carbsController.text = nutrients.carbs.toStringAsFixed(1);
-        _fatController.text = nutrients.fat.toStringAsFixed(1);
-        _sodiumController.text = nutrients.sodium.toStringAsFixed(0);
-        _cholesterolController.text = nutrients.cholesterol.toStringAsFixed(0);
-        _fiberController.text = nutrients.fiber.toStringAsFixed(1);
-        _sugarController.text = nutrients.sugar.toStringAsFixed(1);
         _isAnalyzingImage = false;
       });
       
-      // Show success message
+      // Show serving size dialog before populating fields
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Food analyzed successfully! You can adjust values if needed.'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        final servings = await _showServingSizeDialog();
+        if (servings != null && servings > 0) {
+          // Update form fields with the recognized values multiplied by servings
+          setState(() {
+            _caloriesController.text = (nutrients.calories * servings).toInt().toString();
+            _proteinController.text = (nutrients.protein * servings).toStringAsFixed(1);
+            _carbsController.text = (nutrients.carbs * servings).toStringAsFixed(1);
+            _fatController.text = (nutrients.fat * servings).toStringAsFixed(1);
+            _sodiumController.text = (nutrients.sodium * servings).toStringAsFixed(0);
+            _cholesterolController.text = (nutrients.cholesterol * servings).toStringAsFixed(0);
+            _fiberController.text = (nutrients.fiber * servings).toStringAsFixed(1);
+            _sugarController.text = (nutrients.sugar * servings).toStringAsFixed(1);
+          });
+          
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Food analyzed successfully for ${servings == 1 ? '1 serving' : '$servings servings'}! You can adjust values if needed.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       }
     } catch (e) {
       setState(() {
@@ -369,6 +392,9 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
   
   // Method to upload image from gallery
   Future<void> _uploadFoodImage() async {
+    // Dismiss keyboard before opening gallery
+    FocusScope.of(context).unfocus();
+    
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(
@@ -415,27 +441,34 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
         return;
       }
       
-      // Update form fields with the recognized values
       setState(() {
-        _caloriesController.text = nutrients.calories.toInt().toString();
-        _proteinController.text = nutrients.protein.toStringAsFixed(1);
-        _carbsController.text = nutrients.carbs.toStringAsFixed(1);
-        _fatController.text = nutrients.fat.toStringAsFixed(1);
-        _sodiumController.text = nutrients.sodium.toStringAsFixed(0);
-        _cholesterolController.text = nutrients.cholesterol.toStringAsFixed(0);
-        _fiberController.text = nutrients.fiber.toStringAsFixed(1);
-        _sugarController.text = nutrients.sugar.toStringAsFixed(1);
         _isAnalyzingImage = false;
       });
       
-      // Show success message
+      // Show serving size dialog before populating fields
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Food analyzed successfully! You can adjust values if needed.'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        final servings = await _showServingSizeDialog();
+        if (servings != null && servings > 0) {
+          // Update form fields with the recognized values multiplied by servings
+          setState(() {
+            _caloriesController.text = (nutrients.calories * servings).toInt().toString();
+            _proteinController.text = (nutrients.protein * servings).toStringAsFixed(1);
+            _carbsController.text = (nutrients.carbs * servings).toStringAsFixed(1);
+            _fatController.text = (nutrients.fat * servings).toStringAsFixed(1);
+            _sodiumController.text = (nutrients.sodium * servings).toStringAsFixed(0);
+            _cholesterolController.text = (nutrients.cholesterol * servings).toStringAsFixed(0);
+            _fiberController.text = (nutrients.fiber * servings).toStringAsFixed(1);
+            _sugarController.text = (nutrients.sugar * servings).toStringAsFixed(1);
+          });
+          
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Food analyzed successfully for ${servings == 1 ? '1 serving' : '$servings servings'}! You can adjust values if needed.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       }
     } catch (e) {
       setState(() {
@@ -451,6 +484,75 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
         );
       }
     }
+  }
+
+  // Show dialog to ask for serving size
+  Future<double?> _showServingSizeDialog() async {
+    final TextEditingController servingController = TextEditingController(text: '1');
+    
+    return showDialog<double>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('How Many Servings?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'The AI analyzed the food for 1 serving. How many servings are you eating?',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: servingController,
+                decoration: InputDecoration(
+                  labelText: 'Number of Servings',
+                  hintText: '1.0',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                ],
+                autofocus: true,
+                onFieldSubmitted: (value) {
+                  final servings = double.tryParse(servingController.text);
+                  if (servings != null && servings > 0) {
+                    Navigator.of(context).pop(servings);
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final servings = double.tryParse(servingController.text);
+                if (servings != null && servings > 0) {
+                  Navigator.of(context).pop(servings);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a valid number of servings'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        );
+      },
+    );
   }
   
   @override
@@ -475,11 +577,10 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
           child: Form(
             key: _formKey,
             child: ListView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 50.0),
               children: [
                 // AI Food Analysis Card
                 Card(
-                  color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -1069,10 +1170,10 @@ class _MealEntryScreenState extends State<MealEntryScreen> {
                     onPressed: _isLoading ? null : _saveMeal,
                     child: _isLoading
                         ? const SizedBox(
-                            width: 24,
-                            height: 24,
+                            width: 20,
+                            height: 20,
                             child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
+                              strokeWidth: 2.0,
                               valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )

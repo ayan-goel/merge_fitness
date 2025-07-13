@@ -30,7 +30,7 @@ class _ClientInfoScreenState extends State<ClientInfoScreen> {
   Map<String, dynamic>? _clientDetails;
   String? _errorMessage;
   bool _isSuperTrainer = false;
-  String? _currentTrainerName;
+  List<String> _currentTrainerNames = [];
 
   @override
   void initState() {
@@ -66,26 +66,24 @@ class _ClientInfoScreenState extends State<ClientInfoScreen> {
       final details = await _workoutService.getClientDetails(widget.clientId);
       print('Client details loaded. Keys: ${details.keys.toList()}');
       print('Client trainerId: ${details['trainerId']}');
-      print('trainerId is null: ${details['trainerId'] == null}');
-      print('trainerId type: ${details['trainerId'].runtimeType}');
+      print('Client trainerIds: ${details['trainerIds']}');
       
-      // Get current trainer name if assigned
-      String? trainerName;
-      if (details['trainerId'] != null) {
-        print('trainerId is not null, calling _getTrainerName...');
-        trainerName = await _getTrainerName(details['trainerId']);
-        print('_getTrainerName returned: $trainerName');
-      } else {
-        print('trainerId is null, skipping trainer name lookup');
+      // Get current trainer names if assigned
+      List<String> trainerNames = [];
+      final trainerIds = _getTrainerIdsFromDetails(details);
+      
+      for (final trainerId in trainerIds) {
+        final trainerName = await _getTrainerName(trainerId);
+        trainerNames.add(trainerName);
       }
       
       setState(() {
         _clientDetails = details;
-        _currentTrainerName = trainerName;
+        _currentTrainerNames = trainerNames;
         _isLoading = false;
       });
       
-      print('Client details state updated. _currentTrainerName: $_currentTrainerName');
+      print('Client details state updated. _currentTrainerNames: $_currentTrainerNames');
       print('=== CLIENT DETAILS LOADED ===');
     } catch (e) {
       print('Error in _loadClientDetails: $e');
@@ -164,120 +162,164 @@ class _ClientInfoScreenState extends State<ClientInfoScreen> {
         return;
       }
       
-      // Show selection dialog
-      final selectedTrainer = await showDialog<Map<String, dynamic>>(
+      // Get current trainer assignments
+      final currentTrainerIds = _getCurrentTrainerIds();
+      
+      // Show multi-selection dialog
+      // Initialize with current trainers
+      List<Map<String, dynamic>> selectedTrainers = trainers
+          .where((trainer) => currentTrainerIds.contains(trainer['id']))
+          .toList();
+      
+      final result = await showDialog<List<Map<String, dynamic>>>(
         context: context,
         barrierDismissible: false,
         builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Reassign Trainer'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Select a new trainer for ${widget.clientName}:',
-                  style: const TextStyle(fontSize: 14),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  constraints: const BoxConstraints(maxHeight: 300),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: trainers.map((trainer) {
-                        final isCurrentTrainer = trainer['id'] == _clientDetails?['trainerId'];
-                        
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: isCurrentTrainer 
-                                  ? AppStyles.primarySage.withOpacity(0.4)
-                                  : AppStyles.primarySage.withOpacity(0.2),
-                              child: Text(
-                                trainer['name'].isNotEmpty ? trainer['name'][0].toUpperCase() : 'T',
-                                style: TextStyle(
-                                  color: AppStyles.primarySage,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            title: Text(
-                              trainer['name'],
-                              style: TextStyle(
-                                fontWeight: isCurrentTrainer ? FontWeight.bold : FontWeight.normal,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(trainer['email']),
-                                Row(
-                                  children: [
-                                    Text(
-                                      trainer['role'] == 'superTrainer' ? 'Super Trainer' : 'Trainer',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: AppStyles.primarySage,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+          return StatefulBuilder(
+            builder: (context, setState) {
+              
+              return AlertDialog(
+                title: const Text('Reassign Trainers'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Select trainers for ${widget.clientName}:',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 300),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: trainers.map((trainer) {
+                            final isSelected = selectedTrainers.any((t) => t['id'] == trainer['id']);
+                            
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(8),
+                                onTap: () {
+                                  setState(() {
+                                    if (isSelected) {
+                                      selectedTrainers.removeWhere((t) => t['id'] == trainer['id']);
+                                    } else {
+                                      selectedTrainers.add(trainer);
+                                    }
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: isSelected 
+                                          ? AppStyles.primarySage 
+                                          : AppStyles.primarySage.withOpacity(0.2),
                                     ),
-                                    if (isCurrentTrainer) ...[
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: AppStyles.primarySage.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
+                                    color: isSelected 
+                                        ? AppStyles.primarySage.withOpacity(0.1) 
+                                        : null,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: AppStyles.primarySage.withOpacity(0.2),
                                         child: Text(
-                                          'Current',
+                                          trainer['name'].isNotEmpty ? trainer['name'][0].toUpperCase() : 'T',
                                           style: TextStyle(
-                                            fontSize: 10,
                                             color: AppStyles.primarySage,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              trainer['name'],
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w500,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              trainer['role'] == 'superTrainer' ? 'Super Trainer' : 'Trainer',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: AppStyles.primarySage,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Checkbox(
+                                        value: isSelected,
+                                        onChanged: (bool? value) {
+                                          setState(() {
+                                            if (value == true) {
+                                              selectedTrainers.add(trainer);
+                                            } else {
+                                              selectedTrainers.removeWhere((t) => t['id'] == trainer['id']);
+                                            }
+                                          });
+                                        },
+                                        activeColor: AppStyles.primarySage,
+                                      ),
                                     ],
-                                  ],
+                                  ),
                                 ),
-                              ],
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              side: BorderSide(
-                                color: isCurrentTrainer 
-                                    ? AppStyles.primarySage.withOpacity(0.5)
-                                    : AppStyles.primarySage.withOpacity(0.2),
-                                width: isCurrentTrainer ? 2 : 1,
                               ),
-                            ),
-                            enabled: !isCurrentTrainer,
-                            onTap: isCurrentTrainer ? null : () => Navigator.of(context).pop(trainer),
-                          ),
-                        );
-                      }).toList(),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                    if (selectedTrainers.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        'Selected: ${selectedTrainers.map((t) => t['name']).join(', ')}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppStyles.primarySage,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(null),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(color: AppStyles.slateGray),
                     ),
                   ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(null),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(color: AppStyles.slateGray),
-                ),
-              ),
-            ],
+                  ElevatedButton(
+                    onPressed: selectedTrainers.isNotEmpty 
+                        ? () => Navigator.of(context).pop(selectedTrainers)
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppStyles.primarySage,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: Text('Assign (${selectedTrainers.length})'),
+                  ),
+                ],
+              );
+            },
           );
         },
       );
       
-      if (selectedTrainer != null) {
-        await _reassignTrainer(selectedTrainer);
+      if (result != null) {
+        await _reassignTrainers(result);
       }
       
     } catch (e) {
@@ -292,14 +334,34 @@ class _ClientInfoScreenState extends State<ClientInfoScreen> {
     }
   }
 
-  Future<void> _reassignTrainer(Map<String, dynamic> newTrainer) async {
+  /// Get trainer IDs from client details
+  List<String> _getTrainerIdsFromDetails(Map<String, dynamic> details) {
+    // Check for new format first (trainerIds array)
+    if (details['trainerIds'] is List) {
+      return List<String>.from(details['trainerIds']);
+    }
+    
+    // Fall back to legacy format (single trainerId)
+    final trainerId = details['trainerId'];
+    if (trainerId is String) {
+      return [trainerId];
+    }
+    
+    return [];
+  }
+
+  /// Get current trainer IDs for the client
+  List<String> _getCurrentTrainerIds() {
+    if (_clientDetails == null) return [];
+    return _getTrainerIdsFromDetails(_clientDetails!);
+  }
+
+  Future<void> _reassignTrainers(List<Map<String, dynamic>> newTrainers) async {
     try {
-      print('=== REASSIGN TRAINER DEBUG ===');
+      print('=== REASSIGN TRAINERS DEBUG ===');
       print('Client ID: ${widget.clientId}');
       print('Client Name: ${widget.clientName}');
-      print('New Trainer ID: ${newTrainer['id']}');
-      print('New Trainer Name: ${newTrainer['name']}');
-      print('Current trainer before update: $_currentTrainerName');
+      print('New Trainers: ${newTrainers.map((t) => '${t['id']} (${t['name']})').join(', ')}');
       
       // Show loading
       showDialog(
@@ -310,50 +372,18 @@ class _ClientInfoScreenState extends State<ClientInfoScreen> {
         ),
       );
       
-      // First, let's verify current state before update
-      final beforeDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.clientId)
-          .get();
+      final trainerIds = newTrainers.map((trainer) => trainer['id'] as String).toList();
       
-      if (beforeDoc.exists) {
-        final beforeData = beforeDoc.data()!;
-        print('Before update - trainerId: ${beforeData['trainerId']}');
-        print('Before update - full data keys: ${beforeData.keys.toList()}');
-      } else {
-        print('ERROR: Client document does not exist!');
-      }
-      
-      // Update the client's assigned trainer
+      // Update the client's assigned trainers
       await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.clientId)
           .update({
-            'trainerId': newTrainer['id'],
+            'trainerIds': trainerIds,
+            'trainerId': trainerIds.isNotEmpty ? trainerIds.first : null, // Keep legacy field for backwards compatibility
           });
       
       print('Firestore update completed successfully');
-      
-      // Verify the update worked
-      final afterDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.clientId)
-          .get();
-      
-      if (afterDoc.exists) {
-        final afterData = afterDoc.data()!;
-        print('After update - trainerId: ${afterData['trainerId']}');
-        print('After update - full data keys: ${afterData.keys.toList()}');
-        
-        if (afterData['trainerId'] == newTrainer['id']) {
-          print('✅ SUCCESS: trainerId updated correctly in Firestore');
-        } else {
-          print('❌ ERROR: trainerId was not updated correctly!');
-          print('Expected: ${newTrainer['id']}, Got: ${afterData['trainerId']}');
-        }
-      } else {
-        print('ERROR: Client document does not exist after update!');
-      }
       
       // Dismiss loading dialog
       if (mounted) {
@@ -363,20 +393,20 @@ class _ClientInfoScreenState extends State<ClientInfoScreen> {
       // Reload client details to reflect changes
       print('Reloading client details...');
       await _loadClientDetails();
-      print('Client details reloaded. New trainer name: $_currentTrainerName');
       
       if (mounted) {
+        final trainerNames = newTrainers.map((trainer) => trainer['name']).join(', ');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${widget.clientName} has been reassigned to ${newTrainer['name']}'),
+            content: Text('${widget.clientName} has been reassigned to: $trainerNames'),
             backgroundColor: AppStyles.successGreen,
           ),
         );
       }
       
-      print('=== REASSIGN TRAINER DEBUG END ===');
+      print('=== REASSIGN TRAINERS DEBUG END ===');
     } catch (e) {
-      print('ERROR in _reassignTrainer: $e');
+      print('ERROR in _reassignTrainers: $e');
       print('Stack trace: ${StackTrace.current}');
       
       // Dismiss loading dialog if showing
@@ -384,7 +414,7 @@ class _ClientInfoScreenState extends State<ClientInfoScreen> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error reassigning trainer: $e'),
+            content: Text('Error reassigning trainers: $e'),
             backgroundColor: AppStyles.errorRed,
           ),
         );
@@ -513,17 +543,25 @@ class _ClientInfoScreenState extends State<ClientInfoScreen> {
                       ),
                       const SizedBox(height: 32),
                       
-                      // Assigned Trainer Section (only show for super trainers)
+                      // Assigned Trainers Section (only show for super trainers)
                       if (_isSuperTrainer)
                         InfoSection(
-                          title: 'Assigned Trainer',
+                          title: 'Assigned Trainers',
                           icon: Icons.person_pin,
                           children: [
-                            InfoItem(
-                              icon: _currentTrainerName != null ? Icons.check_circle : Icons.warning,
-                              value: _currentTrainerName ?? 'No trainer assigned',
-                              valueColor: _currentTrainerName != null ? null : Colors.orange[700],
-                            ),
+                            if (_currentTrainerNames.isEmpty)
+                              InfoItem(
+                                icon: Icons.warning,
+                                value: 'No trainers assigned',
+                                valueColor: Colors.orange[700],
+                              )
+                            else
+                              for (int i = 0; i < _currentTrainerNames.length; i++)
+                                InfoItem(
+                                  icon: Icons.check_circle,
+                                  value: _currentTrainerNames[i],
+                                  label: _currentTrainerNames.length > 1 ? 'Trainer ${i + 1}' : null,
+                                ),
                           ],
                         ),
                       

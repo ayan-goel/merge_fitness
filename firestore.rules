@@ -33,6 +33,32 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
+    // Check if the current user is assigned as a trainer for a given client document
+    function isAssignedTrainer(clientData) {
+      return isTrainer() && (
+        clientData.trainerId == request.auth.uid ||
+        (clientData.trainerIds is list && request.auth.uid in clientData.trainerIds)
+      );
+    }
+    
+    // Check if the current user is assigned to a specific client by userId
+    function isAssignedToClient(clientUserId) {
+      return isTrainer() && 
+        exists(/databases/$(database)/documents/users/$(clientUserId)) &&
+        isAssignedTrainer(get(/databases/$(database)/documents/users/$(clientUserId)).data);
+    }
+    
+    // Helper function to check if user is a family member
+    function isFamilyMember(familyData) {
+      return familyData.organizerId == request.auth.uid;
+    }
+    
+    // Helper function to check if user is a family member in a session
+    function isSessionFamilyMember(sessionData) {
+      return sessionData.isBookingForFamily == true &&
+             sessionData.familyMembers is list;
+    }
+    
     // Trainer Videos Collection Rules
     match /trainerVideos/{videoId} {
       // Trainers can create, read, update, and delete their own videos
@@ -66,14 +92,8 @@ service cloud.firestore {
     
     // User Collection Rules
     match /users/{userId} {
-      // Allow users to read their own document
-      // Allow trainers to read all user documents
-      // Allow clients to read trainer documents (for booking sessions)
-      allow read: if isAuthenticated() && (
-                    request.auth.uid == userId || 
-                    isTrainer() ||
-                    isAdmin()
-                  );
+      // Allow any authenticated user to read any user document (loose rule for development & family search)
+      allow read: if isAuthenticated();
       
       // Allow clients to read trainer documents specifically
       allow read: if isAuthenticated() && 
@@ -91,12 +111,21 @@ service cloud.firestore {
       // Allow users to update their own documents
       // Allow admins and super trainers to update any user
       // Allow trainers to update their clients' profiles
+      // Allow family-related updates when accepting/declining invitations
       allow update: if isAuthenticated() && (
                       request.auth.uid == userId || 
                       isAdmin() ||
                       isSuperTrainer() ||
                       // Allow trainers to update their clients' profiles
-                      (isTrainer() && resource.data.trainerId == request.auth.uid)
+                      isAssignedTrainer(resource.data) ||
+                      // Allow family-related updates (when accepting/declining family invitations)
+                      (request.auth.uid == userId && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['familyId', 'isFamilyOrganizer'])) ||
+                      // Allow family organizers to update family-related fields for their family members
+                      (resource.data.familyId != null &&
+                       exists(/databases/$(database)/documents/families/$(resource.data.familyId)) &&
+                       get(/databases/$(database)/documents/families/$(resource.data.familyId)).data.organizerId == request.auth.uid &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['familyId', 'isFamilyOrganizer']))
                     );
                     
       // Allow users to delete their own account, admins and super trainers can delete any user
@@ -266,38 +295,59 @@ service cloud.firestore {
         (resource.data.userId == request.auth.uid || isAdmin() || isSuperTrainer());
     }
     
-    // Session Collection Rules
+    // Sessions Collection Rules (used for client and family sessions)
     match /sessions/{sessionId} {
-      // Users can read sessions they're part of
-      // Trainers can read and write sessions they're part of
-      // Admins can read and write all sessions
-      allow read: if isAuthenticated() && 
-        (resource.data.clientId == request.auth.uid || 
-         resource.data.trainerId == request.auth.uid || 
-         isAdmin() || isSuperTrainer());
-      // Allow both clients and trainers to create sessions
-      allow create: if isAuthenticated() && 
-         (request.resource.data.clientId == request.auth.uid || 
-          isTrainer() || 
-          isAdmin());
-      // Update rule: allow clients to cancel their own sessions
-      allow update: if isAuthenticated() && 
+      // Allow trainers to read their sessions
+      allow read: if isAuthenticated() && resource.data.trainerId == request.auth.uid;
+      
+      // Allow primary client to read their sessions
+      allow read: if isAuthenticated() && resource.data.clientId == request.auth.uid;
+      
+      // Allow family members to read sessions where they are listed in familyMembers
+      allow read: if isAuthenticated() &&
+        resource.data.isBookingForFamily == true &&
+        resource.data.familyMembers is list &&
+        resource.data.familyMembers.hasAny(['uid'], request.auth.uid);
+      
+      // Allow listing sessions for authenticated users (will be filtered by queries)
+      allow list: if isAuthenticated();
+
+      // Allow creating sessions (booking) by trainer or primary client
+      allow create: if isAuthenticated() && (
+        request.resource.data.clientId == request.auth.uid ||
+        request.resource.data.trainerId == request.auth.uid ||
+        isTrainer() || isAdmin() || isSuperTrainer()
+      );
+
+      // Allow updating session status (e.g., cancelling or completing)
+      // - Primary client can update status & notes
+      // - Trainer can update any of their sessions
+      // - Family members listed on the session can update status & notes
+      allow update: if isAuthenticated() && (
         (
-          // Trainers can update any session field
-          resource.data.trainerId == request.auth.uid || 
-          
-          // Clients can update only the status field to 'cancelled' and add notes
-          (
-            resource.data.clientId == request.auth.uid && 
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'notes']) &&
-            request.resource.data.status == 'cancelled'
-          ) || 
-          
-          // Admins and super trainers can update anything
+          // Primary client updating limited fields
+          request.auth.uid == resource.data.clientId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','notes'])
+        ) || (
+          // Trainer updating their own session
+          request.auth.uid == resource.data.trainerId
+        ) || (
+          // Family member updating limited fields
+          resource.data.isBookingForFamily == true &&
+          resource.data.familyMembers is list &&
+          resource.data.familyMembers.hasAny(['uid'], request.auth.uid) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','notes'])
+        ) || (
+          // Admins & super trainers
           isAdmin() || isSuperTrainer()
-        );
-      allow delete: if isAuthenticated() && 
-        (resource.data.trainerId == request.auth.uid || isAdmin() || isSuperTrainer());
+        )
+      );
+
+      // Allow deleting sessions by trainers or admins
+      allow delete: if isAuthenticated() && (
+        request.auth.uid == resource.data.trainerId ||
+        isAdmin() || isSuperTrainer()
+      );
     }
     
     // Weight Entries Collection Rules
@@ -406,6 +456,13 @@ service cloud.firestore {
       // Clients can read their own session packages
       allow read: if isAuthenticated() && resource.data.clientId == request.auth.uid;
       
+      // Family members can read session packages for their family organizer (for family session booking)
+      allow read: if isAuthenticated() && 
+                  exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                  get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyId != null &&
+                  exists(/databases/$(database)/documents/families/$(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyId)) &&
+                  get(/databases/$(database)/documents/families/$(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyId)).data.organizerId == resource.data.clientId;
+      
       // Clients can delete their own session packages (for account deletion)
       allow delete: if isAuthenticated() && resource.data.clientId == request.auth.uid;
       
@@ -426,6 +483,13 @@ service cloud.firestore {
       allow update: if isAuthenticated() && 
                     (resource.data.trainerId == request.auth.uid || 
                      resource.data.clientId == request.auth.uid);
+      
+      // Family members can update session packages for their family organizer (for family session booking)
+      allow update: if isAuthenticated() && 
+                    exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyId != null &&
+                    exists(/databases/$(database)/documents/families/$(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyId)) &&
+                    get(/databases/$(database)/documents/families/$(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyId)).data.organizerId == resource.data.clientId;
       
       // Admins and super trainers can do everything
       allow read, write: if isAdmin() || isSuperTrainer();
@@ -550,6 +614,49 @@ service cloud.firestore {
       
       // Admins and super trainers can do everything
       allow read, write: if isAdmin() || isSuperTrainer();
+    }
+    
+    // Family Collection Rules
+    match /families/{familyId} {
+      // Allow any authenticated user to read and write families (loose rule for development)
+      allow read, write: if isAuthenticated();
+      
+      // Allow creating families for authenticated users
+      allow create: if isAuthenticated();
+      
+      // Allow any authenticated user to update families (loose rule for development)
+      allow update: if isAuthenticated();
+      
+      // Allow any authenticated user to delete family (loose rule for development)
+      allow delete: if isAuthenticated();
+      
+      // Family members can read the family document
+      allow read: if isAuthenticated();
+      
+      // Allow listing families for any authenticated user
+      allow list: if isAuthenticated();
+      
+      // Admins and super trainers retain full access (already covered by isAuthenticated)
+    }
+    
+    // Family Invitations Collection Rules
+    match /familyInvitations/{invitationId} {
+      // Allow any authenticated user to create invitations (loose rule for development)
+      allow create: if isAuthenticated();
+      
+      // Allow any authenticated user to read invitations
+      allow read: if isAuthenticated();
+      
+      // Allow any authenticated user to update invitations
+      allow update: if isAuthenticated();
+      
+      // Allow any authenticated user to delete invitations
+      allow delete: if isAuthenticated();
+      
+      // Allow listing invitations for any authenticated user
+      allow list: if isAuthenticated();
+      
+      // Admins and super trainers retain full access (already covered by isAuthenticated)
     }
   }
 } 
