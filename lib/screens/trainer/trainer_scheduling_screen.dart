@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:table_calendar/table_calendar.dart';
 import '../../services/auth_service.dart';
 import '../../services/calendly_service.dart';
 import '../../services/video_call_service.dart';
@@ -33,6 +34,11 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
   List<TrainingSession> _cancelledSessions = [];
   List<TrainingSession> _completedSessions = [];
   bool _isCalendlyConnected = false;
+  
+  // Calendar state
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+  Map<DateTime, List<TrainingSession>> _sessionsByDate = {};
   
   @override
   void initState() {
@@ -81,6 +87,20 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
       cancelledSessions.sort((a, b) => a.startTime.compareTo(b.startTime));
       completedSessions.sort((a, b) => b.startTime.compareTo(a.startTime)); // Most recent first
       
+      // Group sessions by date for calendar
+      final sessionsByDate = <DateTime, List<TrainingSession>>{};
+      for (final session in allSessions) {
+        final dateKey = DateTime(
+          session.startTime.year,
+          session.startTime.month,
+          session.startTime.day,
+        );
+        if (!sessionsByDate.containsKey(dateKey)) {
+          sessionsByDate[dateKey] = [];
+        }
+        sessionsByDate[dateKey]!.add(session);
+      }
+      
       setState(() {
         _trainer = trainer;
         _allSessions = allSessions;
@@ -88,6 +108,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
         _cancelledSessions = cancelledSessions;
         _completedSessions = completedSessions;
         _isCalendlyConnected = isConnected;
+        _sessionsByDate = sessionsByDate;
         _isLoading = false;
       });
     } catch (e) {
@@ -107,7 +128,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
     }
     
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Training Sessions'),
@@ -120,6 +141,7 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
           ],
           bottom: const TabBar(
             tabs: [
+              Tab(text: 'All'),
               Tab(text: 'Upcoming'),
               Tab(text: 'Completed'),
               Tab(text: 'Cancelled'),
@@ -135,6 +157,9 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
             Expanded(
               child: TabBarView(
                 children: [
+                  // All Sessions Tab - Calendar View
+                  _buildCalendarView(),
+                  
                   // Upcoming Sessions Tab
                   _upcomingSessions.isEmpty
                       ? _buildNoSessionsMessage('No upcoming sessions')
@@ -341,6 +366,306 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
     } else {
       return DateFormat('EEEE, MMMM d').format(date);
     }
+  }
+  
+  Widget _buildCalendarView() {
+    if (_allSessions.isEmpty) {
+      return _buildNoSessionsMessage('No sessions scheduled');
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        // Calendar Card
+        Container(
+          margin: const EdgeInsets.only(bottom: 24),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppStyles.primarySage.withOpacity(0.2),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.calendar_month,
+                    color: AppStyles.primarySage,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Session Calendar',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppStyles.textDark,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              TableCalendar<TrainingSession>(
+                firstDay: DateTime.now().subtract(const Duration(days: 365)),
+                lastDay: DateTime.now().add(const Duration(days: 365)),
+                focusedDay: _focusedDay,
+                selectedDayPredicate: (day) {
+                  return isSameDay(_selectedDay, day);
+                },
+                eventLoader: (day) {
+                  final dateKey = DateTime(day.year, day.month, day.day);
+                  return _sessionsByDate[dateKey] ?? [];
+                },
+                onDaySelected: (selectedDay, focusedDay) {
+                  if (!isSameDay(_selectedDay, selectedDay)) {
+                    setState(() {
+                      _selectedDay = selectedDay;
+                      _focusedDay = focusedDay;
+                    });
+                    _showDaySessionsDialog(selectedDay);
+                  }
+                },
+                calendarStyle: CalendarStyle(
+                  outsideDaysVisible: false,
+                  weekendTextStyle: TextStyle(color: AppStyles.slateGray),
+                  selectedTextStyle: const TextStyle(color: Colors.white),
+                  selectedDecoration: BoxDecoration(
+                    color: AppStyles.primarySage,
+                    shape: BoxShape.circle,
+                  ),
+                  todayDecoration: BoxDecoration(
+                    color: AppStyles.primarySage.withOpacity(0.3),
+                    shape: BoxShape.circle,
+                  ),
+                  markerDecoration: BoxDecoration(
+                    color: AppStyles.successGreen,
+                    shape: BoxShape.circle,
+                  ),
+                  markersMaxCount: 1,
+                  markerSize: 6.0,
+                  markerMargin: const EdgeInsets.symmetric(horizontal: 1.5),
+                ),
+                headerStyle: HeaderStyle(
+                  titleCentered: true,
+                  formatButtonVisible: false,
+                  titleTextStyle: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppStyles.textDark,
+                  ),
+                ),
+                daysOfWeekStyle: DaysOfWeekStyle(
+                  weekdayStyle: TextStyle(color: AppStyles.textDark),
+                  weekendStyle: TextStyle(color: AppStyles.textDark),
+                ),
+                startingDayOfWeek: StartingDayOfWeek.monday,
+                onPageChanged: (focusedDay) {
+                  setState(() {
+                    _focusedDay = focusedDay;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+        
+        // Sessions List (same structure as other tabs)
+        ..._buildGroupedSessionsList(_allSessions),
+      ],
+    );
+  }
+  
+  List<Widget> _buildGroupedSessionsList(List<TrainingSession> sessions) {
+    // Group sessions by date
+    final Map<String, List<TrainingSession>> groupedSessions = {};
+    
+    for (final session in sessions) {
+      final dateKey = DateFormat('yyyy-MM-dd').format(session.startTime);
+      if (!groupedSessions.containsKey(dateKey)) {
+        groupedSessions[dateKey] = [];
+      }
+      groupedSessions[dateKey]!.add(session);
+    }
+    
+    // Create sorted list of date keys
+    final sortedDates = groupedSessions.keys.toList()..sort();
+    
+    List<Widget> widgets = [];
+    
+    for (int dateIndex = 0; dateIndex < sortedDates.length; dateIndex++) {
+      final dateKey = sortedDates[dateIndex];
+      final sessionsForDate = groupedSessions[dateKey]!;
+      final date = DateTime.parse(dateKey);
+      
+      // Check if this date is today
+      final now = DateTime.now();
+      final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
+      
+      // Date heading
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Row(
+            children: [
+              Text(
+                _formatDateHeading(date),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (isToday) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'TODAY',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+      
+      // Sessions for this date
+      for (final session in sessionsForDate) {
+        widgets.add(
+          AppAnimations.fadeSlide(
+            beginOffset: const Offset(0, 0.05),
+            duration: Duration(milliseconds: 400 + sessionsForDate.indexOf(session) * 100),
+            child: _buildSessionRow(session),
+          ),
+        );
+      }
+      
+      // Add divider between dates (except for last one)
+      if (dateIndex < sortedDates.length - 1) {
+        widgets.add(const Divider(height: 32));
+      }
+    }
+    
+    return widgets;
+  }
+  
+  void _showDaySessionsDialog(DateTime selectedDay) {
+    final dateKey = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+    final sessionsForDay = _sessionsByDate[dateKey] ?? [];
+    
+    if (sessionsForDay.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No sessions scheduled for ${DateFormat('EEEE, MMMM d').format(selectedDay)}'),
+          backgroundColor: AppStyles.primarySage,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+      return;
+    }
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        minChildSize: 0.3,
+        expand: false,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                // Handle bar
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        DateFormat('EEEE, MMMM d, yyyy').format(selectedDay),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppStyles.primarySage.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          '${sessionsForDay.length} session${sessionsForDay.length == 1 ? '' : 's'}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppStyles.primarySage,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Sessions list
+                Expanded(
+                  child: ListView.separated(
+                    controller: scrollController,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: sessionsForDay.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final session = sessionsForDay[index];
+                      return _buildSessionRow(session);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
   
   Widget _buildSessionRow(TrainingSession session) {

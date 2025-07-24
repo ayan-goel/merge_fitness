@@ -161,8 +161,14 @@ class PaymentService {
   // Consume a session (when booking)
   Future<bool> consumeSession(String clientId, String trainerId) async {
     try {
-      final package = await getSessionPackage(clientId, trainerId);
-      
+      // Prefer a package linked to this trainer
+      SessionPackage? package = await getSessionPackage(clientId, trainerId);
+
+      // Fallback to any package with remaining sessions
+      if (package == null || package.sessionsRemaining <= 0) {
+        package = await _getAnyAvailableSessionPackage(clientId);
+      }
+
       if (package == null || package.sessionsRemaining <= 0) {
         return false;
       }
@@ -186,8 +192,12 @@ class PaymentService {
   // Refund a session (when cancelling)
   Future<bool> refundSession(String clientId, String trainerId) async {
     try {
-      final package = await getSessionPackage(clientId, trainerId);
-      
+      // Prefer a package linked to this trainer
+      SessionPackage? package = await getSessionPackage(clientId, trainerId);
+
+      // Fallback to any package (last booked) if none found
+      package ??= await _getAnyAvailableSessionPackage(clientId);
+
       if (package == null) {
         return false;
       }
@@ -244,7 +254,14 @@ class PaymentService {
 
   // Check if client can book a session (has remaining sessions)
   Future<bool> canBookSession(String clientId, String trainerId) async {
-    final package = await getSessionPackage(clientId, trainerId);
+    // First try to find a package specific to this trainer
+    SessionPackage? package = await getSessionPackage(clientId, trainerId);
+
+    // If none (or no remaining sessions) fallback to *any* package that has sessions
+    if (package == null || package.sessionsRemaining <= 0) {
+      package = await _getAnyAvailableSessionPackage(clientId);
+    }
+
     return package != null && package.sessionsRemaining > 0;
   }
 
@@ -310,4 +327,24 @@ class PaymentService {
       return false;
     }
   }
+
+   Future<SessionPackage?> _getAnyAvailableSessionPackage(String clientId) async {
+     try {
+       // Find *any* package for this client that still has remaining sessions
+       final query = await _firestore.collection('sessionPackages')
+           .where('clientId', isEqualTo: clientId)
+           .get();
+
+       for (final doc in query.docs) {
+         final pkg = SessionPackage.fromFirestore(doc);
+         if (pkg.sessionsRemaining > 0) {
+           return pkg;
+         }
+       }
+       return null;
+     } catch (e) {
+       print('Error getting any available session package: $e');
+       return null;
+     }
+   }
 } 

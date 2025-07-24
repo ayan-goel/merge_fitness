@@ -735,7 +735,13 @@ class ClientReviewScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onboardingData = client['onboardingData'] as Map<String, dynamic>? ?? {};
+    // Safely extract onboarding data – user may not have filled the form or the
+    // map may come in as Map<dynamic, dynamic>. We defensively convert it.
+    Map<String, dynamic> onboardingData = {};
+    final rawOnboarding = client['onboardingData'];
+    if (rawOnboarding is Map) {
+      onboardingData = Map<String, dynamic>.from(rawOnboarding);
+    }
     final displayName = client['displayName'] ?? client['email'] ?? 'Unknown Client';
     final firstLetter = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
     

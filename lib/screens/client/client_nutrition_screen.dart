@@ -515,33 +515,40 @@ class _ClientNutritionScreenState extends State<ClientNutritionScreen> {
                 ),
               )
             else
-              Container(
-                padding: const EdgeInsets.all(16.0),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        const Icon(
-                          Icons.restaurant_menu,
-                          size: 48,
-                          color: AppStyles.slateGray,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No active nutrition plan',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            color: AppStyles.textDark,
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.restaurant_menu,
+                            size: 48,
+                            color: AppStyles.slateGray,
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Your trainer has not assigned a nutrition plan yet.',
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                          const SizedBox(height: 16),
+                          Text(
+                            'No active nutrition plan',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              color: AppStyles.textDark,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Your trainer has not assigned a nutrition plan yet.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppStyles.slateGray,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

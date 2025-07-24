@@ -465,6 +465,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text('Schedule with ${widget.trainerName}'),
         actions: [],
@@ -1189,121 +1190,126 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
   }
   
   Widget _buildBottomBar() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0), // Added extra bottom padding
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -4),
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0), // Added extra bottom padding
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
-        ],
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Selected time info
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppStyles.mutedBlue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppStyles.mutedBlue.withOpacity(0.3),
-                  width: 1,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Selected time info
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppStyles.mutedBlue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppStyles.mutedBlue.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: RichText(
+                  text: TextSpan(
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppStyles.darkCharcoal,
+                    ),
+                    children: [
+                      const TextSpan(text: 'Selected time: '),
+                      TextSpan(
+                        text: _getFormattedTimeSlot(_selectedTimeSlot!),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppStyles.mutedBlue,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              child: RichText(
-                text: TextSpan(
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppStyles.darkCharcoal,
-                  ),
-                  children: [
-                    const TextSpan(text: 'Selected time: '),
-                    TextSpan(
-                      text: _getFormattedTimeSlot(_selectedTimeSlot!),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppStyles.mutedBlue,
-                      ),
+              const SizedBox(height: 16),
+              
+              // Location input
+              _buildStyledTextField(
+                controller: _locationController,
+                label: 'Location',
+                hint: 'e.g., Gym, Park, Virtual',
+                icon: Icons.location_on_outlined,
+              ),
+              const SizedBox(height: 12),
+              
+              // Notes input
+              _buildStyledTextField(
+                controller: _notesController,
+                label: 'Notes (optional)',
+                hint: 'Any special instructions or requests',
+                icon: Icons.note_outlined,
+                maxLines: 2,
+              ),
+              const SizedBox(height: 20),
+              
+              // Schedule button
+              Container(
+                width: double.infinity,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: AppStyles.primaryGradient,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppStyles.mutedBlue.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Location input
-            _buildStyledTextField(
-              controller: _locationController,
-              label: 'Location',
-              hint: 'e.g., Gym, Park, Virtual',
-              icon: Icons.location_on_outlined,
-            ),
-            const SizedBox(height: 12),
-            
-            // Notes input
-            _buildStyledTextField(
-              controller: _notesController,
-              label: 'Notes (optional)',
-              hint: 'Any special instructions or requests',
-              icon: Icons.note_outlined,
-              maxLines: 2,
-            ),
-            const SizedBox(height: 20),
-            
-            // Schedule button
-            Container(
-              width: double.infinity,
-              height: 50,
-              decoration: BoxDecoration(
-                gradient: AppStyles.primaryGradient,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppStyles.mutedBlue.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _scheduleSession,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isSubmitting
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text(
-                      'Confirm Booking',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                child: ElevatedButton(
+                  onPressed: _isSubmitting ? null : _scheduleSession,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                  ),
+                  child: _isSubmitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Confirm Booking',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
