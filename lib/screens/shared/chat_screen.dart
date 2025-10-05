@@ -38,6 +38,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    // Dismiss keyboard when leaving the screen
+    FocusManager.instance.primaryFocus?.unfocus();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -142,9 +144,19 @@ class _ChatScreenState extends State<ChatScreen> {
         ? widget.conversation.trainerName
         : widget.conversation.clientName;
 
-    return Scaffold(
-      backgroundColor: AppStyles.offWhite,
-      appBar: AppBar(
+    return PopScope(
+      onPopInvokedWithResult: (didPop, result) {
+        // Dismiss keyboard when back button is pressed
+        FocusManager.instance.primaryFocus?.unfocus();
+      },
+      child: GestureDetector(
+        onTap: () {
+          // Dismiss keyboard when tapping outside the text field
+          FocusManager.instance.primaryFocus?.unfocus();
+        },
+        child: Scaffold(
+          backgroundColor: AppStyles.offWhite,
+          appBar: AppBar(
         title: Row(
           children: [
             CircleAvatar(
@@ -344,6 +356,8 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
         ],
+      ),
+        ),
       ),
     );
   }
