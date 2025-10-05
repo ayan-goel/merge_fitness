@@ -19,6 +19,8 @@ class CalendlyService {
   
   // Timezone settings for EST
   static const String targetTimeZone = 'America/New_York'; // EST timezone
+  // Refresh the token a few minutes before it expires to avoid race conditions
+  static const int _tokenRefreshLeewaySeconds = 300; // 5 minutes
   
   // Calendly API endpoints
   static const String _baseUrl = 'https://api.calendly.com';
@@ -44,6 +46,106 @@ class CalendlyService {
       return data?['calendlyToken'] as String?;
     } catch (e) {
       print('Error getting Calendly token: $e');
+      return null;
+    }
+  }
+
+  // Internal helper: read auth fields (access, refresh, expiry)
+  Future<Map<String, dynamic>?> _getCalendlyAuthData(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (!doc.exists) return null;
+      final data = doc.data();
+      return {
+        'accessToken': data?['calendlyToken'],
+        'refreshToken': data?['calendlyRefreshToken'],
+        'expiresAt': data?['calendlyTokenExpiresAt'],
+      };
+    } catch (e) {
+      print('Error getting Calendly auth data: $e');
+      return null;
+    }
+  }
+
+  // Get a valid token, refreshing if necessary
+  Future<String?> _getValidCalendlyToken(String userId) async {
+    final auth = await _getCalendlyAuthData(userId);
+    if (auth == null) return null;
+    String? accessToken = auth['accessToken'] as String?;
+    final String? refreshToken = auth['refreshToken'] as String?;
+    final dynamic expiresAtRaw = auth['expiresAt'];
+
+    // If we don't have expiry or refresh token, fall back to existing token
+    if (accessToken == null) return null;
+
+    DateTime? expiresAt;
+    if (expiresAtRaw is Timestamp) {
+      expiresAt = expiresAtRaw.toDate();
+    } else if (expiresAtRaw is DateTime) {
+      expiresAt = expiresAtRaw;
+    }
+
+    if (expiresAt != null) {
+      final now = DateTime.now();
+      if (now.isAfter(expiresAt.subtract(const Duration(seconds: _tokenRefreshLeewaySeconds)))) {
+        // Try to refresh
+        if (refreshToken != null) {
+          final refreshed = await _refreshCalendlyToken(userId, refreshToken);
+          if (refreshed != null) {
+            accessToken = refreshed;
+          } else {
+            // Refresh failed; mark as disconnected
+            await _handleTokenExpiration(userId);
+            return null;
+          }
+        } else {
+          // No refresh token; mark expired
+          await _handleTokenExpiration(userId);
+          return null;
+        }
+      }
+    }
+
+    return accessToken;
+  }
+
+  // Refresh token using Calendly OAuth
+  Future<String?> _refreshCalendlyToken(String userId, String refreshToken) async {
+    try {
+      final response = await http.post(
+        Uri.parse(_tokenUrl),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {
+          'client_id': _clientId,
+          'client_secret': _clientSecret,
+          'grant_type': 'refresh_token',
+          'refresh_token': refreshToken,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final String newAccessToken = data['access_token'];
+        final String? newRefreshToken = data['refresh_token']; // Calendly may rotate refresh tokens
+        final int expiresIn = data['expires_in'] ?? 3600;
+
+        await _firestore.collection('users').doc(userId).update({
+          'calendlyToken': newAccessToken,
+          if (newRefreshToken != null) 'calendlyRefreshToken': newRefreshToken,
+          'calendlyTokenExpiresAt': Timestamp.fromDate(DateTime.now().add(Duration(seconds: expiresIn))),
+          'calendlyConnected': true,
+        });
+
+        print('CalendlyService: Token refreshed successfully for $userId');
+        return newAccessToken;
+      } else {
+        print('CalendlyService: Failed to refresh token: ${response.statusCode} ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('CalendlyService: Error refreshing token: $e');
       return null;
     }
   }
@@ -96,8 +198,12 @@ class CalendlyService {
       print('CalendlyService: saveCalendlyToken - Got user info: ${userInfo['resource']['uri']}');
       
       print('CalendlyService: saveCalendlyToken - Updating Firestore...');
+      // Attempt to parse refresh_token and expiry from the token endpoint if available
+      // Since this method is called after token exchange, we expect caller to supply those values.
+      // However, to keep API surface simple, we'll store access token now and let caller update expiry if known.
       await _firestore.collection('users').doc(userId).update({
         'calendlyToken': token,
+        // Keep existing refresh token/expiry if previously present; they may be set by connectCalendlyAccount
         'calendlyConnected': true,
         'calendlyUri': calendlyUri ?? userInfo['resource']['uri'],
         'calendlySchedulingUrl': userInfo['resource']['scheduling_url'],
@@ -207,15 +313,21 @@ class CalendlyService {
         print('CalendlyService: Token exchange response status: ${tokenResponse.statusCode}');
         print('CalendlyService: Token exchange response body: ${tokenResponse.body}');
         
-        if (tokenResponse.statusCode == 200) {
-          final tokenData = jsonDecode(tokenResponse.body);
-          final accessToken = tokenData['access_token'];
+      if (tokenResponse.statusCode == 200) {
+          final tokenData = jsonDecode(tokenResponse.body) as Map<String, dynamic>;
+          final accessToken = tokenData['access_token'] as String;
+          final String? refreshToken = tokenData['refresh_token'] as String?;
+          final int expiresIn = tokenData['expires_in'] ?? 3600;
           print('CalendlyService: Successfully got access token: ${accessToken.substring(0, 20)}...');
           
-          // Save token to Firestore (without selecting a specific event type yet)
+          // Save token and refresh metadata to Firestore (without selecting a specific event type yet)
           print('CalendlyService: About to save token to Firestore...');
           await saveCalendlyToken(accessToken);
-          print('CalendlyService: Token saved to Firestore');
+          await _firestore.collection('users').doc(_auth.currentUser!.uid).update({
+            if (refreshToken != null) 'calendlyRefreshToken': refreshToken,
+            'calendlyTokenExpiresAt': Timestamp.fromDate(DateTime.now().add(Duration(seconds: expiresIn))),
+          });
+          print('CalendlyService: Token saved to Firestore with refresh metadata');
           
           // Return the token for further use
           print('CalendlyService: Returning access token');
@@ -239,7 +351,7 @@ class CalendlyService {
       if (userId == null) throw Exception('User not authenticated');
       
       // Get existing token
-      final token = await _getCalendlyToken(userId);
+      final token = await _getValidCalendlyToken(userId);
       if (token == null) throw Exception('Calendly not connected');
       
       // Verify the event type exists and is active
@@ -294,7 +406,7 @@ class CalendlyService {
   // Get event types for a trainer
   Future<List<Map<String, dynamic>>> getTrainerEventTypes(String trainerId) async {
     try {
-      final token = await _getCalendlyToken(trainerId);
+      final token = await _getValidCalendlyToken(trainerId);
       if (token == null) {
         print('CalendlyService: getTrainerEventTypes - No token for trainerId: $trainerId');
         throw Exception('Trainer has not connected their Calendly account');
@@ -326,8 +438,28 @@ class CalendlyService {
         print('CalendlyService: getTrainerEventTypes - Parsed event types list: $eventTypesList');
         return eventTypesList;
       } else if (response.statusCode == 401) {
-        // Token is invalid/expired - disconnect the account
-        print('CalendlyService: getTrainerEventTypes - Token invalid, disconnecting account');
+        // Token may have expired; attempt refresh once
+        print('CalendlyService: getTrainerEventTypes - 401 received, attempting token refresh');
+        final auth = await _getCalendlyAuthData(trainerId);
+        final refreshToken = auth?['refreshToken'] as String?;
+        if (refreshToken != null) {
+          final refreshed = await _refreshCalendlyToken(trainerId, refreshToken);
+          if (refreshed != null) {
+            // Retry once
+            final retry = await http.get(
+              Uri.parse(eventTypesUrl),
+              headers: {
+                'Authorization': 'Bearer $refreshed',
+                'Content-Type': 'application/json',
+              },
+            );
+            if (retry.statusCode == 200) {
+              final data = jsonDecode(retry.body);
+              final List<Map<String, dynamic>> eventTypesList = List<Map<String, dynamic>>.from(data['collection']);
+              return eventTypesList;
+            }
+          }
+        }
         await _handleTokenExpiration(trainerId);
         throw Exception('Calendly token has expired. Please reconnect your account.');
       } else {
@@ -359,7 +491,7 @@ class CalendlyService {
   // Get trainer's available time slots from Calendly for scheduling
   Future<List<Map<String, dynamic>>> getTrainerAvailability(String trainerId, {DateTime? startDate, DateTime? endDate}) async {
     try {
-      final token = await _getCalendlyToken(trainerId);
+      final token = await _getValidCalendlyToken(trainerId);
       if (token == null) {
         print('CalendlyService: getTrainerAvailability - No token for trainerId: $trainerId');
         throw Exception('Trainer has not connected their Calendly account');
@@ -557,8 +689,50 @@ class CalendlyService {
           throw Exception('Failed to parse availability response: $parseError');
         }
       } else if (response.statusCode == 401) {
-        // Token is invalid/expired - disconnect the account
-        print('CalendlyService: getTrainerAvailability - Token invalid, disconnecting account');
+        // Token may have expired; attempt refresh and retry once
+        print('CalendlyService: getTrainerAvailability - 401 received, attempting token refresh');
+        final auth = await _getCalendlyAuthData(trainerId);
+        final refreshToken = auth?['refreshToken'] as String?;
+        if (refreshToken != null) {
+          final refreshed = await _refreshCalendlyToken(trainerId, refreshToken);
+          if (refreshed != null) {
+            final retry = await http.get(
+              Uri.parse('$_baseUrl$_availabilityPath?event_type=$eventTypeUri&start_time=$startTime&end_time=$endTime'),
+              headers: {
+                'Authorization': 'Bearer $refreshed',
+                'Content-Type': 'application/json',
+              },
+            );
+            if (retry.statusCode == 200) {
+              try {
+                final data = jsonDecode(retry.body);
+                final List<Map<String, dynamic>> availableTimes = [];
+                for (final slot in List<Map<String, dynamic>>.from(data['collection'])) {
+                  final startTimeUtc = DateTime.parse(slot['start_time']);
+                  final startTimeEst = _convertToEST(startTimeUtc);
+                  DateTime endTimeUtc;
+                  if (slot.containsKey('end_time') && slot['end_time'] != null) {
+                    endTimeUtc = DateTime.parse(slot['end_time']);
+                  } else {
+                    endTimeUtc = startTimeUtc.add(Duration(minutes: eventDurationMinutes));
+                  }
+                  final endTimeEst = _convertToEST(endTimeUtc);
+                  availableTimes.add({
+                    'start_time': startTimeEst,
+                    'end_time': endTimeEst,
+                    'start_time_utc': startTimeUtc,
+                    'end_time_utc': endTimeUtc,
+                    'status': slot['status'] ?? 'available',
+                    'scheduling_url': slot['scheduling_url'],
+                    'spot_number': slot['invitees_remaining'] ?? 1,
+                  });
+                }
+                availableTimes.sort((a, b) => (a['start_time'] as DateTime).compareTo(b['start_time'] as DateTime));
+                return availableTimes;
+              } catch (_) {}
+            }
+          }
+        }
         await _handleTokenExpiration(trainerId);
         throw Exception('Calendly token has expired. Please reconnect your account.');
       } else {
@@ -711,7 +885,7 @@ class CalendlyService {
     String? payingClientId,
   }) async {
     try {
-      final token = await _getCalendlyToken(trainerId);
+      final token = await _getValidCalendlyToken(trainerId);
       if (token == null) {
         throw Exception('Trainer has not connected their Calendly account');
       }

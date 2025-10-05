@@ -95,4 +95,15 @@ class OnboardingService {
       throw e;
     }
   }
+
+  // Update client onboarding form
+  Future<void> updateClientOnboardingForm(String formId, OnboardingFormModel updatedForm) async {
+    try {
+      await _onboardingFormsCollection.doc(formId).update(updatedForm.toMap());
+      print('Successfully updated onboarding form: $formId');
+    } catch (e) {
+      print('Error updating onboarding form: $e');
+      throw e;
+    }
+  }
 } 

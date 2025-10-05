@@ -91,6 +91,127 @@ class FoodRecognitionService {
     ),
   );
   
+  /// Analyzes a food description text and returns nutritional information
+  Future<NutrientResult> analyzeFoodDescription(String foodDescription, {int maxRetries = 2}) async {
+    int attempts = 0;
+    
+    while (attempts <= maxRetries) {
+      try {
+        attempts++;
+        
+        // Create a prompt that instructs Gemini to analyze the food description and return structured data
+        final prompt = '''
+          Analyze this food description and provide detailed nutritional information: "$foodDescription"
+          
+          Your response must be ONLY a JSON object with these nutritional values:
+          {
+            "calories": number (kcal),
+            "protein": number (g),
+            "carbs": number (g),
+            "fat": number (g),
+            "sodium": number (mg),
+            "cholesterol": number (mg),
+            "fiber": number (g),
+            "sugar": number (g)
+          }
+          
+          Be as accurate as possible based on standard nutritional data for the described food.
+          Consider typical serving sizes if not specified.
+          Do NOT include any text explanation, markdown formatting, or code blocks.
+          Only return the JSON object itself.
+        ''';
+        
+        // Create content with text prompt
+        final content = Content.text(prompt);
+        
+        // Generate content from Gemini
+        final response = await _model.generateContent([content]);
+        final responseText = response.text;
+        
+        if (responseText == null || responseText.isEmpty) {
+          // If we've used all retries, return error result
+          if (attempts > maxRetries) {
+            return NutrientResult.withError('Empty response from AI. Please try again.');
+          }
+          debugPrint('Empty response, retrying (attempt $attempts)...');
+          continue; // Retry
+        }
+        
+        debugPrint('Gemini response: $responseText');
+        
+        // Try to extract JSON from the response using multiple approaches
+        try {
+          // First, try to parse the entire response directly
+          return NutrientResult.fromJson(jsonDecode(responseText));
+        } catch (e) {
+          debugPrint('Direct JSON parsing failed: $e');
+          
+          // Second, try to extract JSON using regex for a JSON object
+          final jsonRegExp = RegExp(r'{[\s\S]*}');
+          final match = jsonRegExp.firstMatch(responseText);
+          
+          if (match != null) {
+            final jsonString = match.group(0);
+            if (jsonString != null) {
+              try {
+                return NutrientResult.fromJson(jsonDecode(jsonString));
+              } catch (e) {
+                debugPrint('Regex JSON parsing failed: $e');
+              }
+            }
+          }
+          
+          // Third, try to extract from markdown code blocks
+          final markdownRegExp = RegExp(r'```(?:json)?\s*([\s\S]*?)\s*```');
+          final markdownMatch = markdownRegExp.firstMatch(responseText);
+          
+          if (markdownMatch != null && markdownMatch.groupCount >= 1) {
+            final jsonString = markdownMatch.group(1);
+            if (jsonString != null) {
+              try {
+                return NutrientResult.fromJson(jsonDecode(jsonString));
+              } catch (e) {
+                debugPrint('Markdown JSON parsing failed: $e');
+              }
+            }
+          }
+          
+          // If all parsing fails and we have retries left, try again
+          if (attempts <= maxRetries) {
+            debugPrint('JSON parsing failed, retrying (attempt $attempts)...');
+            continue; // Retry
+          }
+          
+          // If all extraction attempts fail, return error result
+          return NutrientResult.withError('Could not extract nutritional data. Please try again.');
+        }
+      } catch (e) {
+        debugPrint('Error analyzing food description (attempt $attempts): $e');
+        
+        // Return error result on the final attempt
+        if (attempts > maxRetries) {
+          String errorMessage = 'Error analyzing food description.';
+          
+          // Provide more specific error messages
+          if (e.toString().contains('quota') || e.toString().contains('rate limit')) {
+            errorMessage = 'API usage limit reached. Please try again later.';
+          } else if (e.toString().contains('network')) {
+            errorMessage = 'Network error. Please check your internet connection.';
+          }
+          
+          return NutrientResult.withError(errorMessage);
+        }
+        
+        // Wait a short time before retrying (exponential backoff)
+        final waitTime = Duration(milliseconds: 200 * attempts);
+        await Future.delayed(waitTime);
+      }
+    }
+    
+    // This should never be reached due to the return in the final attempt, but just in case
+    return NutrientResult.withError('Failed to analyze food description after multiple attempts.');
+  }
+  
   /// Analyzes a food image and returns nutritional information
   Future<NutrientResult> analyzeFoodImage(String imagePath, {int maxRetries = 2}) async {
     int attempts = 0;

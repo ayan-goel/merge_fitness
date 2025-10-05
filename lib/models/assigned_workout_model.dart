@@ -26,6 +26,11 @@ class AssignedWorkout {
   final String? notes;
   final bool isSessionBased; // New field to track if this is from a training session
   final String? sessionId; // Reference to the session if this is session-based
+  final bool isRecurring; // Whether this workout repeats weekly
+  final int? recurringWeeks; // Number of weeks to repeat for
+  final int? recurringDayOfWeek; // Day of week (1-7, Monday=1) for recurring workouts
+  final String? fullWorkoutVideoId; // ID of the full workout video
+  final String? fullWorkoutVideoUrl; // URL of the full workout video
 
   AssignedWorkout({
     required this.id,
@@ -42,6 +47,11 @@ class AssignedWorkout {
     this.notes,
     this.isSessionBased = false, // Default to false for backwards compatibility
     this.sessionId,
+    this.isRecurring = false, // Default to false for backwards compatibility
+    this.recurringWeeks,
+    this.recurringDayOfWeek,
+    this.fullWorkoutVideoId,
+    this.fullWorkoutVideoUrl,
   });
 
   factory AssignedWorkout.fromFirestore(DocumentSnapshot doc) {
@@ -72,6 +82,11 @@ class AssignedWorkout {
       notes: data['notes'],
       isSessionBased: data['isSessionBased'] ?? false,
       sessionId: data['sessionId'],
+      isRecurring: data['isRecurring'] ?? false,
+      recurringWeeks: data['recurringWeeks'],
+      recurringDayOfWeek: data['recurringDayOfWeek'],
+      fullWorkoutVideoId: data['fullWorkoutVideoId'],
+      fullWorkoutVideoUrl: data['fullWorkoutVideoUrl'],
     );
   }
 
@@ -177,6 +192,11 @@ class AssignedWorkout {
       'notes': notes,
       'isSessionBased': isSessionBased,
       'sessionId': sessionId,
+      'isRecurring': isRecurring,
+      'recurringWeeks': recurringWeeks,
+      'recurringDayOfWeek': recurringDayOfWeek,
+      'fullWorkoutVideoId': fullWorkoutVideoId,
+      'fullWorkoutVideoUrl': fullWorkoutVideoUrl,
     };
   }
 
@@ -187,6 +207,9 @@ class AssignedWorkout {
     required WorkoutTemplate template,
     required DateTime scheduledDate,
     String? notes,
+    bool isRecurring = false,
+    int? recurringWeeks,
+    int? recurringDayOfWeek,
   }) {
     final now = DateTime.now();
     return AssignedWorkout(
@@ -200,6 +223,11 @@ class AssignedWorkout {
       status: WorkoutStatus.assigned,
       exercises: template.exercises,
       notes: notes,
+      isRecurring: isRecurring,
+      recurringWeeks: recurringWeeks,
+      recurringDayOfWeek: recurringDayOfWeek,
+      fullWorkoutVideoId: template.fullWorkoutVideoId,
+      fullWorkoutVideoUrl: template.fullWorkoutVideoUrl,
     );
   }
 
@@ -212,6 +240,11 @@ class AssignedWorkout {
     WorkoutStatus? status,
     String? notes,
     String? feedback,
+    bool? isRecurring,
+    int? recurringWeeks,
+    int? recurringDayOfWeek,
+    String? fullWorkoutVideoId,
+    String? fullWorkoutVideoUrl,
   }) {
     return AssignedWorkout(
       id: this.id,
@@ -228,6 +261,11 @@ class AssignedWorkout {
       notes: notes ?? this.notes,
       isSessionBased: this.isSessionBased,
       sessionId: this.sessionId,
+      isRecurring: isRecurring ?? this.isRecurring,
+      recurringWeeks: recurringWeeks ?? this.recurringWeeks,
+      recurringDayOfWeek: recurringDayOfWeek ?? this.recurringDayOfWeek,
+      fullWorkoutVideoId: fullWorkoutVideoId ?? this.fullWorkoutVideoId,
+      fullWorkoutVideoUrl: fullWorkoutVideoUrl ?? this.fullWorkoutVideoUrl,
     );
   }
   

@@ -46,6 +46,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
   List<UserModel> _familyMembers = [];
   Set<String> _selectedFamilyMembers = {};
   bool _isBookingForFamily = false;
+  bool _isVirtual = false;
   
   // Group time slots by date
   Map<DateTime, List<Map<String, dynamic>>> _timeSlotsByDate = {};
@@ -307,6 +308,230 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
     }
   }
   
+  Future<void> _showBookingSuccessDialog(TrainingSession session) async {
+    final startTime = session.startTime;
+    final endTime = session.endTime;
+    final formattedDate = DateFormat('EEEE, MMMM d, yyyy').format(startTime);
+    final formattedTime = '${DateFormat('h:mm a').format(startTime)} - ${DateFormat('h:mm a').format(endTime)}';
+    
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white,
+                  AppStyles.primarySage.withOpacity(0.05),
+                ],
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Success icon
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppStyles.successGreen.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.check_circle,
+                    size: 64,
+                    color: AppStyles.successGreen,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                // Title
+                const Text(
+                  'Awesome!',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: AppStyles.textDark,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                
+                // Subtitle
+                Text(
+                  'You\'ve booked a session with ${widget.trainerName}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: AppStyles.slateGray,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                // Session details card
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppStyles.offWhite,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppStyles.primarySage.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildDetailRow(
+                        Icons.calendar_today,
+                        'Date',
+                        formattedDate,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildDetailRow(
+                        Icons.access_time,
+                        'Time',
+                        formattedTime,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildDetailRow(
+                        Icons.location_on,
+                        'Location',
+                        session.location,
+                      ),
+                      if (_isBookingForFamily && _selectedFamilyMembers.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _buildDetailRow(
+                          Icons.people,
+                          'Attendees',
+                          '${_selectedFamilyMembers.length} family member${_selectedFamilyMembers.length > 1 ? 's' : ''}',
+                        ),
+                      ],
+                      if (session.notes != null && session.notes!.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _buildDetailRow(
+                          Icons.note,
+                          'Notes',
+                          session.notes!,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                // Info message
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppStyles.primarySage.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 20,
+                        color: AppStyles.primarySage,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'You\'ll receive a reminder before your session',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppStyles.primarySage,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                // Close button
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppStyles.primarySage,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Got it!',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppStyles.primarySage.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            size: 20,
+            color: AppStyles.primarySage,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppStyles.slateGray,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: AppStyles.textDark,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+  
   Future<void> _scheduleSession() async {
     if (_selectedTimeSlot == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -417,7 +642,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
       }
 
       // Use the scheduleSession method which handles Calendly API integration
-      await _calendlyService.scheduleSession(
+      final bookedSession = await _calendlyService.scheduleSession(
         trainerId: widget.trainerId, 
         clientId: widget.clientId,
         timeSlot: _selectedTimeSlot!,
@@ -428,15 +653,13 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
         payingClientId: payingClientId,
       );
       
-      // Show success message and pop back
+      // Show success dialog and navigate to dashboard
       if (mounted) {
-        final memberCount = _isBookingForFamily ? _selectedFamilyMembers.length : 1;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(
-            'Session scheduled successfully${memberCount > 1 ? ' for $memberCount family members' : ''}!'
-          )),
-        );
-        Navigator.pop(context, true); // Return true to indicate success
+        await _showBookingSuccessDialog(bookedSession);
+        // Navigate back to dashboard (pop all the way back)
+        if (mounted) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
       }
     } catch (e) {
       print('Error scheduling session: $e');
@@ -1247,14 +1470,68 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen>
               ),
               const SizedBox(height: 16),
               
-              // Location input
-              _buildStyledTextField(
-                controller: _locationController,
-                label: 'Location',
-                hint: 'e.g., Gym, Park, Virtual',
-                icon: Icons.location_on_outlined,
+              // Virtual session toggle
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: _isVirtual 
+                      ? AppStyles.primarySage.withOpacity(0.1)
+                      : AppStyles.offWhite,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _isVirtual 
+                        ? AppStyles.primarySage 
+                        : AppStyles.slateGray.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.videocam_outlined,
+                      size: 20,
+                      color: _isVirtual ? AppStyles.primarySage : AppStyles.slateGray,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Virtual Session',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: _isVirtual ? AppStyles.primarySage : AppStyles.textDark,
+                        ),
+                      ),
+                    ),
+                    Switch(
+                      value: _isVirtual,
+                      onChanged: (value) {
+                        setState(() {
+                          _isVirtual = value;
+                          if (_isVirtual) {
+                            _locationController.text = 'Virtual';
+                          } else {
+                            _locationController.text = '';
+                          }
+                        });
+                      },
+                      activeColor: AppStyles.primarySage,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 12),
+              
+              // Location input (only show if not virtual)
+              if (!_isVirtual)
+                _buildStyledTextField(
+                  controller: _locationController,
+                  label: 'Location',
+                  hint: 'e.g., Gym, Park, Home',
+                  icon: Icons.location_on_outlined,
+                ),
+              if (!_isVirtual)
+                const SizedBox(height: 12),
               
               // Notes input
               _buildStyledTextField(

@@ -28,6 +28,9 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
   bool _isLoading = false;
   bool _isEditing = false;
   late String _trainerId;
+  String? _selectedFullWorkoutVideoId;
+  String? _selectedFullWorkoutVideoUrl;
+  String? _selectedFullWorkoutVideoName;
   
   @override
   void initState() {
@@ -39,6 +42,8 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
       _nameController.text = widget.template!.name;
       _descriptionController.text = widget.template?.description ?? '';
       _exercises = List.from(widget.template!.exercises);
+      _selectedFullWorkoutVideoId = widget.template!.fullWorkoutVideoId;
+      _selectedFullWorkoutVideoUrl = widget.template!.fullWorkoutVideoUrl;
     }
   }
   
@@ -102,6 +107,47 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
     });
   }
   
+  Future<void> _selectFullWorkoutVideo() async {
+    final VideoService videoService = VideoService();
+    
+    // Fetch trainer's videos
+    final videosStream = videoService.getTrainerVideos(_trainerId);
+    final videos = await videosStream.first;
+    
+    if (!mounted) return;
+    
+    if (videos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No videos available. Please upload videos first.')),
+      );
+      return;
+    }
+    
+    // Show video selection dialog with search
+    final selectedVideo = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) {
+        return _VideoSelectionDialog(videos: videos);
+      },
+    );
+    
+    if (selectedVideo != null) {
+      setState(() {
+        _selectedFullWorkoutVideoId = selectedVideo['id'] as String?;
+        _selectedFullWorkoutVideoUrl = selectedVideo['url'] as String?;
+        _selectedFullWorkoutVideoName = selectedVideo['name'] as String?;
+      });
+    }
+  }
+  
+  void _removeFullWorkoutVideo() {
+    setState(() {
+      _selectedFullWorkoutVideoId = null;
+      _selectedFullWorkoutVideoUrl = null;
+      _selectedFullWorkoutVideoName = null;
+    });
+  }
+  
   void _reorderExercises(int oldIndex, int newIndex) {
     setState(() {
       if (newIndex > oldIndex) {
@@ -139,6 +185,8 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
           name: _nameController.text,
           description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
           exercises: _exercises,
+          fullWorkoutVideoId: _selectedFullWorkoutVideoId,
+          fullWorkoutVideoUrl: _selectedFullWorkoutVideoUrl,
           updatedAt: DateTime.now(),
         );
         await _workoutService.updateTemplate(template);
@@ -148,7 +196,11 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
           name: _nameController.text,
           description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
         );
-        template = template.copyWith(exercises: _exercises);
+        template = template.copyWith(
+          exercises: _exercises,
+          fullWorkoutVideoId: _selectedFullWorkoutVideoId,
+          fullWorkoutVideoUrl: _selectedFullWorkoutVideoUrl,
+        );
         template = await _workoutService.createTemplate(template);
       }
       
@@ -254,6 +306,79 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                       maxLines: 2,
                       textInputAction: TextInputAction.done,
                     ),
+                    const SizedBox(height: 24.0),
+                    
+                    // Full Workout Video Section
+                    const Text(
+                      'Full Workout Video (Optional)',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8.0),
+                    if (_selectedFullWorkoutVideoId != null)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.video_library,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _selectedFullWorkoutVideoName ?? 'Video Selected',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Full workout video',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: _removeFullWorkoutVideo,
+                              tooltip: 'Remove video',
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _selectFullWorkoutVideo,
+                          icon: const Icon(Icons.add_photo_alternate),
+                          label: const Text('Add Full Workout Video'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -403,6 +528,25 @@ class ExerciseListItem extends StatelessWidget {
                 Text('${exercise.sets} sets × ${exercise.reps} reps'),
               ],
             ),
+            if (exercise.difficulty != null) ...[
+              const SizedBox(height: 4.0),
+              Row(
+                children: [
+                  const Icon(Icons.trending_up, size: 16.0),
+                  const SizedBox(width: 8.0),
+                  Text('Difficulty: ${exercise.difficulty}/5'),
+                ],
+              ),
+            ] else ...[
+              const SizedBox(height: 4.0),
+              Row(
+                children: [
+                  const Icon(Icons.help_outline, size: 16.0),
+                  const SizedBox(width: 8.0),
+                  Text('Difficulty: N/A'),
+                ],
+              ),
+            ],
             if (exercise.restSeconds != null) ...[
               const SizedBox(height: 4.0),
               Row(
@@ -436,6 +580,134 @@ class ExerciseListItem extends StatelessWidget {
   }
 }
 
+// Video Selection Dialog with Search
+class _VideoSelectionDialog extends StatefulWidget {
+  final List videos;
+  
+  const _VideoSelectionDialog({required this.videos});
+  
+  @override
+  State<_VideoSelectionDialog> createState() => _VideoSelectionDialogState();
+}
+
+class _VideoSelectionDialogState extends State<_VideoSelectionDialog> {
+  final TextEditingController _searchController = TextEditingController();
+  List _filteredVideos = [];
+  
+  @override
+  void initState() {
+    super.initState();
+    _filteredVideos = widget.videos;
+    _searchController.addListener(_filterVideos);
+  }
+  
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+  
+  void _filterVideos() {
+    if (!mounted) return;
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        _filteredVideos = widget.videos;
+      } else {
+        _filteredVideos = widget.videos.where((video) {
+          return video.name.toLowerCase().contains(query);
+        }).toList();
+      }
+    });
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Select Full Workout Video'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Search bar
+            TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search videos...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Video list
+            Expanded(
+              child: _filteredVideos.isEmpty
+                  ? Center(
+                      child: Text(
+                        _searchController.text.isEmpty 
+                            ? 'No videos available'
+                            : 'No videos found',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _filteredVideos.length,
+                      itemBuilder: (context, index) {
+                        final video = _filteredVideos[index];
+                        return ListTile(
+                          title: Text(video.name),
+                          leading: const Icon(Icons.video_library),
+                          onTap: () {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (context.mounted) {
+                                Navigator.of(context).pop(<String, dynamic>{
+                                  'id': video.id,
+                                  'url': video.videoUrl,
+                                  'name': video.name,
+                                });
+                              }
+                            });
+                          },
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            });
+          },
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
+  }
+}
+
 class ExerciseDialog extends StatefulWidget {
   final ExerciseTemplate? exercise;
   
@@ -455,6 +727,7 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
   final TextEditingController _setsController = TextEditingController();
   final TextEditingController _repsController = TextEditingController();
   final TextEditingController _restController = TextEditingController();
+  int _selectedDifficulty = 3; // Default to medium difficulty
   
   final VideoService _videoService = VideoService();
   final AuthService _authService = AuthService();
@@ -479,6 +752,7 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
       _restController.text = e.restSeconds?.toString() ?? '';
       _selectedVideoId = e.videoId;
       _selectedVideoUrl = e.videoUrl;
+      _selectedDifficulty = e.difficulty ?? 3; // Default to 3 if not set
       // Merge any existing notes into the description if both exist
       if (e.notes != null && e.notes!.isNotEmpty) {
         if (_descriptionController.text.isNotEmpty) {
@@ -659,7 +933,7 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
   ExerciseTemplate _createExercise() {
     // Generate a truly unique ID
     final id = widget.exercise?.id ?? 'exercise_${DateTime.now().millisecondsSinceEpoch}_${UniqueKey().toString()}';
-    
+
     return ExerciseTemplate(
       id: id,
       name: _nameController.text,
@@ -670,6 +944,7 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
       reps: int.parse(_repsController.text),
       restSeconds: _restController.text.isEmpty ? null : int.parse(_restController.text),
       notes: null, // No longer using separate notes field
+      difficulty: _selectedDifficulty,
     );
   }
   
@@ -914,6 +1189,93 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
                   }
                   return null;
                 },
+              ),
+              const SizedBox(height: 16.0),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  color: Theme.of(context).colorScheme.surface,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Difficulty Level',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: List.generate(5, (index) {
+                        final difficulty = index + 1;
+                        final isSelected = _selectedDifficulty == difficulty;
+
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedDifficulty = difficulty;
+                            });
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isSelected
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Colors.transparent,
+                              border: Border.all(
+                                color: isSelected
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                width: 2,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                difficulty.toString(),
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : Theme.of(context).colorScheme.onSurface,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '1 - Easiest',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          '5 - Hardest',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

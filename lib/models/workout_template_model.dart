@@ -12,6 +12,7 @@ class ExerciseTemplate {
   final int reps;
   final int? restSeconds;
   final String? notes;
+  final int? difficulty; // 1-5 scale, where 5 is most difficult
 
   ExerciseTemplate({
     required this.id,
@@ -24,6 +25,7 @@ class ExerciseTemplate {
     required this.reps,
     this.restSeconds,
     this.notes,
+    this.difficulty,
   });
 
   factory ExerciseTemplate.fromMap(Map<String, dynamic> map, String id) {
@@ -38,6 +40,7 @@ class ExerciseTemplate {
       reps: map['reps'] ?? 10,
       restSeconds: map['restSeconds'],
       notes: map['notes'],
+      difficulty: map['difficulty'],
     );
   }
 
@@ -52,6 +55,7 @@ class ExerciseTemplate {
       'reps': reps,
       'restSeconds': restSeconds,
       'notes': notes,
+      'difficulty': difficulty,
     };
   }
 
@@ -65,6 +69,7 @@ class ExerciseTemplate {
     int? reps,
     int? restSeconds,
     String? notes,
+    int? difficulty,
   }) {
     return ExerciseTemplate(
       id: this.id,
@@ -77,6 +82,7 @@ class ExerciseTemplate {
       reps: reps ?? this.reps,
       restSeconds: restSeconds ?? this.restSeconds,
       notes: notes ?? this.notes,
+      difficulty: difficulty ?? this.difficulty,
     );
   }
 }
@@ -88,6 +94,8 @@ class WorkoutTemplate {
   final String name;
   final String? description;
   final List<ExerciseTemplate> exercises;
+  final String? fullWorkoutVideoId;
+  final String? fullWorkoutVideoUrl;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -97,6 +105,8 @@ class WorkoutTemplate {
     required this.name,
     this.description,
     required this.exercises,
+    this.fullWorkoutVideoId,
+    this.fullWorkoutVideoUrl,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -121,6 +131,8 @@ class WorkoutTemplate {
       name: data['name'] ?? '',
       description: data['description'],
       exercises: exercises,
+      fullWorkoutVideoId: data['fullWorkoutVideoId'],
+      fullWorkoutVideoUrl: data['fullWorkoutVideoUrl'],
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
     );
@@ -132,6 +144,8 @@ class WorkoutTemplate {
       'name': name,
       'description': description,
       'exercises': exercises.map((e) => e.toMap()).toList(),
+      'fullWorkoutVideoId': fullWorkoutVideoId,
+      'fullWorkoutVideoUrl': fullWorkoutVideoUrl,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -159,6 +173,8 @@ class WorkoutTemplate {
     String? name,
     String? description,
     List<ExerciseTemplate>? exercises,
+    String? fullWorkoutVideoId,
+    String? fullWorkoutVideoUrl,
     DateTime? updatedAt,
   }) {
     return WorkoutTemplate(
@@ -167,6 +183,8 @@ class WorkoutTemplate {
       name: name ?? this.name,
       description: description ?? this.description,
       exercises: exercises ?? this.exercises,
+      fullWorkoutVideoId: fullWorkoutVideoId ?? this.fullWorkoutVideoId,
+      fullWorkoutVideoUrl: fullWorkoutVideoUrl ?? this.fullWorkoutVideoUrl,
       createdAt: this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
     );

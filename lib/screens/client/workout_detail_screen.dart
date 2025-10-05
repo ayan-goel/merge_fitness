@@ -393,6 +393,68 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                       ),
                     ),
                   ] else ...[
+                    // Full Workout Video Section
+                    if (widget.workout.fullWorkoutVideoUrl != null && widget.workout.fullWorkoutVideoUrl!.isNotEmpty) ...[
+                      Card(
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 1,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppStyles.primarySage.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.play_circle_filled,
+                                      color: AppStyles.primarySage,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Expanded(
+                                    child: Text(
+                                      'Full Workout Video',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppStyles.textDark,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              ClipRounded(
+                                radius: 12,
+                                child: VideoPlayerWidget(
+                                  videoUrl: widget.workout.fullWorkoutVideoUrl!,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Watch the complete workout demonstration',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: AppStyles.slateGray,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24.0),
+                    ],
+                    
                     Text(
                       'Exercises',
                       style: const TextStyle(
@@ -640,11 +702,28 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 // Add this new widget for display exercise with video support
 class ExerciseCard extends StatelessWidget {
   final ExerciseTemplate exercise;
-  
+
   const ExerciseCard({
     super.key,
     required this.exercise,
   });
+
+  Color _getDifficultyColor(int difficulty) {
+    switch (difficulty) {
+      case 1:
+        return Colors.green.shade600; // Easiest - green
+      case 2:
+        return Colors.lightGreen.shade600;
+      case 3:
+        return Colors.amber.shade600; // Medium - amber
+      case 4:
+        return Colors.orange.shade600;
+      case 5:
+        return Colors.red.shade600; // Hardest - red
+      default:
+        return AppStyles.slateGray;
+    }
+  }
   
   void _playVideo(BuildContext context, String videoUrl, String exerciseName) {
     showDialog(
@@ -954,7 +1033,72 @@ class ExerciseCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                
+
+                // Difficulty rating (if available)
+                if (exercise.difficulty != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: _getDifficultyColor(exercise.difficulty!).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _getDifficultyColor(exercise.difficulty!).withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.trending_up,
+                          size: 16,
+                          color: _getDifficultyColor(exercise.difficulty!),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Difficulty: ${exercise.difficulty}/5',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: _getDifficultyColor(exercise.difficulty!),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppStyles.slateGray.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppStyles.slateGray.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.help_outline,
+                          size: 16,
+                          color: AppStyles.slateGray,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Difficulty: N/A',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: AppStyles.slateGray,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 // Description (if available)
                 if (hasDescription) ...[
                   const SizedBox(height: 16),
@@ -1095,4 +1239,24 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
 // Replace the existing _buildExerciseCard method with this to use our new ExerciseCard widget
 Widget _buildExerciseCard(BuildContext context, ExerciseTemplate exercise) {
   return ExerciseCard(exercise: exercise);
+}
+
+// ClipRounded widget for rounded corners
+class ClipRounded extends StatelessWidget {
+  final Widget child;
+  final double radius;
+  
+  const ClipRounded({
+    super.key,
+    required this.child,
+    required this.radius,
+  });
+  
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: child,
+    );
+  }
 } 

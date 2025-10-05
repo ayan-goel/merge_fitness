@@ -91,11 +91,11 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
   String? _onboardingFormId;
   
   // Height fields in US units
-  int _feet = 5;
-  int _inches = 8;
+  int? _feet;
+  int? _inches;
   
   // Weight field in US units
-  final TextEditingController _weightController = TextEditingController(text: '160');
+  final TextEditingController _weightController = TextEditingController();
 
   // Form controllers for text fields
   final TextEditingController _firstNameController = TextEditingController();
@@ -190,15 +190,24 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
   
   // Convert feet/inches to centimeters
   void _updateHeightFromFeetInches() {
-    // Convert feet and inches to cm: (feet * 12 + inches) * 2.54
-    _height = ((_feet * 12) + _inches) * 2.54;
+    if (_feet != null && _inches != null) {
+      // Convert feet and inches to cm: (feet * 12 + inches) * 2.54
+      _height = ((_feet! * 12) + _inches!) * 2.54;
+    } else {
+      _height = null;
+    }
   }
   
   // Convert pounds to kilograms
   void _updateWeightFromPounds(String pounds) {
     if (pounds.isNotEmpty) {
       // Convert pounds to kg: pounds / 2.20462
-      _weight = double.tryParse(pounds)! / 2.20462;
+      final parsedWeight = double.tryParse(pounds);
+      if (parsedWeight != null) {
+        _weight = parsedWeight / 2.20462;
+      } else {
+        _weight = null;
+      }
     } else {
       _weight = null;
     }
@@ -230,6 +239,12 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
     // Dismiss keyboard before navigating
     FocusScope.of(context).unfocus();
     
+    // Validate current page before proceeding
+    if (!_validateCurrentPage()) {
+      _showValidationError();
+      return;
+    }
+    
     if (_currentPage < _totalPages - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
@@ -242,6 +257,151 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
       } else {
         _showCompletionRequiredDialog();
       }
+    }
+  }
+  
+  // Validate current page fields
+  bool _validateCurrentPage() {
+    switch (_currentPage) {
+      case 0: // Personal Info Page
+        return _validatePersonalInfoPage();
+      case 1: // Height/Weight Page
+        return _validateHeightWeightPage();
+      case 2: // Medical History Page 1
+        return _validateMedicalHistoryPage1();
+      case 3: // Medical History Page 2
+        return _validateMedicalHistoryPage2();
+      case 4: // Exercise and Lifestyle Page
+        return _validateExerciseAndLifestylePage();
+      case 5: // Dietary Page
+        return _validateDietaryPage();
+      case 6: // Fitness Ratings Page
+        return _validateFitnessRatingsPage();
+      case 7: // Signature and Photos Page
+        return _validateSignatureAndPhotosPage();
+      default:
+        return true;
+    }
+  }
+  
+  // Validation for Page 1: Personal Info
+  bool _validatePersonalInfoPage() {
+    if (_firstName == null || _firstName!.trim().isEmpty) return false;
+    if (_lastName == null || _lastName!.trim().isEmpty) return false;
+    if (_email == null || _email!.trim().isEmpty) return false;
+    if (_phoneNumber == null || _phoneNumber!.trim().isEmpty) return false;
+    if (_address == null || _address!.trim().isEmpty) return false;
+    if (_dateOfBirth == null) return false;
+    if (_emergencyContact == null || _emergencyContact!.trim().isEmpty) return false;
+    if (_emergencyPhone == null || _emergencyPhone!.trim().isEmpty) return false;
+    return true;
+  }
+  
+  // Validation for Page 2: Height and Weight
+  bool _validateHeightWeightPage() {
+    if (_feet == null || _inches == null) return false;
+    if (_weight == null || _weight! <= 0) return false;
+    return true;
+  }
+  
+  // Validation for Page 3: Medical History Page 1
+  bool _validateMedicalHistoryPage1() {
+    if (_hasHeartDisease == null) return false;
+    if (_hasBreathingIssues == null) return false;
+    if (_lastPhysicalDate == null || _lastPhysicalDate!.trim().isEmpty) return false;
+    if (_lastPhysicalResult == null || _lastPhysicalResult!.trim().isEmpty) return false;
+    if (_hasDoctorNoteHeartTrouble == null) return false;
+    if (_hasAnginaPectoris == null) return false;
+    if (_hasHeartPalpitations == null) return false;
+    return true;
+  }
+  
+  // Validation for Page 4: Medical History Page 2
+  bool _validateMedicalHistoryPage2() {
+    if (_hasHeartAttack == null) return false;
+    if (_hasDiabetesOrHighBloodPressure == null) return false;
+    if (_hasHeartDiseaseInFamily == null) return false;
+    if (_hasCholesterolMedication == null) return false;
+    if (_hasHeartMedication == null) return false;
+    if (_sleepsWell == null) return false;
+    if (_drinksDailyAlcohol == null) return false;
+    if (_smokescigarettes == null) return false;
+    if (_hasPhysicalCondition == null) return false;
+    if (_hasJointOrMuscleProblems == null) return false;
+    if (_isPregnant == null) return false;
+    return true;
+  }
+  
+  // Validation for Page 5: Exercise and Lifestyle
+  bool _validateExerciseAndLifestylePage() {
+    if (_exerciseFrequency == null || _exerciseFrequency!.trim().isEmpty) return false;
+    if (_selectedGoals.isEmpty) return false;
+    return true;
+  }
+  
+  // Validation for Page 6: Dietary
+  bool _validateDietaryPage() {
+    // Check that at least some dietary information is provided
+    if (_eatingHabits == null || _eatingHabits!.trim().isEmpty) return false;
+    if (_typicalBreakfast == null || _typicalBreakfast!.trim().isEmpty) return false;
+    if (_typicalLunch == null || _typicalLunch!.trim().isEmpty) return false;
+    if (_typicalDinner == null || _typicalDinner!.trim().isEmpty) return false;
+    if (_regularFoods.isEmpty) return false;
+    return true;
+  }
+  
+  // Validation for Page 7: Fitness Ratings
+  bool _validateFitnessRatingsPage() {
+    // Ratings have default values, so they're always set
+    // Just verify they're within valid range (1-10)
+    if (_cardioRespiratoryRating < 1 || _cardioRespiratoryRating > 10) return false;
+    if (_strengthRating < 1 || _strengthRating > 10) return false;
+    if (_enduranceRating < 1 || _enduranceRating > 10) return false;
+    if (_flexibilityRating < 1 || _flexibilityRating > 10) return false;
+    if (_powerRating < 1 || _powerRating > 10) return false;
+    if (_bodyCompositionRating < 1 || _bodyCompositionRating > 10) return false;
+    return true;
+  }
+  
+  // Validation for Page 8: Signature and Photos
+  bool _validateSignatureAndPhotosPage() {
+    // This page is validated separately in _canFinishOnboarding()
+    return true;
+  }
+  
+  // Show validation error message
+  void _showValidationError() {
+    String message = _getValidationErrorMessage();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+  
+  // Get specific validation error message for current page
+  String _getValidationErrorMessage() {
+    switch (_currentPage) {
+      case 0:
+        return 'Please fill out all personal information fields';
+      case 1:
+        return 'Please enter your height and weight';
+      case 2:
+        return 'Please answer all medical history questions';
+      case 3:
+        return 'Please answer all medical history questions';
+      case 4:
+        return 'Please answer all exercise and lifestyle questions and select at least one goal';
+      case 5:
+        return 'Please fill out all dietary information fields';
+      case 6:
+        return 'Please adjust all fitness ratings (1-10)';
+      case 7:
+        return 'Please sign the agreement and upload gym photos';
+      default:
+        return 'Please complete all required fields';
     }
   }
   
@@ -691,9 +851,15 @@ class _OnboardingQuizScreenState extends State<OnboardingQuizScreen> {
                   SizedBox(
                     width: 120,
                     child: ElevatedButton(
-                      onPressed: _isLoading ? null : _nextPage,
+                      onPressed: _isLoading 
+                          ? null 
+                          : (_currentPage < _totalPages - 1 && _validateCurrentPage()) || 
+                            (_currentPage == _totalPages - 1 && _canFinishOnboarding())
+                              ? _nextPage 
+                              : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: (_currentPage < _totalPages - 1 || _canFinishOnboarding()) 
+                        backgroundColor: (_currentPage < _totalPages - 1 && _validateCurrentPage()) || 
+                                        (_currentPage == _totalPages - 1 && _canFinishOnboarding())
                             ? AppStyles.primarySage 
                             : Colors.grey[400],
                       ),

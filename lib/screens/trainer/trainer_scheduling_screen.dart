@@ -82,9 +82,9 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
               (session.startTime.isBefore(now) || session.status == 'completed'))
           .toList();
       
-      // Sort by date
-      upcomingSessions.sort((a, b) => a.startTime.compareTo(b.startTime));
-      cancelledSessions.sort((a, b) => a.startTime.compareTo(b.startTime));
+      // Sort by date (newest at top)
+      upcomingSessions.sort((a, b) => b.startTime.compareTo(a.startTime));
+      cancelledSessions.sort((a, b) => b.startTime.compareTo(a.startTime));
       completedSessions.sort((a, b) => b.startTime.compareTo(a.startTime)); // Most recent first
       
       // Group sessions by date for calendar
@@ -290,8 +290,9 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
       groupedSessions[dateKey]!.add(session);
     }
     
-    // Create sorted list of date keys
-    final sortedDates = groupedSessions.keys.toList()..sort();
+    // Create sorted list of date keys (newest dates first)
+    final sortedDates = groupedSessions.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
     
     return ListView.builder(
       padding: const EdgeInsets.all(16.0),
@@ -340,11 +341,14 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
                 ],
               ),
             ),
-            ...sessions.map((session) => AppAnimations.fadeSlide(
-              beginOffset: const Offset(0, 0.05),
-              duration: Duration(milliseconds: 400 + sessions.indexOf(session) * 100),
-              child: _buildSessionRow(session),
-            )).toList(),
+            ...(sessions.toList()
+                ..sort((a, b) => b.startTime.compareTo(a.startTime)))
+                .map((session) => AppAnimations.fadeSlide(
+                  beginOffset: const Offset(0, 0.05),
+                  duration: Duration(milliseconds: 400 + sessions.indexOf(session) * 100),
+                  child: _buildSessionRow(session),
+                ))
+                .toList(),
             if (dateIndex < sortedDates.length - 1)
               const Divider(height: 32),
           ],
@@ -499,8 +503,9 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
       groupedSessions[dateKey]!.add(session);
     }
     
-    // Create sorted list of date keys
-    final sortedDates = groupedSessions.keys.toList()..sort();
+    // Create sorted list of date keys (newest dates first)
+    final sortedDates = groupedSessions.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
     
     List<Widget> widgets = [];
     
@@ -508,6 +513,9 @@ class _TrainerSchedulingScreenState extends State<TrainerSchedulingScreen> {
       final dateKey = sortedDates[dateIndex];
       final sessionsForDate = groupedSessions[dateKey]!;
       final date = DateTime.parse(dateKey);
+      
+      // Sort sessions within this date (newest first)
+      sessionsForDate.sort((a, b) => b.startTime.compareTo(a.startTime));
       
       // Check if this date is today
       final now = DateTime.now();

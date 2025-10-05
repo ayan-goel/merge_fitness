@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/nutrition_plan_model.dart';
+import '../models/nutrition_plan_template_model.dart';
 
 class NutritionService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -11,6 +12,7 @@ class NutritionService {
 
   // Collection references
   CollectionReference get _nutritionPlansCollection => _firestore.collection('nutritionPlans');
+  CollectionReference get _nutritionTemplatesCollection => _firestore.collection('nutritionPlanTemplates');
   CollectionReference get _usersCollection => _firestore.collection('users');
 
   // Create a new nutrition plan
@@ -100,5 +102,68 @@ class NutritionService {
     
     // Delete the plan
     await _nutritionPlansCollection.doc(planId).delete();
+  }
+
+  // ============= NUTRITION PLAN TEMPLATE METHODS =============
+
+  // Create a new nutrition plan template
+  Future<NutritionPlanTemplate> createNutritionTemplate(NutritionPlanTemplate template) async {
+    final docRef = await _nutritionTemplatesCollection.add(template.toMap());
+    return template.copyWith(id: docRef.id);
+  }
+
+  // Get all templates for a trainer
+  // Get all nutrition plan templates (shared across all trainers)
+  Stream<List<NutritionPlanTemplate>> getTrainerNutritionTemplates(String trainerId) {
+    // Note: trainerId parameter kept for backwards compatibility but not used
+    // All trainers now have access to all nutrition plan templates
+    return _nutritionTemplatesCollection
+        .orderBy('updatedAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => NutritionPlanTemplate.fromFirestore(doc))
+              .toList();
+        });
+  }
+
+  // Get a specific template
+  Future<NutritionPlanTemplate?> getNutritionTemplate(String templateId) async {
+    final doc = await _nutritionTemplatesCollection.doc(templateId).get();
+    if (!doc.exists) return null;
+    return NutritionPlanTemplate.fromFirestore(doc);
+  }
+
+  // Update a nutrition plan template
+  Future<void> updateNutritionTemplate(NutritionPlanTemplate template) async {
+    if (template.id == null) {
+      throw Exception('Cannot update template without an ID');
+    }
+    await _nutritionTemplatesCollection.doc(template.id!).update(
+      template.copyWith(updatedAt: DateTime.now()).toMap(),
+    );
+  }
+
+  // Delete a nutrition plan template
+  Future<void> deleteNutritionTemplate(String templateId) async {
+    await _nutritionTemplatesCollection.doc(templateId).delete();
+  }
+
+  // Create a nutrition plan from a template
+  Future<NutritionPlan> createNutritionPlanFromTemplate({
+    required NutritionPlanTemplate template,
+    required String clientId,
+    required DateTime startDate,
+    DateTime? endDate,
+    String? notes,
+  }) async {
+    final plan = template.toNutritionPlan(
+      clientId: clientId,
+      startDate: startDate,
+      endDate: endDate,
+      notes: notes,
+    );
+    
+    return await createNutritionPlan(plan);
   }
 } 

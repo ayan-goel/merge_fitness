@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:chewie/chewie.dart';
 import 'package:video_player/video_player.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/video_service.dart';
@@ -20,6 +21,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen> {
   final VideoService _videoService = VideoService();
   final AuthService _authService = AuthService();
   final TextEditingController _videoNameController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   String? _trainerId;
   bool _isLoading = true;
@@ -33,6 +35,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen> {
   @override
   void dispose() {
     _videoNameController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
   
@@ -231,6 +234,73 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen> {
       ),
     );
   }
+
+  Future<void> _editVideoName(TrainerVideo video) async {
+    final TextEditingController nameController = TextEditingController(text: video.name);
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Video Name'),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(
+            labelText: 'Video Name',
+            hintText: 'Enter new video name',
+          ),
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final newName = nameController.text.trim();
+              if (newName.isNotEmpty && newName != video.name) {
+                Navigator.pop(context, newName);
+              } else {
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty && result != video.name) {
+      try {
+        setState(() {
+          _isLoading = true;
+        });
+
+        await _videoService.updateVideoName(video.id, result);
+
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Video name updated successfully')),
+          );
+        }
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error updating video name: $e')),
+          );
+        }
+      }
+    }
+  }
   
   @override
   Widget build(BuildContext context) {
@@ -275,9 +345,56 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen> {
             ),
           ),
           const Divider(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search videos by name...',
+                prefixIcon: const Icon(Icons.search, color: AppStyles.primarySage),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, color: AppStyles.primarySage),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {});
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: AppStyles.offWhite,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: AppStyles.slateGray.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: AppStyles.slateGray.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(
+                    color: AppStyles.primarySage,
+                    width: 1.5,
+                  ),
+                ),
+                hintStyle: TextStyle(color: Colors.grey.shade400),
+              ),
+              onChanged: (value) {
+                setState(() {});
+              },
+            ),
+          ),
           Expanded(
             child: StreamBuilder<List<TrainerVideo>>(
-              stream: _videoService.getTrainerVideos(_trainerId!),
+              stream: _videoService.getTrainerVideos(_trainerId!, searchQuery: _searchController.text),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -320,7 +437,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen> {
                     crossAxisCount: 2,
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
-                    childAspectRatio: 1.5,
+                    childAspectRatio: 0.8,
                   ),
                   itemCount: videos.length,
                   itemBuilder: (context, index) {
@@ -328,6 +445,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen> {
                     return VideoCard(
                       video: video,
                       onPlay: () => _playVideo(video),
+                      onEdit: () => _editVideoName(video),
                       onDelete: () => _deleteVideo(video),
                     );
                   },
@@ -345,12 +463,14 @@ class VideoCard extends StatelessWidget {
   final TrainerVideo video;
   final VoidCallback onPlay;
   final VoidCallback onDelete;
-  
+  final VoidCallback onEdit;
+
   const VideoCard({
     super.key,
     required this.video,
     required this.onPlay,
     required this.onDelete,
+    required this.onEdit,
   });
   
   @override
@@ -361,54 +481,121 @@ class VideoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              video.name,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-                color: Color(0xFF424242),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final cardHeight = constraints.maxHeight;
+          final thumbnailHeight = (cardHeight * 0.65).clamp(80.0, 140.0);
+          final contentHeight = cardHeight - thumbnailHeight;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Thumbnail Image
+              Container(
+                height: thumbnailHeight,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
+                  ),
+                ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              child: Builder(
+                builder: (context) {
+                  if (video.thumbnailUrl != null && video.thumbnailUrl!.isNotEmpty) {
+                    return CachedNetworkImage(
+                      imageUrl: video.thumbnailUrl!,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey.shade200,
+                        child: const Center(child: CircularProgressIndicator()),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.videocam, color: Colors.grey, size: 24),
+                      ),
+                    );
+                  }
+                  // Fallback: render first frame using VideoPlayer
+                  return VideoFirstFrame(videoUrl: video.videoUrl);
+                },
+              ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                InkWell(
-                  onTap: onPlay,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: Icon(
-                      Icons.play_circle_outline, 
-                      color: AppStyles.primarySage,
-                      size: 28,
+              ),
+              // Video Info and Actions
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10.0, 8.0, 10.0, 10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      video.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: Color(0xFF424242),
+                        height: 1.2,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                InkWell(
-                  onTap: onDelete,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: const Icon(
-                      Icons.delete_outline, 
-                      color: Colors.redAccent,
-                      size: 26,
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        InkWell(
+                          onTap: onPlay,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.all(3.0),
+                            child: Icon(
+                              Icons.play_circle_outline,
+                              color: AppStyles.primarySage,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: onEdit,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.all(3.0),
+                            child: const Icon(
+                              Icons.edit_outlined,
+                              color: Colors.blueAccent,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: onDelete,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.all(3.0),
+                            child: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.redAccent,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -424,6 +611,67 @@ class VideoPlayerWidget extends StatefulWidget {
 
   @override
   State<VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
+}
+
+class VideoFirstFrame extends StatefulWidget {
+  final String videoUrl;
+
+  const VideoFirstFrame({super.key, required this.videoUrl});
+
+  @override
+  State<VideoFirstFrame> createState() => _VideoFirstFrameState();
+}
+
+class _VideoFirstFrameState extends State<VideoFirstFrame> {
+  late VideoPlayerController _controller;
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+    try {
+      await _controller.initialize();
+      await _controller.pause();
+      if (mounted) {
+        setState(() {
+          _initialized = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _initialized = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_initialized) {
+      return Container(
+        color: Colors.grey.shade200,
+        child: const Center(child: Icon(Icons.videocam, color: Colors.grey, size: 24)),
+      );
+    }
+
+    return FittedBox(
+      fit: BoxFit.cover,
+      clipBehavior: Clip.hardEdge,
+      child: SizedBox(
+        width: _controller.value.size.width,
+        height: _controller.value.size.height,
+        child: VideoPlayer(_controller),
+      ),
+    );
+  }
 }
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {

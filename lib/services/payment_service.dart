@@ -297,6 +297,45 @@ class PaymentService {
     }
   }
 
+  // Create session package with custom price (used during client approval)
+  Future<SessionPackage?> createSessionPackageWithPrice({
+    required String clientId,
+    required String trainerId,
+    required double costPerTenSessions,
+  }) async {
+    try {
+      // Check if package already exists
+      final existingPackage = await getSessionPackage(clientId, trainerId);
+      if (existingPackage != null) {
+        // Update existing package with new price
+        await _firestore.collection('sessionPackages')
+            .doc(existingPackage.id)
+            .update({
+              'costPerTenSessions': costPerTenSessions,
+            });
+        return existingPackage.copyWith(costPerTenSessions: costPerTenSessions);
+      }
+
+      // Create new package with specified cost
+      final newPackage = SessionPackage(
+        id: '',
+        clientId: clientId,
+        trainerId: trainerId,
+        costPerTenSessions: costPerTenSessions,
+        sessionsRemaining: 0, // Start with 0 sessions
+        createdAt: DateTime.now(),
+      );
+
+      final docRef = await _firestore.collection('sessionPackages')
+          .add(newPackage.toMap());
+
+      return newPackage.copyWith(id: docRef.id);
+    } catch (e) {
+      print('Error creating session package with price: $e');
+      return null;
+    }
+  }
+
   // Handle session cancellation logic
   Future<bool> handleSessionCancellation({
     required TrainingSession session,

@@ -17,9 +17,11 @@ class WorkoutTemplateService {
   CollectionReference get _usersCollection => _firestore.collection('users');
 
   // Get all templates for a trainer
+  // Get all workout templates (shared across all trainers)
   Stream<List<WorkoutTemplate>> getTrainerTemplates(String trainerId) {
+    // Note: trainerId parameter kept for backwards compatibility but not used
+    // All trainers now have access to all workout templates
     return _templatesCollection
-        .where('trainerId', isEqualTo: trainerId)
         .orderBy('updatedAt', descending: true)
         .snapshots()
         .map((snapshot) {
@@ -70,7 +72,7 @@ class WorkoutTemplateService {
   // Assign a workout to a client
   Future<AssignedWorkout> assignWorkout(AssignedWorkout workout) async {
     final docRef = await _assignedWorkoutsCollection.add(workout.toMap());
-    
+
     // Update the workout with the new ID
     final newWorkout = AssignedWorkout(
       id: docRef.id,
@@ -87,12 +89,52 @@ class WorkoutTemplateService {
       feedback: workout.feedback,
       isSessionBased: workout.isSessionBased,
       sessionId: workout.sessionId,
+      isRecurring: workout.isRecurring,
+      recurringWeeks: workout.recurringWeeks,
+      recurringDayOfWeek: workout.recurringDayOfWeek,
     );
-    
+
     // Update the document with the correct ID
     await docRef.update({'id': docRef.id});
-    
+
     return newWorkout;
+  }
+
+  // Assign multiple recurring workouts to a client
+  Future<List<AssignedWorkout>> assignRecurringWorkouts(List<AssignedWorkout> workouts) async {
+    final batch = _firestore.batch();
+    final results = <AssignedWorkout>[];
+
+    for (final workout in workouts) {
+      final docRef = _assignedWorkoutsCollection.doc();
+      batch.set(docRef, {
+        ...workout.toMap(),
+        'id': docRef.id,
+      });
+
+      results.add(AssignedWorkout(
+        id: docRef.id,
+        clientId: workout.clientId,
+        trainerId: workout.trainerId,
+        workoutTemplateId: workout.workoutTemplateId,
+        workoutName: workout.workoutName,
+        workoutDescription: workout.workoutDescription,
+        scheduledDate: workout.scheduledDate,
+        status: workout.status,
+        completedDate: workout.completedDate,
+        feedback: workout.feedback,
+        exercises: workout.exercises,
+        notes: workout.notes,
+        isSessionBased: workout.isSessionBased,
+        sessionId: workout.sessionId,
+        isRecurring: workout.isRecurring,
+        recurringWeeks: workout.recurringWeeks,
+        recurringDayOfWeek: workout.recurringDayOfWeek,
+      ));
+    }
+
+    await batch.commit();
+    return results;
   }
 
   // Get all assigned workouts for a client

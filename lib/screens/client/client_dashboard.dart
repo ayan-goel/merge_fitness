@@ -19,6 +19,7 @@ import '../../services/calendly_service.dart';
 import '../../services/nutrition_service.dart';
 import '../../services/location_service.dart';
 import '../../services/session_monitoring_service.dart';
+import '../../services/messaging_service.dart';
 
 // Themes
 import '../../theme/app_styles.dart';
@@ -32,6 +33,7 @@ import 'select_trainer_screen.dart';
 import 'all_sessions_screen.dart';
 import 'trainer_location_screen.dart';
 import '../../screens/home_screen.dart';
+import '../shared/conversations_screen.dart';
 
 class ClientDashboard extends StatefulWidget {
   const ClientDashboard({super.key});
@@ -49,6 +51,7 @@ class _ClientDashboardState extends State<ClientDashboard> {
   final NutritionService _nutritionService = NutritionService();
   final LocationService _locationService = LocationService();
   final SessionMonitoringService _sessionMonitoringService = SessionMonitoringService();
+  final MessagingService _messagingService = MessagingService();
   
   UserModel? _client;
   UserModel? _trainer; // Client's assigned trainer
@@ -578,6 +581,151 @@ class _ClientDashboardState extends State<ClientDashboard> {
               ),
               
               const SizedBox(height: 24),
+              
+              // Messages Section
+              AppAnimations.fadeSlide(
+                beginOffset: const Offset(0, 0.1),
+                child: StreamBuilder<int>(
+                  stream: _messagingService.getUnreadMessageCount(_client!.uid),
+                  builder: (context, snapshot) {
+                    final unreadCount = snapshot.data ?? 0;
+                    
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 24),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white,
+                            AppStyles.primarySage.withOpacity(0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: AppStyles.primarySage.withOpacity(0.2),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppStyles.slateGray.withOpacity(0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ConversationsScreen(),
+                              ),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        AppStyles.primarySage.withOpacity(0.8),
+                                        AppStyles.primarySage.withOpacity(0.6),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppStyles.primarySage.withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.chat_bubble,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Messages',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppStyles.textDark,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        unreadCount > 0
+                                            ? 'You have $unreadCount unread message${unreadCount != 1 ? 's' : ''}'
+                                            : 'Chat with your trainer',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: unreadCount > 0
+                                              ? AppStyles.primarySage
+                                              : AppStyles.slateGray,
+                                          fontWeight: unreadCount > 0
+                                              ? FontWeight.w600
+                                              : FontWeight.normal,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (unreadCount > 0)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppStyles.primarySage,
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppStyles.primarySage.withOpacity(0.4),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      '$unreadCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  Icon(
+                                    Icons.chevron_right,
+                                    color: Colors.grey[400],
+                                    size: 24,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
               
               // Today's Workout Section with enhanced styling
               Container(

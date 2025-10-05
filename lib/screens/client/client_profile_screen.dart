@@ -5,6 +5,7 @@ import '../../services/auth_service.dart';
 import '../../services/profile_image_service.dart';
 import '../../services/payment_service.dart';
 import '../../services/family_service.dart';
+import '../../services/onboarding_service.dart';
 import '../../models/user_model.dart';
 import '../../models/goal_model.dart';
 import '../../models/session_package_model.dart';
@@ -12,6 +13,7 @@ import '../../models/family_model.dart';
 import '../../theme/app_styles.dart';
 import 'client_payment_screen.dart';
 import 'family_management_screen.dart';
+import 'client_editable_onboarding_screen.dart';
 
 class ClientProfileScreen extends StatefulWidget {
   const ClientProfileScreen({super.key});
@@ -26,6 +28,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   final ProfileImageService _profileImageService = ProfileImageService();
   final PaymentService _paymentService = PaymentService();
   final FamilyService _familyService = FamilyService();
+  final OnboardingService _onboardingService = OnboardingService();
   final _formKey = GlobalKey<FormState>();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
@@ -360,6 +363,70 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error signing out: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _viewOnboardingInfo() async {
+    if (_user == null) return;
+
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(
+            color: AppStyles.primarySage,
+          ),
+        ),
+      );
+
+      // Get onboarding form
+      final onboardingForm = await _onboardingService.getClientOnboardingForm(_user!.uid);
+
+      // Dismiss loading dialog
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      if (onboardingForm != null) {
+        if (mounted) {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ClientEditableOnboardingScreen(
+                onboardingForm: onboardingForm,
+                clientName: _user!.displayName ?? '${_user!.firstName} ${_user!.lastName}',
+              ),
+            ),
+          );
+
+          // Refresh data if changes were made
+          if (result == true) {
+            _loadUserData();
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No onboarding information found. Please contact your trainer.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Dismiss loading dialog if showing
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading onboarding information: $e'),
+            backgroundColor: AppStyles.errorRed,
+          ),
         );
       }
     }
@@ -1215,6 +1282,11 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         backgroundColor: AppStyles.offWhite,
         foregroundColor: AppStyles.textDark,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.description_outlined),
+          onPressed: _viewOnboardingInfo,
+          tooltip: 'View Onboarding Info',
+        ),
         actions: [
           if (!_isEditing)
             IconButton(

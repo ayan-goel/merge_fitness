@@ -23,14 +23,18 @@ class AssignWorkoutScreen extends StatefulWidget {
 class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
   final WorkoutTemplateService _workoutService = WorkoutTemplateService();
   final TextEditingController _notesController = TextEditingController();
+  final TextEditingController _weeksController = TextEditingController(text: '2');
   
   DateTime _selectedDate = DateTime.now();
   WorkoutTemplate? _selectedTemplate;
   bool _isAssigning = false;
+  bool _isRecurring = false;
+  int _recurringWeeks = 2;
   
   @override
   void dispose() {
     _notesController.dispose();
+    _weeksController.dispose();
     super.dispose();
   }
   
@@ -61,6 +65,28 @@ class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
     });
     
     try {
+      // If recurring, create multiple workout instances
+      if (_isRecurring && _recurringWeeks > 1) {
+        final workouts = <AssignedWorkout>[];
+
+        for (int week = 0; week < _recurringWeeks; week++) {
+          final scheduledDate = _selectedDate.add(Duration(days: week * 7));
+          final workout = AssignedWorkout.fromTemplate(
+            clientId: widget.clientId,
+            workoutTemplateId: _selectedTemplate!.id,
+            template: _selectedTemplate!,
+            scheduledDate: scheduledDate,
+            notes: _notesController.text.isEmpty ? null : _notesController.text,
+            isRecurring: true,
+            recurringWeeks: _recurringWeeks,
+            recurringDayOfWeek: _selectedDate.weekday,
+          );
+          workouts.add(workout);
+        }
+
+        await _workoutService.assignRecurringWorkouts(workouts);
+      } else {
+        // Single workout assignment
       final workout = AssignedWorkout.fromTemplate(
         clientId: widget.clientId,
         workoutTemplateId: _selectedTemplate!.id,
@@ -70,11 +96,14 @@ class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
       );
       
       await _workoutService.assignWorkout(workout);
+      }
       
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Workout assigned successfully')),
+          SnackBar(content: Text(_isRecurring && _recurringWeeks > 1
+              ? '$_recurringWeeks recurring workouts assigned successfully'
+              : 'Workout assigned successfully')),
         );
       }
     } catch (e) {
@@ -309,7 +338,8 @@ class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 12),
-                                  Text(
+                                  Expanded(
+                                    child: Text(
                                     template.name,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
@@ -318,6 +348,7 @@ class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                     maxLines: 1,
+                                    ),
                                   ),
                                   const SizedBox(width: 8),
                                   Container(
@@ -335,7 +366,6 @@ class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
                                       ),
                                     ),
                                   ),
-                                  const Spacer(),
                                 ],
                               ),
                             ),
@@ -398,7 +428,182 @@ class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
               textInputAction: TextInputAction.done,
             ),
             
-            const SizedBox(height: 32.0),
+            const SizedBox(height: 24.0),
+
+            // Recurring workout options
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Toggle
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _isRecurring = !_isRecurring;
+                    });
+                  },
+                  borderRadius: AppStyles.defaultBorderRadius,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                    decoration: BoxDecoration(
+                      color: AppStyles.offWhite,
+                      borderRadius: AppStyles.defaultBorderRadius,
+                      border: Border.all(
+                        color: _isRecurring 
+                            ? AppStyles.primarySage 
+                            : AppStyles.slateGray.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppStyles.slateGray.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _isRecurring 
+                                ? AppStyles.primarySage.withOpacity(0.1) 
+                                : Colors.grey.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.repeat,
+                            size: 18,
+                            color: _isRecurring ? AppStyles.primarySage : AppStyles.slateGray,
+                          ),
+                        ),
+                        const SizedBox(width: 12.0),
+                        Expanded(
+                          child: Text(
+                            'Repeat weekly',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: _isRecurring ? AppStyles.primarySage : AppStyles.textDark,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          _isRecurring ? Icons.check_circle : Icons.radio_button_unchecked,
+                          color: _isRecurring ? AppStyles.primarySage : AppStyles.slateGray,
+                          size: 22,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Duration settings (show when recurring is enabled)
+                if (_isRecurring) ...[
+                  const SizedBox(height: 16.0),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                    decoration: BoxDecoration(
+                      color: AppStyles.offWhite,
+                      borderRadius: AppStyles.defaultBorderRadius,
+                      border: Border.all(
+                        color: AppStyles.slateGray.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppStyles.slateGray.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'For ',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: AppStyles.textDark,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Container(
+                              width: 60,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppStyles.slateGray.withOpacity(0.3),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Center(
+                                child: TextField(
+                                  controller: _weeksController,
+                                  decoration: const InputDecoration(
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                  textInputAction: TextInputAction.done,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppStyles.textDark,
+                                  ),
+                                  onChanged: (value) {
+                                    int? weeks = int.tryParse(value);
+                                    if (weeks != null) {
+                                      if (weeks < 1) weeks = 1;
+                                      if (weeks > 52) weeks = 52;
+                                      setState(() {
+                                        _recurringWeeks = weeks!;
+                                      });
+                                      if (weeks.toString() != value) {
+                                        _weeksController.text = weeks.toString();
+                                        _weeksController.selection = TextSelection.fromPosition(
+                                          TextPosition(offset: _weeksController.text.length),
+                                        );
+                                      }
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _recurringWeeks == 1 ? 'week' : 'weeks',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: AppStyles.textDark,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Every ${_getDayName(_selectedDate.weekday)} starting ${DateFormat('MMM d').format(_selectedDate)}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppStyles.slateGray,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+
+            const SizedBox(height: 24.0),
             
             // Selected template preview
             if (_selectedTemplate != null) ...[
@@ -493,5 +698,26 @@ class _AssignWorkoutScreenState extends State<AssignWorkoutScreen> {
         ),
       ),
     );
+  }
+
+  String _getDayName(int weekday) {
+    switch (weekday) {
+      case 1:
+        return 'Monday';
+      case 2:
+        return 'Tuesday';
+      case 3:
+        return 'Wednesday';
+      case 4:
+        return 'Thursday';
+      case 5:
+        return 'Friday';
+      case 6:
+        return 'Saturday';
+      case 7:
+        return 'Sunday';
+      default:
+        return 'Unknown';
+    }
   }
 } 

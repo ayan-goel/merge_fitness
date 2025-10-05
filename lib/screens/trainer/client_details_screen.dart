@@ -158,6 +158,63 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
     );
   }
   
+  Future<void> _confirmDeleteWorkout(AssignedWorkout workout) async {
+    // Don't allow deletion of session-based workouts
+    if (workout.isSessionBased) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot delete session-based workouts'),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Workout'),
+          content: Text(
+            'Are you sure you want to unassign "${workout.workoutName}" from ${widget.clientName}?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      try {
+        await _workoutService.deleteAssignedWorkout(workout.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Workout unassigned successfully'),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error deleting workout: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+  
   @override
   void initState() {
     super.initState();
@@ -333,7 +390,10 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                         itemCount: workouts.length,
                         itemBuilder: (context, index) {
                           final workout = workouts[index];
-                          return WorkoutCard(workout: workout);
+                          return WorkoutCard(
+                            workout: workout,
+                            onDelete: () => _confirmDeleteWorkout(workout),
+                          );
                         },
                       );
                     },
@@ -531,10 +591,12 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
 
 class WorkoutCard extends StatelessWidget {
   final AssignedWorkout workout;
+  final VoidCallback? onDelete;
   
   const WorkoutCard({
     super.key,
     required this.workout,
+    this.onDelete,
   });
   
   @override
@@ -555,11 +617,30 @@ class WorkoutCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              workout.workoutName,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    workout.workoutName,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                // Show delete button only for assigned (non-session-based) workouts that are not completed
+                if (!workout.isSessionBased && 
+                    workout.status == WorkoutStatus.assigned && 
+                    onDelete != null)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    color: Colors.red,
+                    iconSize: 20,
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.all(8),
+                    onPressed: onDelete,
+                    tooltip: 'Delete workout',
+                  ),
+              ],
             ),
             const SizedBox(height: 4.0),
             Row(

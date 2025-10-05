@@ -3,13 +3,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/tabata_timer_model.dart';
 import '../models/video_call_model.dart';
 import 'auth_service.dart';
+import 'audio_service.dart';
 
 class TabataService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
+  final AudioService _audioService = AudioService();
   
   Timer? _localTimer;
   StreamSubscription<DocumentSnapshot>? _timerSubscription;
+  
+  // Track previous timer state to detect phase changes
+  TabataTimer? _previousTimer;
 
   // Create a new tabata timer
   Future<TabataTimer> createTabataTimer(String callId, TabataConfig config) async {
@@ -71,6 +76,17 @@ class TabataService {
   // Start the timer
   Future<void> startTimer(String timerId) async {
     try {
+      // Get current timer state to check if it's the first exercise
+      final timerDoc = await _firestore.collection('tabata_timers').doc(timerId).get();
+      if (timerDoc.exists) {
+        final timer = TabataTimer.fromFirestore(timerDoc);
+        
+        // Play whistle sound when starting the first exercise
+        if (timer.isExercisePhase && timer.currentExercise == 1) {
+          await _audioService.playWhistleSound();
+        }
+      }
+      
       await _firestore.collection('tabata_timers').doc(timerId).update({
         'status': TabataStatus.active.name,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -226,7 +242,10 @@ class TabataService {
   // Handle phase completion logic
   Future<void> _handlePhaseCompletion(String timerId, TabataTimer timer) async {
     if (timer.isExercisePhase) {
-      // Exercise phase completed, move to rest
+      // Exercise phase completed, play ding sound
+      await _audioService.playDingSound();
+      
+      // Move to rest
       await _firestore.collection('tabata_timers').doc(timerId).update({
         'currentPhase': TabataPhase.rest.name,
         'timeRemaining': timer.restTime,
@@ -244,7 +263,9 @@ class TabataService {
         });
         _stopLocalTimer();
       } else {
-        // Move to next exercise
+        // Move to next exercise - play whistle sound for new exercise interval
+        await _audioService.playWhistleSound();
+        
         await _firestore.collection('tabata_timers').doc(timerId).update({
           'currentPhase': TabataPhase.exercise.name,
           'currentExercise': timer.currentExercise + 1,

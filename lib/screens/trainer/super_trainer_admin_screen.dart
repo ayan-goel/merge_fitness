@@ -1432,6 +1432,13 @@ class ClientReviewScreen extends StatelessWidget {
       return;
     }
     
+    // Show price selection dialog
+    final packagePrice = await _showPriceSelectionDialog(context);
+    if (packagePrice == null) {
+      // User cancelled price selection
+      return;
+    }
+    
     try {
       final trainerIds = selectedTrainers.map((trainer) => trainer['id'] as String).toList();
       
@@ -1446,12 +1453,13 @@ class ClientReviewScreen extends StatelessWidget {
       
       // Account approval notification is now handled by Cloud Functions
       
-      // Create default session packages for each trainer
+      // Create session packages for each trainer with the selected price
       final paymentService = PaymentService();
       for (final trainerId in trainerIds) {
-        await paymentService.createDefaultSessionPackage(
+        await paymentService.createSessionPackageWithPrice(
           clientId: client['id'],
           trainerId: trainerId,
+          costPerTenSessions: packagePrice,
         );
       }
       
@@ -1459,7 +1467,7 @@ class ClientReviewScreen extends StatelessWidget {
         final trainerNames = selectedTrainers.map((trainer) => trainer['name']).join(', ');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('$displayName has been approved and assigned to: $trainerNames'),
+            content: Text('$displayName has been approved and assigned to: $trainerNames with \$${packagePrice.toStringAsFixed(0)} package'),
             backgroundColor: AppStyles.successGreen,
           ),
         );
@@ -1475,6 +1483,111 @@ class ClientReviewScreen extends StatelessWidget {
         );
       }
     }
+  }
+  
+  Future<double?> _showPriceSelectionDialog(BuildContext context) async {
+    final TextEditingController priceController = TextEditingController(text: '1000');
+    
+    return showDialog<double>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.attach_money, color: AppStyles.primarySage),
+              const SizedBox(width: 8),
+              const Text('Set Package Price'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Set the cost for 10 sessions:',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: priceController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Price (USD)',
+                  prefixText: '\$',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppStyles.primarySage, width: 2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppStyles.primarySage.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: AppStyles.primarySage,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'This sets the cost for a 10-session package',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppStyles.primarySage,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: AppStyles.slateGray),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final price = double.tryParse(priceController.text.trim());
+                if (price != null && price > 0) {
+                  Navigator.of(context).pop(price);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a valid price'),
+                      backgroundColor: AppStyles.errorRed,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppStyles.primarySage,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Set Price'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<List<Map<String, dynamic>>?> _showTrainerSelectionDialog(BuildContext context, Map<String, dynamic> client) async {
