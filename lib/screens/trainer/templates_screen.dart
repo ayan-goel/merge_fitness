@@ -25,6 +25,12 @@ class _TemplatesScreenState extends State<TemplatesScreen> with SingleTickerProv
   String? _trainerId;
   bool _isLoading = true;
   
+  // Search controllers and focus nodes
+  final TextEditingController _workoutSearchController = TextEditingController();
+  final TextEditingController _nutritionSearchController = TextEditingController();
+  final FocusNode _workoutSearchFocusNode = FocusNode();
+  final FocusNode _nutritionSearchFocusNode = FocusNode();
+  
   @override
   void initState() {
     super.initState();
@@ -35,6 +41,10 @@ class _TemplatesScreenState extends State<TemplatesScreen> with SingleTickerProv
   @override
   void dispose() {
     _tabController.dispose();
+    _workoutSearchController.dispose();
+    _nutritionSearchController.dispose();
+    _workoutSearchFocusNode.dispose();
+    _nutritionSearchFocusNode.dispose();
     super.dispose();
   }
   
@@ -123,6 +133,39 @@ class _TemplatesScreenState extends State<TemplatesScreen> with SingleTickerProv
         builder: (context) => const VideoGalleryScreen(),
       ),
     );
+  }
+  
+  // Filter methods
+  String _normalize(String value) {
+    return value
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r"\s+"), ' ');
+  }
+
+  List<WorkoutTemplate> _filterWorkoutTemplates(List<WorkoutTemplate> templates) {
+    final raw = _workoutSearchController.text;
+    final normalizedQuery = _normalize(raw);
+    if (normalizedQuery.isEmpty) return templates;
+
+    final tokens = normalizedQuery.split(' ');
+    return templates.where((template) {
+      final name = _normalize(template.name);
+      // Match ALL tokens against the name for stable results
+      return tokens.every((t) => name.contains(t));
+    }).toList();
+  }
+  
+  List<NutritionPlanTemplate> _filterNutritionTemplates(List<NutritionPlanTemplate> templates) {
+    final raw = _nutritionSearchController.text;
+    final normalizedQuery = _normalize(raw);
+    if (normalizedQuery.isEmpty) return templates;
+
+    final tokens = normalizedQuery.split(' ');
+    return templates.where((template) {
+      final name = _normalize(template.name);
+      return tokens.every((t) => name.contains(t));
+    }).toList();
   }
   
   // Nutrition Template Methods
@@ -239,9 +282,9 @@ class _TemplatesScreenState extends State<TemplatesScreen> with SingleTickerProv
           return Center(child: Text('Error: ${snapshot.error}'));
         }
         
-        final templates = snapshot.data ?? [];
+        final allTemplates = snapshot.data ?? [];
         
-        if (templates.isEmpty) {
+        if (allTemplates.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -289,24 +332,97 @@ class _TemplatesScreenState extends State<TemplatesScreen> with SingleTickerProv
         
         return Column(
           children: [
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  await Future.delayed(const Duration(milliseconds: 500));
+            // Search bar
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _workoutSearchController,
+                builder: (context, value, _) {
+                  final query = value.text;
+                  return TextField(
+                    controller: _workoutSearchController,
+                    focusNode: _workoutSearchFocusNode,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _workoutSearchFocusNode.unfocus(),
+                    decoration: InputDecoration(
+                      hintText: 'Search workout templates...',
+                      prefixIcon: const Icon(Icons.search, color: AppStyles.primarySage),
+                      suffixIcon: value.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _workoutSearchController.clear();
+                                _workoutSearchFocusNode.requestFocus();
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppStyles.primarySage, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                  );
                 },
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: templates.length,
-                  itemBuilder: (context, index) {
-                    final template = templates[index];
-                    return WorkoutTemplateCard(
-                      template: template,
-                      onEdit: () => _editWorkoutTemplate(template),
-                      onDelete: () => _deleteWorkoutTemplate(template),
-                    );
-                  },
-                ),
               ),
+            ),
+            // Results or empty state (rebuild only when query changes)
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _workoutSearchController,
+              builder: (context, value, _) {
+                final filtered = _filterWorkoutTemplates(allTemplates);
+                if (filtered.isEmpty && value.text.isNotEmpty) {
+                  return Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'No templates match your search',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Try a different search term',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                return Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      await Future.delayed(const Duration(milliseconds: 500));
+                    },
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final template = filtered[index];
+                        return WorkoutTemplateCard(
+                          template: template,
+                          onEdit: () => _editWorkoutTemplate(template),
+                          onDelete: () => _deleteWorkoutTemplate(template),
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
             ),
             _buildBottomActions(
               onCreateTemplate: _createWorkoutTemplate,
@@ -333,9 +449,9 @@ class _TemplatesScreenState extends State<TemplatesScreen> with SingleTickerProv
           return Center(child: Text('Error: ${snapshot.error}'));
         }
         
-        final templates = snapshot.data ?? [];
+        final allTemplates = snapshot.data ?? [];
         
-        if (templates.isEmpty) {
+        if (allTemplates.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -373,24 +489,97 @@ class _TemplatesScreenState extends State<TemplatesScreen> with SingleTickerProv
         
         return Column(
           children: [
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  await Future.delayed(const Duration(milliseconds: 500));
+            // Search bar
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _nutritionSearchController,
+                builder: (context, value, _) {
+                  final query = value.text;
+                  return TextField(
+                    controller: _nutritionSearchController,
+                    focusNode: _nutritionSearchFocusNode,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _nutritionSearchFocusNode.unfocus(),
+                    decoration: InputDecoration(
+                      hintText: 'Search meal plan templates...',
+                      prefixIcon: const Icon(Icons.search, color: AppStyles.primarySage),
+                      suffixIcon: value.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _nutritionSearchController.clear();
+                                _nutritionSearchFocusNode.requestFocus();
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppStyles.primarySage, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                  );
                 },
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: templates.length,
-                  itemBuilder: (context, index) {
-                    final template = templates[index];
-                    return NutritionTemplateCard(
-                      template: template,
-                      onEdit: () => _editNutritionTemplate(template),
-                      onDelete: () => _deleteNutritionTemplate(template),
-                    );
-                  },
-                ),
               ),
+            ),
+            // Results or empty state (rebuild only when query changes)
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _nutritionSearchController,
+              builder: (context, value, _) {
+                final filtered = _filterNutritionTemplates(allTemplates);
+                if (filtered.isEmpty && value.text.isNotEmpty) {
+                  return Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'No templates match your search',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Try a different search term',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                return Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      await Future.delayed(const Duration(milliseconds: 500));
+                    },
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final template = filtered[index];
+                        return NutritionTemplateCard(
+                          template: template,
+                          onEdit: () => _editNutritionTemplate(template),
+                          onDelete: () => _deleteNutritionTemplate(template),
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
             ),
             _buildBottomActions(
               onCreateTemplate: _createNutritionTemplate,

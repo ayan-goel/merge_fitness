@@ -17,8 +17,6 @@ class CalendlyService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
-  // Timezone settings for EST
-  static const String targetTimeZone = 'America/New_York'; // EST timezone
   // Refresh the token a few minutes before it expires to avoid race conditions
   static const int _tokenRefreshLeewaySeconds = 300; // 5 minutes
   
@@ -472,21 +470,8 @@ class CalendlyService {
     }
   }
   
-  // Convert UTC time to Eastern Standard Time
-  DateTime _convertToEST(DateTime utcTime) {
-    final estTimeZone = tz.getLocation(targetTimeZone);
-    final estTime = tz.TZDateTime.from(utcTime, estTimeZone);
-    return estTime;
-  }
-  
-  // Convert Eastern Standard Time to UTC
-  DateTime _convertToUTC(DateTime estTime) {
-    final estTimeZone = tz.getLocation(targetTimeZone);
-    final estDateTime = tz.TZDateTime(estTimeZone, 
-        estTime.year, estTime.month, estTime.day, 
-        estTime.hour, estTime.minute, estTime.second);
-    return estDateTime.toUtc();
-  }
+  // Note: Timezone conversions removed - all times are now stored in UTC in Firestore
+  // and automatically converted to the device's local timezone when displayed
   
   // Get trainer's available time slots from Calendly for scheduling
   Future<List<Map<String, dynamic>>> getTrainerAvailability(String trainerId, {DateTime? startDate, DateTime? endDate}) async {
@@ -594,8 +579,8 @@ class CalendlyService {
               // Parse UTC time from Calendly
               final startTimeUtc = DateTime.parse(slot['start_time']);
               
-              // Convert to EST for display
-              final startTimeEst = _convertToEST(startTimeUtc);
+              // Convert UTC to local timezone for display
+              final startTimeLocal = startTimeUtc.toLocal();
               
               // For event_type_available_times, the end_time may not be included in the response
               // Calculate it based on the event type duration if not provided
@@ -608,12 +593,12 @@ class CalendlyService {
                 print('CalendlyService: getTrainerAvailability - Calculated end time using ${eventDurationMinutes}min duration: ${endTimeUtc.toIso8601String()}');
               }
               
-              // Convert end time to EST
-              final endTimeEst = _convertToEST(endTimeUtc);
+              // Convert end time to local timezone
+              final endTimeLocal = endTimeUtc.toLocal();
               
               availableTimes.add({
-                'start_time': startTimeEst,
-                'end_time': endTimeEst,
+                'start_time': startTimeLocal,
+                'end_time': endTimeLocal,
                 'start_time_utc': startTimeUtc, // Keep original UTC time for reference
                 'end_time_utc': endTimeUtc,
                 'status': slot['status'] ?? 'available',
@@ -709,17 +694,17 @@ class CalendlyService {
                 final List<Map<String, dynamic>> availableTimes = [];
                 for (final slot in List<Map<String, dynamic>>.from(data['collection'])) {
                   final startTimeUtc = DateTime.parse(slot['start_time']);
-                  final startTimeEst = _convertToEST(startTimeUtc);
+                  final startTimeLocal = startTimeUtc.toLocal();
                   DateTime endTimeUtc;
                   if (slot.containsKey('end_time') && slot['end_time'] != null) {
                     endTimeUtc = DateTime.parse(slot['end_time']);
                   } else {
                     endTimeUtc = startTimeUtc.add(Duration(minutes: eventDurationMinutes));
                   }
-                  final endTimeEst = _convertToEST(endTimeUtc);
+                  final endTimeLocal = endTimeUtc.toLocal();
                   availableTimes.add({
-                    'start_time': startTimeEst,
-                    'end_time': endTimeEst,
+                    'start_time': startTimeLocal,
+                    'end_time': endTimeLocal,
                     'start_time_utc': startTimeUtc,
                     'end_time_utc': endTimeUtc,
                     'status': slot['status'] ?? 'available',
@@ -760,9 +745,8 @@ class CalendlyService {
     String? payingClientId,
   }) async {
     try {
-      // Ensure times are in EST
-      final estStartTime = _convertToEST(startTime);
-      final estEndTime = _convertToEST(endTime);
+      // Times are already in local timezone from the time slot selection
+      // We'll store them as-is in Firestore (Firestore will convert to UTC automatically)
       
       // Get client information
       final clientDoc = await _firestore.collection('users').doc(clientId).get();
@@ -782,8 +766,8 @@ class CalendlyService {
         id: sessionRef.id,
         trainerId: trainerId,
         clientId: clientId,
-        startTime: estStartTime,
-        endTime: estEndTime,
+        startTime: startTime,
+        endTime: endTime,
         location: location,
         status: 'scheduled',
         notes: notes,
@@ -1001,15 +985,7 @@ class CalendlyService {
         ...familySessions,
       ].where((session) => session.status != 'cancelled').toList();
       
-      // Ensure all times are properly in EST
-      for (var session in sessions) {
-        if (session.startTime.timeZoneName != targetTimeZone) {
-          session.startTime = _convertToEST(session.startTime);
-          session.endTime = _convertToEST(session.endTime);
-        }
-      }
-      
-      // Sort by startTime ascending
+      // Sort by startTime ascending (times are already in local timezone from Firestore)
       sessions.sort((a, b) => a.startTime.compareTo(b.startTime));
       
       return sessions;
@@ -1049,14 +1025,7 @@ class CalendlyService {
           
           sessions.addAll(familySessions);
           
-          // Ensure all times are properly in EST
-          for (var session in sessions) {
-            if (session.startTime.timeZoneName != targetTimeZone) {
-              session.startTime = _convertToEST(session.startTime);
-              session.endTime = _convertToEST(session.endTime);
-            }
-          }
-          
+          // Sort by startTime (times are already in local timezone from Firestore)
           sessions.sort((a, b) => a.startTime.compareTo(b.startTime));
           return sessions;
         } catch (fallbackError) {
@@ -1149,15 +1118,15 @@ class CalendlyService {
     }
   }
   
-  // Format datetime for display
+  // Format datetime for display (in local timezone)
   String _formatDateTime(DateTime dateTime) {
-    // Ensure the datetime is in EST
-    final estDateTime = _convertToEST(dateTime);
+    // DateTime is already in local timezone
+    final localDateTime = dateTime.toLocal();
     
-    final date = '${estDateTime.month}/${estDateTime.day}/${estDateTime.year}';
-    final hour = estDateTime.hour > 12 ? estDateTime.hour - 12 : (estDateTime.hour == 0 ? 12 : estDateTime.hour);
-    final period = estDateTime.hour >= 12 ? 'PM' : 'AM';
-    final time = '$hour:${estDateTime.minute.toString().padLeft(2, '0')} $period';
+    final date = '${localDateTime.month}/${localDateTime.day}/${localDateTime.year}';
+    final hour = localDateTime.hour > 12 ? localDateTime.hour - 12 : (localDateTime.hour == 0 ? 12 : localDateTime.hour);
+    final period = localDateTime.hour >= 12 ? 'PM' : 'AM';
+    final time = '$hour:${localDateTime.minute.toString().padLeft(2, '0')} $period';
     return '$date at $time';
   }
   
