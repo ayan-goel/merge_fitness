@@ -2,143 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/assigned_workout_model.dart';
 import '../../models/workout_template_model.dart';
-import '../../models/video_call_model.dart';
-import '../../services/workout_template_service.dart';
-import '../../services/video_call_service.dart';
 import '../../theme/app_styles.dart';
-import '../shared/video_call_screen.dart';
 import 'package:chewie/chewie.dart';
 import 'package:video_player/video_player.dart';
 
-class WorkoutDetailScreen extends StatefulWidget {
+/// Preview screen for trainers to see what clients see for an assigned workout
+/// This is a read-only view - no status updates or interactive features
+class WorkoutPreviewScreen extends StatefulWidget {
   final AssignedWorkout workout;
+  final String clientName;
   
-  const WorkoutDetailScreen({
+  const WorkoutPreviewScreen({
     super.key,
     required this.workout,
+    required this.clientName,
   });
-
+  
   @override
-  State<WorkoutDetailScreen> createState() => _WorkoutDetailScreenState();
+  State<WorkoutPreviewScreen> createState() => _WorkoutPreviewScreenState();
 }
 
-class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
-  final WorkoutTemplateService _workoutService = WorkoutTemplateService();
-  final VideoCallService _videoCallService = VideoCallService();
-  bool _isUpdating = false;
-  WorkoutStatus _currentStatus = WorkoutStatus.assigned;
-  VideoCall? _currentVideoCall;
+class _WorkoutPreviewScreenState extends State<WorkoutPreviewScreen> {
   PageController? _pageController;
   int _currentExerciseIndex = 0;
   
   @override
   void initState() {
     super.initState();
-    _currentStatus = widget.workout.status;
-    
     // Only initialize page controller if there are exercises
     if (widget.workout.exercises.isNotEmpty) {
       _pageController = PageController();
     }
-    
-    // If this is a session-based workout, listen for video calls
-    if (widget.workout.isSessionBased && widget.workout.sessionId != null) {
-      _listenForVideoCall();
-    }
-  }
-
-  void _listenForVideoCall() {
-    print('Client: Listening for video calls for session ID: ${widget.workout.sessionId}');
-    _videoCallService.streamVideoCallBySessionId(widget.workout.sessionId!).listen((videoCall) {
-      print('Client: Video call update received: ${videoCall?.toMap()}');
-      if (mounted) {
-        setState(() {
-          _currentVideoCall = videoCall;
-        });
-        
-        if (videoCall != null) {
-          print('Client: Video call status: ${videoCall.status}, trainerJoined: ${videoCall.trainerJoined}, clientJoined: ${videoCall.clientJoined}');
-        } else {
-          print('Client: No active video call found for this session');
-        }
-      }
-    }, onError: (error) {
-      print('Client: Error listening for video calls: $error');
-    });
-  }
-
-  @override
-  void dispose() {
-    _videoCallService.dispose();
-    _pageController?.dispose();
-    super.dispose();
   }
   
-  Future<void> _updateWorkoutStatus(WorkoutStatus status) async {
-    if (_isUpdating) return;
-    
-    // Don't allow status updates for session-based workouts
-    if (widget.workout.isSessionBased) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Training session status is managed automatically')),
-        );
-      }
-      return;
-    }
-    
-    setState(() {
-      _isUpdating = true;
-    });
-    
-    try {
-      await _workoutService.updateWorkoutStatus(
-        widget.workout.id, 
-        status,
-      );
-      
-      setState(() {
-        _currentStatus = status;
-        _isUpdating = false;
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Workout marked as ${_formatStatus(status)}')),
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _isUpdating = false;
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating workout: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _joinVideoCall(VideoCall videoCall) async {
-    try {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => VideoCallScreen(
-            callId: videoCall.id,
-            isTrainer: false,
-            sessionId: videoCall.sessionId,
-          ),
-        ),
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to join video call: $e')),
-        );
-      }
-    }
+  @override
+  void dispose() {
+    _pageController?.dispose();
+    super.dispose();
   }
   
   String _formatStatus(WorkoutStatus status) {
@@ -219,9 +119,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     return Scaffold(
       backgroundColor: AppStyles.offWhite,
       appBar: AppBar(
-        title: Text(
-          widget.workout.workoutName,
-          style: const TextStyle(color: AppStyles.textDark),
+        title: const Text(
+          'Workout Preview',
+          style: TextStyle(
+            color: AppStyles.textDark,
+            fontSize: 18,
+          ),
         ),
         backgroundColor: AppStyles.offWhite,
         elevation: 0,
@@ -229,6 +132,41 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       ),
       body: Column(
         children: [
+          // Preview banner
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.blue.shade200,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.visibility,
+                  color: Colors.blue.shade700,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Preview Mode - This is what your client sees',
+                    style: TextStyle(
+                      color: Colors.blue.shade700,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
           // Workout info section
           Expanded(
             child: SingleChildScrollView(
@@ -261,7 +199,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                   ),
                                 ),
                               ),
-                              _buildStatusChip(context, _currentStatus),
+                              _buildStatusChip(context, widget.workout.status),
                             ],
                           ),
                           const SizedBox(height: 16.0),
@@ -349,8 +287,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   
                   const SizedBox(height: 24.0),
                   
-                  // Exercises section or Session info
-                  if (widget.workout.isSessionBased) ...[
+                  // Full Workout Video Section
+                  if (widget.workout.fullWorkoutVideoUrl != null && widget.workout.fullWorkoutVideoUrl!.isNotEmpty) ...[
                     Card(
                       color: Colors.white,
                       shape: RoundedRectangleBorder(
@@ -358,391 +296,122 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                       ),
                       elevation: 1,
                       child: Padding(
-                        padding: const EdgeInsets.all(20.0),
+                        padding: const EdgeInsets.all(16.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                Icon(
-                                  Icons.schedule,
-                                  color: AppStyles.primarySage,
-                                  size: 20,
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppStyles.primarySage.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.play_circle_filled,
+                                    color: AppStyles.primarySage,
+                                    size: 24,
+                                  ),
                                 ),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  'Personal Training Session',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppStyles.textDark,
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Text(
+                                    'Full Workout Video',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppStyles.textDark,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
+                            ClipRounded(
+                              radius: 12,
+                              child: VideoPlayerWidget(
+                                videoUrl: widget.workout.fullWorkoutVideoUrl!,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
                             Text(
-                              'This is a one-on-one training session with your trainer. The specific exercises and activities will be determined during the session based on your goals and progress.',
+                              'Watch the complete workout demonstration',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: AppStyles.slateGray,
-                                height: 1.5,
-                              ),
-                            ),
-                            
-                            // Video call button
-                            if (_currentVideoCall != null) ...[
-                              const SizedBox(height: 20),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: _currentVideoCall!.trainerJoined && !_currentVideoCall!.isEnded
-                                      ? () => _joinVideoCall(_currentVideoCall!)
-                                      : null,
-                                  icon: Icon(
-                                    _currentVideoCall!.trainerJoined && !_currentVideoCall!.isEnded 
-                                        ? Icons.videocam 
-                                        : Icons.videocam_off,
-                                    size: 20,
-                                  ),
-                                  label: Text(
-                                    _currentVideoCall!.isEnded
-                                        ? 'Video Call Ended'
-                                        : _currentVideoCall!.trainerJoined
-                                            ? 'Trainer has joined'
-                                            : 'Waiting for trainer to start...',
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _currentVideoCall!.trainerJoined && !_currentVideoCall!.isEnded
-                                        ? Colors.green
-                                        : AppStyles.slateGray,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppStyles.primarySage.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: AppStyles.primarySage.withOpacity(0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.info_outline,
-                                    color: AppStyles.primarySage,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Session status is automatically managed based on the scheduled time.',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: AppStyles.primarySage,
-                                      ),
-                                    ),
-                                  ),
-                                ],
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ] else ...[
-                    // Full Workout Video Section
-                    if (widget.workout.fullWorkoutVideoUrl != null && widget.workout.fullWorkoutVideoUrl!.isNotEmpty) ...[
-                      Card(
-                        color: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: 1,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: AppStyles.primarySage.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(
-                                      Icons.play_circle_filled,
-                                      color: AppStyles.primarySage,
-                                      size: 24,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Expanded(
-                                    child: Text(
-                                      'Full Workout Video',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppStyles.textDark,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              ClipRounded(
-                                radius: 12,
-                                child: VideoPlayerWidget(
-                                  videoUrl: widget.workout.fullWorkoutVideoUrl!,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Watch the complete workout demonstration',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppStyles.slateGray,
-                                ),
-                              ),
-                            ],
-                          ),
+                    const SizedBox(height: 24.0),
+                  ],
+                  
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Exercises',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppStyles.textDark,
                         ),
                       ),
-                      const SizedBox(height: 24.0),
+                      Text(
+                        '${_currentExerciseIndex + 1} of ${widget.workout.exercises.length}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppStyles.slateGray,
+                        ),
+                      ),
                     ],
-                    
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Exercises',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppStyles.textDark,
+                  ),
+                  const SizedBox(height: 16.0),
+                  
+                  // Swipeable exercise cards with PageView
+                  if (_pageController != null)
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.65,
+                          child: PageView.builder(
+                            controller: _pageController!,
+                            itemCount: widget.workout.exercises.length,
+                            onPageChanged: (index) {
+                              setState(() {
+                                _currentExerciseIndex = index;
+                              });
+                            },
+                            itemBuilder: (context, index) {
+                              final exercise = widget.workout.exercises[index];
+                              return Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 8.0),
+                                  child: ExerciseCard(exercise: exercise),
+                                ),
+                              );
+                            },
                           ),
-                        ),
-                        Text(
-                          '${_currentExerciseIndex + 1} of ${widget.workout.exercises.length}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: AppStyles.slateGray,
-                          ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
+                  
+                  // Pagination dots
+                  if (_pageController != null) ...[
                     const SizedBox(height: 16.0),
-                    
-                    // Swipeable exercise cards with PageView
-                      if (_pageController != null)
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            return SizedBox(
-                              height: MediaQuery.of(context).size.height * 0.65,
-                              child: PageView.builder(
-                                controller: _pageController!,
-                                itemCount: widget.workout.exercises.length,
-                                onPageChanged: (index) {
-                                  setState(() {
-                                    _currentExerciseIndex = index;
-                                  });
-                                },
-                                itemBuilder: (context, index) {
-                                  final exercise = widget.workout.exercises[index];
-                                  return Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(right: 8.0),
-                                      child: ExerciseCard(exercise: exercise),
-                                    ),
-                                  );
-                                },
-                              ),
-                            );
-                          },
-                        ),
-                    
-                    // Pagination dots
-                    if (_pageController != null) ...[
-                      const SizedBox(height: 16.0),
-                      Center(
-                        child: _buildPaginationDots(),
-                      ),
-                    ],
+                    Center(
+                      child: _buildPaginationDots(),
+                    ),
                   ],
                   
                   const SizedBox(height: 40.0),
                 ],
               ),
             ),
-          ),
-          
-          // Bottom status control buttons
-          if (!widget.workout.isSessionBased)
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, -1),
-                ),
-              ],
-              border: Border(
-                top: BorderSide(
-                  color: AppStyles.dividerGrey,
-                  width: 1,
-                ),
-              ),
-            ),
-            padding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 30.0),
-            margin: const EdgeInsets.only(bottom: 16.0),
-            child: Row(
-              children: [
-                if (_currentStatus != WorkoutStatus.inProgress && 
-                    _currentStatus != WorkoutStatus.completed)
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.play_arrow),
-                      label: const Text('Start Workout'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppStyles.primarySage,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: _isUpdating ? null : () => _updateWorkoutStatus(WorkoutStatus.inProgress),
-                    ),
-                  ),
-                
-                if (_currentStatus == WorkoutStatus.inProgress)
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.check),
-                      label: const Text('Complete'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppStyles.successGreen,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: _isUpdating ? null : () => _updateWorkoutStatus(WorkoutStatus.completed),
-                    ),
-                  ),
-                
-                if (_currentStatus != WorkoutStatus.skipped && 
-                    _currentStatus != WorkoutStatus.completed)
-                  const SizedBox(width: 16),
-                
-                if (_currentStatus != WorkoutStatus.skipped && 
-                    _currentStatus != WorkoutStatus.completed)
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.close),
-                      label: const Text('Skip Workout'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppStyles.errorRed,
-                        side: BorderSide(color: AppStyles.errorRed, width: 1.5),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: _isUpdating ? null : () => _updateWorkoutStatus(WorkoutStatus.skipped),
-                    ),
-                  ),
-                
-                if (_currentStatus == WorkoutStatus.completed || 
-                    _currentStatus == WorkoutStatus.skipped) ...[
-                  if (_currentStatus == WorkoutStatus.skipped)
-                    const SizedBox(width: 16),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Reset Status'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppStyles.primarySage,
-                        side: BorderSide(color: AppStyles.primarySage, width: 1.5),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: _isUpdating ? null : () => _updateWorkoutStatus(WorkoutStatus.assigned),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            )
-          else
-            // Session-based workout info
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, -1),
-                  ),
-                ],
-                border: Border(
-                  top: BorderSide(
-                    color: AppStyles.dividerGrey,
-                    width: 1,
-                  ),
-                ),
-              ),
-              padding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 30.0),
-              margin: const EdgeInsets.only(bottom: 16.0),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.person,
-                        color: AppStyles.primarySage,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Training Session',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppStyles.textDark,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'This is a training session with your trainer. Status is managed automatically.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppStyles.slateGray,
-                    ),
-                  ),
-                ],
-              ),
           ),
         ],
       ),
@@ -766,7 +435,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     switch (status) {
       case WorkoutStatus.assigned:
         if (isPast) {
-          // Past workouts with "assigned" status should show as "Missed"
           chipColor = AppStyles.errorRed;
           statusText = 'Missed';
         } else {
@@ -806,7 +474,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 }
 
-// Add this new widget for display exercise with video support
+// Exercise card widget for displaying exercise details
 class ExerciseCard extends StatelessWidget {
   final ExerciseTemplate exercise;
 
@@ -818,15 +486,15 @@ class ExerciseCard extends StatelessWidget {
   Color _getDifficultyColor(int difficulty) {
     switch (difficulty) {
       case 1:
-        return Colors.green.shade600; // Easiest - green
+        return Colors.green.shade600;
       case 2:
         return Colors.lightGreen.shade600;
       case 3:
-        return Colors.amber.shade600; // Medium - amber
+        return Colors.amber.shade600;
       case 4:
         return Colors.orange.shade600;
       case 5:
-        return Colors.red.shade600; // Hardest - red
+        return Colors.red.shade600;
       default:
         return AppStyles.slateGray;
     }
@@ -855,6 +523,7 @@ class ExerciseCard extends StatelessWidget {
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -903,7 +572,7 @@ class ExerciseCard extends StatelessWidget {
           children: [
             // Header section with exercise name and video button
             Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -1278,6 +947,7 @@ class ExerciseCard extends StatelessWidget {
   }
 }
 
+// Video player widget
 class VideoPlayerWidget extends StatefulWidget {
   final String videoUrl;
   
@@ -1351,16 +1021,17 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
       );
     }
     
-    return AspectRatio(
-      aspectRatio: _videoPlayerController.value.aspectRatio,
-      child: Chewie(controller: _chewieController!),
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(12),
+        bottomRight: Radius.circular(12),
+      ),
+      child: AspectRatio(
+        aspectRatio: _videoPlayerController.value.aspectRatio,
+        child: Chewie(controller: _chewieController!),
+      ),
     );
   }
-}
-
-// Replace the existing _buildExerciseCard method with this to use our new ExerciseCard widget
-Widget _buildExerciseCard(BuildContext context, ExerciseTemplate exercise) {
-  return ExerciseCard(exercise: exercise);
 }
 
 // ClipRounded widget for rounded corners
@@ -1442,4 +1113,5 @@ class _VideoFirstFrameState extends State<VideoFirstFrame> {
       ),
     );
   }
-} 
+}
+

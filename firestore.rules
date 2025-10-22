@@ -203,9 +203,9 @@ service cloud.firestore {
       // Clients can delete their own assigned workouts (for account deletion)
       allow delete: if isAuthenticated() && resource.data.clientId == request.auth.uid;
       
-      // Trainers can create, update, and delete workouts they assigned
+      // Trainers can create, update, and delete workouts for their assigned clients
       allow create: if isAuthenticated() && isTrainer();
-      allow update, delete: if isAuthenticated() && isTrainer() && resource.data.trainerId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && isTrainer() && isAssignedToClient(resource.data.clientId);
       
       // Admins and super trainers can do everything
       allow read, write: if isAdmin() || isSuperTrainer();

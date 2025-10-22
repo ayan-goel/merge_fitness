@@ -206,6 +206,10 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen> {
       context: context,
       builder: (context) => Dialog(
         insetPadding: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        clipBehavior: Clip.antiAlias,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -214,11 +218,15 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    video.name,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      video.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   IconButton(
@@ -481,121 +489,111 @@ class VideoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       elevation: 2,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final cardHeight = constraints.maxHeight;
-          final thumbnailHeight = (cardHeight * 0.65).clamp(80.0, 140.0);
-          final contentHeight = cardHeight - thumbnailHeight;
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Thumbnail Image
-              Container(
-                height: thumbnailHeight,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(12),
-                    topRight: Radius.circular(12),
+      child: InkWell(
+        onTap: onPlay,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Thumbnail Image - takes up most of the card
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Builder(
+                    builder: (context) {
+                      if (video.thumbnailUrl != null && video.thumbnailUrl!.isNotEmpty) {
+                        return CachedNetworkImage(
+                          imageUrl: video.thumbnailUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey.shade200,
+                            child: const Center(child: CircularProgressIndicator()),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey.shade200,
+                            child: const Icon(Icons.videocam, color: Colors.grey, size: 24),
+                          ),
+                        );
+                      }
+                      // Fallback: render first frame using VideoPlayer
+                      return VideoFirstFrame(videoUrl: video.videoUrl);
+                    },
                   ),
-                ),
-            child: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
-              child: Builder(
-                builder: (context) {
-                  if (video.thumbnailUrl != null && video.thumbnailUrl!.isNotEmpty) {
-                    return CachedNetworkImage(
-                      imageUrl: video.thumbnailUrl!,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey.shade200,
-                        child: const Center(child: CircularProgressIndicator()),
+                  // Play overlay icon
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
                       ),
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.videocam, color: Colors.grey, size: 24),
+                      child: Icon(
+                        Icons.play_arrow,
+                        color: Colors.white,
+                        size: 32,
                       ),
-                    );
-                  }
-                  // Fallback: render first frame using VideoPlayer
-                  return VideoFirstFrame(videoUrl: video.videoUrl);
-                },
+                    ),
+                  ),
+                ],
               ),
             ),
-              ),
-              // Video Info and Actions
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10.0, 8.0, 10.0, 10.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      video.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: Color(0xFF424242),
-                        height: 1.2,
+            // Video name and action buttons at the bottom
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Video name
+                  Text(
+                    video.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      color: Color(0xFF424242),
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  // Action buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      InkWell(
+                        onTap: onEdit,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4.0),
+                          child: const Icon(
+                            Icons.edit_outlined,
+                            color: Colors.blueAccent,
+                            size: 18,
+                          ),
+                        ),
                       ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        InkWell(
-                          onTap: onPlay,
-                          borderRadius: BorderRadius.circular(20),
-                          child: Padding(
-                            padding: const EdgeInsets.all(3.0),
-                            child: Icon(
-                              Icons.play_circle_outline,
-                              color: AppStyles.primarySage,
-                              size: 24,
-                            ),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: onDelete,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4.0),
+                          child: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.redAccent,
+                            size: 18,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        InkWell(
-                          onTap: onEdit,
-                          borderRadius: BorderRadius.circular(20),
-                          child: Padding(
-                            padding: const EdgeInsets.all(3.0),
-                            child: const Icon(
-                              Icons.edit_outlined,
-                              color: Colors.blueAccent,
-                              size: 22,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        InkWell(
-                          onTap: onDelete,
-                          borderRadius: BorderRadius.circular(20),
-                          child: Padding(
-                            padding: const EdgeInsets.all(3.0),
-                            child: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.redAccent,
-                              size: 22,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          );
-        },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -735,9 +733,15 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
       );
     }
     
-    return AspectRatio(
-      aspectRatio: _videoPlayerController.value.aspectRatio,
-      child: Chewie(controller: _chewieController!),
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(12),
+        bottomRight: Radius.circular(12),
+      ),
+      child: AspectRatio(
+        aspectRatio: _videoPlayerController.value.aspectRatio,
+        child: Chewie(controller: _chewieController!),
+      ),
     );
   }
 } 

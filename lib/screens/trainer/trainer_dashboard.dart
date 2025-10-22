@@ -5,9 +5,7 @@ import '../../services/auth_service.dart';
 import '../../services/calendly_service.dart';
 import '../../services/messaging_service.dart';
 import '../../models/user_model.dart';
-import '../../screens/home_screen.dart';
 import '../../theme/app_styles.dart';
-import 'create_template_screen.dart';
 import 'trainer_scheduling_screen.dart';
 import 'client_details_screen.dart';
 import '../shared/conversations_screen.dart';
@@ -534,62 +532,8 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
               },
             ),
 
-            // Quick actions - more compact row
-            Text(
-              'Quick Actions',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildActionCard(
-                  context,
-                  icon: Icons.people,
-                  title: 'Clients',
-                  onTap: () {
-                    // Navigate to Clients tab (index 1)
-                    HomeScreen.navigateToTab(context, 1);
-                  },
-                ),
-                _buildActionCard(
-                  context,
-                  icon: Icons.calendar_month,
-                  title: 'Scheduling',
-                  onTap: () {
-                    // Navigate to Scheduling screen
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const TrainerSchedulingScreen(),
-                      ),
-                    ).then((_) {
-                      // Refresh activity feed when returning
-                      _loadActivityFeed();
-                    });
-                  },
-                ),
-                _buildActionCard(
-                  context,
-                  icon: Icons.fitness_center,
-                  title: 'Templates',
-                  onTap: () {
-                    // Navigate to Create Template screen
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const CreateTemplateScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 12), // Further reduced from 16
-
-            // Activity feed - giving it a flexible weight of 1 to take remaining space
+            // Activity feed - taking up all remaining space
             Expanded(
-              flex: 2, // Give it more weight
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -778,44 +722,5 @@ class _TrainerDashboardState extends State<TrainerDashboard> {
     } else {
       return DateFormat('MMM d, h:mm a').format(date);
     }
-  }
-
-  Widget _buildActionCard(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Card(
-        elevation: 2,
-        child: Container(
-          width: (MediaQuery.of(context).size.width - 64) / 3, // Consistent width accounting for padding
-          height: 85, // Reduced height
-          padding: const EdgeInsets.all(12), // Reduced padding
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 28, // Reduced icon size
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(height: 6), // Reduced spacing
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 } 

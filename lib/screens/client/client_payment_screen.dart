@@ -127,8 +127,26 @@ class _ClientPaymentScreenState extends State<ClientPaymentScreen> {
       }
     } catch (e) {
       if (mounted) {
+        // Check if the error is a cancellation
+        String errorMessage = 'Payment cancelled';
+        
+        if (e is stripe.StripeException) {
+          final stripeError = e.error;
+          // Check if it's a cancellation
+          if (stripeError.code == stripe.FailureCode.Canceled) {
+            errorMessage = 'Payment cancelled';
+          } else {
+            // Other Stripe errors
+            errorMessage = 'Payment failed. Please try again.';
+          }
+        } else if (e.toString().toLowerCase().contains('cancel')) {
+          errorMessage = 'Payment cancelled';
+        } else {
+          errorMessage = 'Payment failed. Please try again.';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Payment failed: $e')),
+          SnackBar(content: Text(errorMessage)),
         );
       }
     } finally {

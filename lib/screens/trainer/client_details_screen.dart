@@ -14,6 +14,7 @@ import 'client_info_screen.dart';
 import 'client_meal_history_screen.dart';
 import 'client_progress_screen.dart';
 import 'client_payment_tab.dart';
+import 'workout_preview_screen.dart';
 
 class ClientDetailsScreen extends StatefulWidget {
   final String clientId;
@@ -152,6 +153,18 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
       MaterialPageRoute(
         builder: (context) => ClientMealHistoryScreen(
           clientId: widget.clientId,
+          clientName: widget.clientName,
+        ),
+      ),
+    );
+  }
+  
+  void _previewWorkout(AssignedWorkout workout) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WorkoutPreviewScreen(
+          workout: workout,
           clientName: widget.clientName,
         ),
       ),
@@ -393,6 +406,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                           return WorkoutCard(
                             workout: workout,
                             onDelete: () => _confirmDeleteWorkout(workout),
+                            onPreview: () => _previewWorkout(workout),
                           );
                         },
                       );
@@ -592,11 +606,13 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
 class WorkoutCard extends StatelessWidget {
   final AssignedWorkout workout;
   final VoidCallback? onDelete;
+  final VoidCallback? onPreview;
   
   const WorkoutCard({
     super.key,
     required this.workout,
     this.onDelete,
+    this.onPreview,
   });
   
   @override
@@ -627,6 +643,17 @@ class WorkoutCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                // Show preview button for non-session-based workouts
+                if (!workout.isSessionBased && onPreview != null)
+                  IconButton(
+                    icon: const Icon(Icons.info_outline),
+                    color: Colors.blue,
+                    iconSize: 20,
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.all(8),
+                    onPressed: onPreview,
+                    tooltip: 'Preview workout',
+                  ),
                 // Show delete button only for assigned (non-session-based) workouts that are not completed
                 if (!workout.isSessionBased && 
                     workout.status == WorkoutStatus.assigned && 
