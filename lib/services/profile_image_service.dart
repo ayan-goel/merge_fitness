@@ -21,6 +21,11 @@ class ProfileImageService {
       Colors.deepOrange.shade300,
     ];
     
+    // Handle empty or null names
+    if (name.isEmpty) {
+      return colors[0]; // Return first color as default
+    }
+    
     // Generate a deterministic index based on the name
     int hash = 0;
     for (var i = 0; i < name.length; i++) {
@@ -33,17 +38,37 @@ class ProfileImageService {
   
   // Get initials from a name
   String getInitials(String name) {
-    if (name.isEmpty) return '';
+    if (name.isEmpty) return '?';
     
-    List<String> nameSplit = name.split(" ");
+    // Trim and filter out empty strings
+    List<String> nameSplit = name.trim().split(" ").where((s) => s.isNotEmpty).toList();
+    
+    if (nameSplit.isEmpty) return '?';
+    
     String initials = "";
     
     if (nameSplit.length > 1) {
       // Get first and last name initials
-      initials = nameSplit[0][0] + nameSplit[nameSplit.length - 1][0];
+      String first = nameSplit[0];
+      String last = nameSplit[nameSplit.length - 1];
+      
+      if (first.isNotEmpty && last.isNotEmpty) {
+        initials = first[0] + last[0];
+      } else if (first.isNotEmpty) {
+        initials = first.length > 1 ? first.substring(0, 2) : first[0];
+      } else if (last.isNotEmpty) {
+        initials = last.length > 1 ? last.substring(0, 2) : last[0];
+      } else {
+        initials = '?';
+      }
     } else {
       // If only one name, use the first two letters or just first if too short
-      initials = name.length > 1 ? name.substring(0, 2) : name[0];
+      String singleName = nameSplit[0];
+      if (singleName.isEmpty) {
+        initials = '?';
+      } else {
+        initials = singleName.length > 1 ? singleName.substring(0, 2) : singleName[0];
+      }
     }
     
     return initials.toUpperCase();

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
+import 'package:chewie/chewie.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/workout_template_model.dart';
 import '../../services/workout_template_service.dart';
 import '../../services/auth_service.dart';
@@ -582,7 +585,7 @@ class ExerciseListItem extends StatelessWidget {
 
 // Video Selection Dialog with Search
 class _VideoSelectionDialog extends StatefulWidget {
-  final List videos;
+  final List<TrainerVideo> videos;
   
   const _VideoSelectionDialog({required this.videos});
   
@@ -592,7 +595,8 @@ class _VideoSelectionDialog extends StatefulWidget {
 
 class _VideoSelectionDialogState extends State<_VideoSelectionDialog> {
   final TextEditingController _searchController = TextEditingController();
-  List _filteredVideos = [];
+  List<TrainerVideo> _filteredVideos = [];
+  String? _selectedVideoId;
   
   @override
   void initState() {
@@ -621,18 +625,86 @@ class _VideoSelectionDialogState extends State<_VideoSelectionDialog> {
     });
   }
   
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Select Full Workout Video'),
-      content: SizedBox(
-        width: double.maxFinite,
+  void _playVideo(TrainerVideo video) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        clipBehavior: Clip.antiAlias,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      video.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
+              ),
+              child: VideoPlayerWidget(videoUrl: video.videoUrl),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        height: MediaQuery.of(context).size.height * 0.8,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Title and search
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Select Full Workout Video',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             // Search bar
             TextField(
               controller: _searchController,
+              onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 hintText: 'Search videos...',
                 prefixIcon: const Icon(Icons.search),
@@ -641,6 +713,7 @@ class _VideoSelectionDialogState extends State<_VideoSelectionDialog> {
                         icon: const Icon(Icons.clear),
                         onPressed: () {
                           _searchController.clear();
+                          setState(() {});
                         },
                       )
                     : null,
@@ -652,7 +725,7 @@ class _VideoSelectionDialogState extends State<_VideoSelectionDialog> {
             ),
             const SizedBox(height: 16),
             
-            // Video list
+            // Video grid
             Expanded(
               child: _filteredVideos.isEmpty
                   ? Center(
@@ -666,44 +739,190 @@ class _VideoSelectionDialogState extends State<_VideoSelectionDialog> {
                         ),
                       ),
                     )
-                  : ListView.builder(
-                      shrinkWrap: true,
+                  : GridView.builder(
+                      padding: const EdgeInsets.all(8),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.75,
+                      ),
                       itemCount: _filteredVideos.length,
                       itemBuilder: (context, index) {
                         final video = _filteredVideos[index];
-                        return ListTile(
-                          title: Text(video.name),
-                          leading: const Icon(Icons.video_library),
+                        final isSelected = _selectedVideoId == video.id;
+                        return _VideoSelectionCard(
+                          video: video,
+                          isSelected: isSelected,
                           onTap: () {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (context.mounted) {
-                                Navigator.of(context).pop(<String, dynamic>{
-                                  'id': video.id,
-                                  'url': video.videoUrl,
-                                  'name': video.name,
-                                });
-                              }
+                            setState(() {
+                              _selectedVideoId = video.id;
                             });
                           },
+                          onPlay: () => _playVideo(video),
                         );
                       },
                     ),
             ),
+            const SizedBox(height: 16),
+            // Action buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Left side - Cancel button
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                // Right side - Select button
+                ElevatedButton(
+                  onPressed: _selectedVideoId != null
+                      ? () {
+                          final video = widget.videos.firstWhere((v) => v.id == _selectedVideoId);
+                          Navigator.pop(context, <String, dynamic>{
+                            'id': video.id,
+                            'url': video.videoUrl,
+                            'name': video.name,
+                          });
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                  ),
+                  child: const Text('Select'),
+                ),
+              ],
+            ),
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (context.mounted) {
-                Navigator.of(context).pop();
-              }
-            });
-          },
-          child: const Text('Cancel'),
+    );
+  }
+}
+
+class _VideoSelectionCard extends StatelessWidget {
+  final TrainerVideo video;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final VoidCallback onPlay;
+  
+  const _VideoSelectionCard({
+    required this.video,
+    required this.isSelected,
+    required this.onTap,
+    required this.onPlay,
+  });
+  
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isSelected ? Theme.of(context).primaryColor : Colors.transparent,
+          width: 2,
         ),
-      ],
+      ),
+      elevation: isSelected ? 4 : 2,
+      child: InkWell(
+        onTap: onTap,
+        child: Stack(
+          children: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Thumbnail
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Builder(
+                        builder: (context) {
+                          if (video.thumbnailUrl != null && video.thumbnailUrl!.isNotEmpty) {
+                            return CachedNetworkImage(
+                              imageUrl: video.thumbnailUrl!,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Container(
+                                color: Colors.grey.shade200,
+                                child: const Center(child: CircularProgressIndicator()),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                color: Colors.grey.shade200,
+                                child: const Icon(Icons.videocam, color: Colors.grey, size: 24),
+                              ),
+                            );
+                          }
+                          return VideoFirstFrame(videoUrl: video.videoUrl);
+                        },
+                      ),
+                      // Play overlay button
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withOpacity(0.3),
+                          child: Center(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () {
+                                onPlay();
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.play_circle_outline,
+                                  color: Colors.white,
+                                  size: 48,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Video name
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    video.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      color: Color(0xFF424242),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            // Selection indicator
+            if (isSelected)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -839,63 +1058,9 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
     
     final result = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Video'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Search',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (value) {
-                  // Implement search functionality if needed
-                },
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _videos.length,
-                  itemBuilder: (context, index) {
-                    final video = _videos[index];
-                    return ListTile(
-                      leading: const Icon(Icons.video_library),
-                      title: Text(video.name),
-                      selected: _selectedVideoId == video.id,
-                      onTap: () {
-                        FocusScope.of(context).unfocus();
-                        Navigator.pop(context, video.id);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              FocusScope.of(context).unfocus();
-              Navigator.pop(context);
-            },
-            child: const Text('Cancel'),
-          ),
-          if (_selectedVideoId != null)
-            TextButton(
-              onPressed: () {
-                FocusScope.of(context).unfocus();
-                Navigator.pop(context, 'clear');
-              },
-              child: const Text('Clear Selection'),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-            ),
-        ],
+      builder: (context) => _ExerciseVideoSelectionDialog(
+        videos: _videos,
+        selectedVideoId: _selectedVideoId,
       ),
     );
     
@@ -1299,6 +1464,388 @@ class _ExerciseDialogState extends State<ExerciseDialog> {
           child: const Text('Save'),
         ),
       ],
+    );
+  }
+}
+
+class _ExerciseVideoSelectionDialog extends StatefulWidget {
+  final List<TrainerVideo> videos;
+  final String? selectedVideoId;
+  
+  const _ExerciseVideoSelectionDialog({
+    required this.videos,
+    this.selectedVideoId,
+  });
+  
+  @override
+  State<_ExerciseVideoSelectionDialog> createState() => _ExerciseVideoSelectionDialogState();
+}
+
+class _ExerciseVideoSelectionDialogState extends State<_ExerciseVideoSelectionDialog> {
+  final TextEditingController _searchController = TextEditingController();
+  List<TrainerVideo> _filteredVideos = [];
+  String? _selectedVideoId;
+  
+  @override
+  void initState() {
+    super.initState();
+    _filteredVideos = widget.videos;
+    _selectedVideoId = widget.selectedVideoId;
+    _searchController.addListener(_filterVideos);
+  }
+  
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+  
+  void _filterVideos() {
+    if (!mounted) return;
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        _filteredVideos = widget.videos;
+      } else {
+        _filteredVideos = widget.videos.where((video) {
+          return video.name.toLowerCase().contains(query);
+        }).toList();
+      }
+    });
+  }
+  
+  void _playVideo(TrainerVideo video) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      video.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
+              ),
+              child: VideoPlayerWidget(videoUrl: video.videoUrl),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        height: MediaQuery.of(context).size.height * 0.8,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Title and search
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Select Demo Video',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Search bar
+            TextField(
+              controller: _searchController,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                hintText: 'Search videos...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {});
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Video grid
+            Expanded(
+              child: _filteredVideos.isEmpty
+                  ? Center(
+                      child: Text(
+                        _searchController.text.isEmpty 
+                            ? 'No videos available'
+                            : 'No videos found',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                        ),
+                      ),
+                    )
+                  : GridView.builder(
+                      padding: const EdgeInsets.all(8),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.75,
+                      ),
+                      itemCount: _filteredVideos.length,
+                      itemBuilder: (context, index) {
+                        final video = _filteredVideos[index];
+                        final isSelected = _selectedVideoId == video.id;
+                        return _VideoSelectionCard(
+                          video: video,
+                          isSelected: isSelected,
+                          onTap: () {
+                            setState(() {
+                              _selectedVideoId = video.id;
+                            });
+                          },
+                          onPlay: () => _playVideo(video),
+                        );
+                      },
+                    ),
+            ),
+            const SizedBox(height: 16),
+            // Action buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Left side - Cancel button
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                // Right side - Clear Selection and Select buttons
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_selectedVideoId != null && _selectedVideoId == widget.selectedVideoId)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.pop(context, 'clear');
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          child: const Text('Clear', style: TextStyle(fontSize: 14)),
+                        ),
+                      ),
+                    ElevatedButton(
+                      onPressed: _selectedVideoId != null
+                          ? () {
+                              Navigator.pop(context, _selectedVideoId);
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                      ),
+                      child: const Text('Select'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class VideoFirstFrame extends StatefulWidget {
+  final String videoUrl;
+
+  const VideoFirstFrame({super.key, required this.videoUrl});
+
+  @override
+  State<VideoFirstFrame> createState() => _VideoFirstFrameState();
+}
+
+class _VideoFirstFrameState extends State<VideoFirstFrame> {
+  late VideoPlayerController _controller;
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+    try {
+      await _controller.initialize();
+      await _controller.pause();
+      if (mounted) {
+        setState(() {
+          _initialized = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _initialized = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_initialized) {
+      return Container(
+        color: Colors.grey.shade200,
+        child: const Center(child: Icon(Icons.videocam, color: Colors.grey, size: 24)),
+      );
+    }
+
+    return FittedBox(
+      fit: BoxFit.cover,
+      clipBehavior: Clip.hardEdge,
+      child: SizedBox(
+        width: _controller.value.size.width,
+        height: _controller.value.size.height,
+        child: VideoPlayer(_controller),
+      ),
+    );
+  }
+}
+
+class VideoPlayerWidget extends StatefulWidget {
+  final String videoUrl;
+  
+  const VideoPlayerWidget({
+    super.key,
+    required this.videoUrl,
+  });
+
+  @override
+  State<VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
+}
+
+class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
+  late VideoPlayerController _videoPlayerController;
+  ChewieController? _chewieController;
+  bool _isInitialized = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _initializePlayer();
+  }
+  
+  Future<void> _initializePlayer() async {
+    _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+    
+    try {
+      await _videoPlayerController.initialize();
+      _chewieController = ChewieController(
+        videoPlayerController: _videoPlayerController,
+        autoPlay: true,
+        looping: false,
+        aspectRatio: _videoPlayerController.value.aspectRatio,
+        errorBuilder: (context, errorMessage) {
+          return Center(
+            child: Text(
+              'Error: $errorMessage',
+              style: const TextStyle(color: Colors.white),
+            ),
+          );
+        },
+      );
+      
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error playing video: $e')),
+        );
+      }
+    }
+  }
+  
+  @override
+  void dispose() {
+    _videoPlayerController.dispose();
+    _chewieController?.dispose();
+    super.dispose();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return const AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(24),
+        bottomRight: Radius.circular(24),
+      ),
+      child: AspectRatio(
+        aspectRatio: _videoPlayerController.value.aspectRatio,
+        child: Chewie(controller: _chewieController!),
+      ),
     );
   }
 } 

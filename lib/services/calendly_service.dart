@@ -410,14 +410,24 @@ class CalendlyService {
         throw Exception('Trainer has not connected their Calendly account');
       }
       
+      return await _getTrainerEventTypesWithToken(trainerId, token);
+    } catch (e) {
+      print('CalendlyService: getTrainerEventTypes - Error: $e');
+      throw Exception('Failed to get trainer event types: $e');
+    }
+  }
+  
+  // Internal method to get event types with a provided token (avoids redundant token fetch)
+  Future<List<Map<String, dynamic>>> _getTrainerEventTypesWithToken(String trainerId, String token) async {
+    try {
       final uri = await getTrainerCalendlyUri(trainerId);
       if (uri == null) {
-        print('CalendlyService: getTrainerEventTypes - No calendlyUri for trainerId: $trainerId');
+        print('CalendlyService: _getTrainerEventTypesWithToken - No calendlyUri for trainerId: $trainerId');
         throw Exception('Trainer has not connected their Calendly account');
       }
       
       final eventTypesUrl = '$_baseUrl$_eventTypesPath?user=$uri';
-      print('CalendlyService: getTrainerEventTypes - Requesting URL: $eventTypesUrl');
+      print('CalendlyService: _getTrainerEventTypesWithToken - Requesting URL: $eventTypesUrl');
       
       final response = await http.get(
         Uri.parse(eventTypesUrl),
@@ -427,23 +437,23 @@ class CalendlyService {
         },
       );
       
-      print('CalendlyService: getTrainerEventTypes - Response status: ${response.statusCode}');
-      print('CalendlyService: getTrainerEventTypes - Response body: ${response.body}');
+      print('CalendlyService: _getTrainerEventTypesWithToken - Response status: ${response.statusCode}');
+      print('CalendlyService: _getTrainerEventTypesWithToken - Response body: ${response.body}');
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<Map<String, dynamic>> eventTypesList = List<Map<String, dynamic>>.from(data['collection']);
-        print('CalendlyService: getTrainerEventTypes - Parsed event types list: $eventTypesList');
+        print('CalendlyService: _getTrainerEventTypesWithToken - Parsed event types list: $eventTypesList');
         return eventTypesList;
       } else if (response.statusCode == 401) {
         // Token may have expired; attempt refresh once
-        print('CalendlyService: getTrainerEventTypes - 401 received, attempting token refresh');
+        print('CalendlyService: _getTrainerEventTypesWithToken - 401 received, attempting token refresh');
         final auth = await _getCalendlyAuthData(trainerId);
         final refreshToken = auth?['refreshToken'] as String?;
         if (refreshToken != null) {
           final refreshed = await _refreshCalendlyToken(trainerId, refreshToken);
           if (refreshed != null) {
-            // Retry once
+            // Retry once with refreshed token
             final retry = await http.get(
               Uri.parse(eventTypesUrl),
               headers: {
@@ -461,12 +471,12 @@ class CalendlyService {
         await _handleTokenExpiration(trainerId);
         throw Exception('Calendly token has expired. Please reconnect your account.');
       } else {
-        print('CalendlyService: getTrainerEventTypes - Failed to get event types: ${response.statusCode}, Body: ${response.body}');
+        print('CalendlyService: _getTrainerEventTypesWithToken - Failed to get event types: ${response.statusCode}, Body: ${response.body}');
         throw Exception('Failed to get event types: ${response.statusCode}');
       }
     } catch (e) {
-      print('CalendlyService: getTrainerEventTypes - Error: $e');
-      throw Exception('Failed to get trainer event types: $e');
+      print('CalendlyService: _getTrainerEventTypesWithToken - Error: $e');
+      rethrow;
     }
   }
   
@@ -476,6 +486,8 @@ class CalendlyService {
   // Get trainer's available time slots from Calendly for scheduling
   Future<List<Map<String, dynamic>>> getTrainerAvailability(String trainerId, {DateTime? startDate, DateTime? endDate}) async {
     try {
+      // Get valid token - _getValidCalendlyToken will handle refresh if needed
+      // This ensures the token is always fresh before we use it
       final token = await _getValidCalendlyToken(trainerId);
       if (token == null) {
         print('CalendlyService: getTrainerAvailability - No token for trainerId: $trainerId');
@@ -495,7 +507,8 @@ class CalendlyService {
         eventTypeUri = selectedEventTypeUri;
         
         // Get the event type details to find the duration
-        final eventTypes = await getTrainerEventTypes(trainerId);
+        // Pass the token we already have to avoid redundant token fetch/refresh
+        final eventTypes = await _getTrainerEventTypesWithToken(trainerId, token);
         final selectedEventType = eventTypes.firstWhere(
           (type) => type['uri'] == selectedEventTypeUri,
           orElse: () => {'duration': 60}, // Default to 60 minutes if not found
@@ -504,7 +517,7 @@ class CalendlyService {
       } else {
         // Fallback to getting first event type
         print('CalendlyService: getTrainerAvailability - No selected event type, fetching all event types');
-      final eventTypes = await getTrainerEventTypes(trainerId);
+      final eventTypes = await _getTrainerEventTypesWithToken(trainerId, token);
 
       if (eventTypes.isEmpty) {
         print('CalendlyService: getTrainerAvailability - Trainer has no event types configured.');

@@ -173,10 +173,10 @@ class ClientListItem extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
         leading: ProfileAvatar(
-          name: client['displayName'] ?? 'Unknown',
+          name: _getClientDisplayName(client),
           radius: 20,
         ),
-        title: Text(client['displayName'] ?? 'Unknown'),
+        title: Text(_getClientDisplayName(client)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -218,6 +218,15 @@ class ClientListItem extends StatelessWidget {
         onTap: onTap,
       ),
     );
+  }
+  
+  /// Safely get client display name, handling null and empty strings
+  String _getClientDisplayName(Map<String, dynamic> client) {
+    final displayName = client['displayName'];
+    if (displayName is String && displayName.trim().isNotEmpty) {
+      return displayName;
+    }
+    return 'Unknown';
   }
   
   /// Get trainer IDs from client data
